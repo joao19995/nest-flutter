@@ -88,20 +88,32 @@ class _TodosViewState extends State<TodosView> {
         appBar: AppBar(
           title: const Text('Tarefas'),
           actions: [
-            AppButton.icon(
-              icon: viewModel.hideCompleted
-                  ? Icons.visibility_off_outlined
-                  : Icons.visibility_outlined,
-              tooltip: viewModel.hideCompleted
-                  ? 'Mostrar concluídas'
-                  : 'Ocultar concluídas',
-              onPressed: () =>
-                  viewModel.setHideCompleted(!viewModel.hideCompleted),
-            ),
-            AppButton.icon(
-              icon: Icons.inventory_2_outlined,
-              tooltip: 'Listas arquivadas',
-              onPressed: _openArchived,
+            PopupMenuButton<_TodosMenu>(
+              tooltip: 'Mais opções',
+              icon: Icon(
+                Icons.more_vert,
+                size: AppSizes.iconLarge,
+                color: context.colors.faint,
+              ),
+              onSelected: (menu) {
+                switch (menu) {
+                  case _TodosMenu.toggleCompleted:
+                    viewModel.setHideCompleted(!viewModel.hideCompleted);
+                  case _TodosMenu.archived:
+                    _openArchived();
+                }
+              },
+              itemBuilder: (_) => [
+                CheckedPopupMenuItem(
+                  value: _TodosMenu.toggleCompleted,
+                  checked: viewModel.hideCompleted,
+                  child: const Text('Ocultar concluídas'),
+                ),
+                const PopupMenuItem(
+                  value: _TodosMenu.archived,
+                  child: Text('Listas arquivadas'),
+                ),
+              ],
             ),
             AppButton.icon(
               icon: Icons.add,
@@ -136,58 +148,120 @@ class _TodosContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actionError = viewModel.actionError;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= AppBreakpoints.md;
-        final cards = <Widget>[
-          for (final list in viewModel.lists)
-            _ListCard(key: ValueKey(list.id), list: list, viewModel: viewModel),
-        ];
-        return RefreshIndicator(
+    final lists = viewModel.lists;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
+        child: RefreshIndicator(
           onRefresh: viewModel.refresh,
           color: context.colors.primary,
-          child: SingleChildScrollView(
+          child: ReorderableListView.builder(
+            buildDefaultDragHandles: false,
             physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
+            padding: EdgeInsets.zero,
+            header: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                _TodosHero(viewModel: viewModel),
                 if (actionError != null) ...[
-                  _ActionErrorBanner(
+                  const SizedBox(height: AppSpacing.lg),
+                  AppErrorBanner(
                     message: actionError,
                     onDismiss: viewModel.clearActionError,
                   ),
-                  const SizedBox(height: AppSpacing.lg),
                 ],
-                if (isWide)
-                  Wrap(
-                    spacing: AppSpacing.lg,
-                    runSpacing: AppSpacing.lg,
-                    children: [
-                      for (final card in cards)
-                        SizedBox(
-                          width: (constraints.maxWidth - AppSpacing.lg) / 2,
-                          child: card,
-                        ),
-                    ],
-                  )
-                else
-                  for (var index = 0; index < cards.length; index++) ...[
-                    if (index > 0) const SizedBox(height: AppSpacing.md),
-                    cards[index],
-                  ],
+                const SizedBox(height: AppSpacing.lg),
+              ],
+            ),
+            itemCount: lists.length,
+            onReorder: (oldIndex, newIndex) {
+              if (newIndex > oldIndex) {
+                newIndex -= 1;
+              }
+              viewModel.reorderLists(oldIndex, newIndex);
+            },
+            itemBuilder: (context, index) {
+              final list = lists[index];
+              return Padding(
+                key: ValueKey(list.id),
+                padding: EdgeInsets.only(top: index == 0 ? 0 : AppSpacing.md),
+                child: _ListCard(
+                  list: list,
+                  index: index,
+                  viewModel: viewModel,
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The to-do overview hero: how many tasks remain and the overall completion.
+class _TodosHero extends StatelessWidget {
+  const _TodosHero({required this.viewModel});
+
+  final TodosViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = viewModel.totalCount;
+    final done = viewModel.doneCount;
+    final fraction = total > 0 ? done / total : 0.0;
+    return HeroPanel(
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'POR FAZER',
+                  style: AppTextStyles.navSection(
+                    context.colors,
+                  ).copyWith(color: AppColors.onHeroMuted),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  '${viewModel.pendingCount}',
+                  style: AppTextStyles.statDisplay.copyWith(
+                    color: AppColors.onHero,
+                  ),
+                ),
+                if (total > 0) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    '$done de $total concluídas',
+                    style: AppTextStyles.small(
+                      context.colors,
+                    ).copyWith(color: AppColors.onHeroMuted),
+                  ),
+                ],
               ],
             ),
           ),
-        );
-      },
+          const SizedBox(width: AppSpacing.md),
+          AppProgressRing(
+            progress: fraction,
+            label: AppFormatters.percentage((fraction * 100).round()),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _ListCard extends StatefulWidget {
-  const _ListCard({super.key, required this.list, required this.viewModel});
+  const _ListCard({
+    required this.list,
+    required this.index,
+    required this.viewModel,
+  });
 
   final TodoList list;
+  final int index;
   final TodosViewModel viewModel;
 
   @override
@@ -195,7 +269,7 @@ class _ListCard extends StatefulWidget {
 }
 
 class _ListCardState extends State<_ListCard> {
-  bool _isExpanded = false;
+  late bool _isExpanded = widget.list.remaining > 0;
 
   void _toggle() => setState(() => _isExpanded = !_isExpanded);
 
@@ -203,25 +277,29 @@ class _ListCardState extends State<_ListCard> {
   Widget build(BuildContext context) {
     final list = widget.list;
     final viewModel = widget.viewModel;
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _ListHeader(
-            list: list,
-            viewModel: viewModel,
-            isExpanded: _isExpanded,
-            onToggle: _toggle,
-          ),
-          AnimatedSize(
-            duration: AppMotion.standard,
-            curve: AppMotion.easing,
-            alignment: Alignment.topCenter,
-            child: _isExpanded
-                ? _ListBody(list: list, viewModel: viewModel)
-                : const SizedBox(width: double.infinity),
-          ),
-        ],
+    return Opacity(
+      opacity: list.isComplete ? AppOpacity.dimmed : AppOpacity.full,
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ListHeader(
+              list: list,
+              index: widget.index,
+              viewModel: viewModel,
+              isExpanded: _isExpanded,
+              onToggle: _toggle,
+            ),
+            AnimatedSize(
+              duration: AppMotion.standard,
+              curve: AppMotion.easing,
+              alignment: Alignment.topCenter,
+              child: _isExpanded
+                  ? _ListBody(list: list, viewModel: viewModel)
+                  : const SizedBox(width: double.infinity),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -264,15 +342,13 @@ class _ListBody extends StatelessWidget {
             },
             itemBuilder: (context, index) {
               final item = items[index];
-              return Dismissible(
-                key: ValueKey(item.id),
+              final row = Dismissible(
+                key: ValueKey('${item.id}-dismiss'),
                 direction: DismissDirection.endToStart,
-                confirmDismiss: (_) => _confirmDelete(
-                  context,
-                  title: 'Apagar tarefa?',
-                  message: '"${item.text}" deixa de aparecer.',
-                ),
-                onDismissed: (_) => viewModel.deleteItem(list, item),
+                onDismissed: (_) {
+                  viewModel.deleteItem(list, item);
+                  _showUndoDeleteSnackBar(context, viewModel, list, item);
+                },
                 background: const _DismissBackground(
                   alignment: Alignment.centerLeft,
                 ),
@@ -281,27 +357,20 @@ class _ListBody extends StatelessWidget {
                 ),
                 child: _TaskRow(
                   item: item,
-                  index: index,
-                  allowReorder: !viewModel.hideCompleted,
                   onToggle: () => viewModel.toggleItem(list, item),
                   onEdit: () => _edit(context, item),
                 ),
               );
+              if (viewModel.hideCompleted) {
+                return KeyedSubtree(key: ValueKey(item.id), child: row);
+              }
+              return ReorderableDelayedDragStartListener(
+                key: ValueKey(item.id),
+                index: index,
+                child: row,
+              );
             },
           ),
-        if (list.done > 0) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Align(
-            alignment: Alignment.centerRight,
-            child: AppButton.icon(
-              icon: Icons.cleaning_services_outlined,
-              tooltip: 'Limpar concluídas',
-              onPressed: viewModel.isBusy
-                  ? null
-                  : () => viewModel.clearCompleted(list),
-            ),
-          ),
-        ],
         const SizedBox(height: AppSpacing.md),
         _AddTaskField(onSubmit: (text) => viewModel.addItem(list, text)),
       ],
@@ -325,12 +394,14 @@ class _ListBody extends StatelessWidget {
 class _ListHeader extends StatelessWidget {
   const _ListHeader({
     required this.list,
+    required this.index,
     required this.viewModel,
     required this.isExpanded,
     required this.onToggle,
   });
 
   final TodoList list;
+  final int index;
   final TodosViewModel viewModel;
   final bool isExpanded;
   final VoidCallback onToggle;
@@ -340,6 +411,20 @@ class _ListHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        ReorderableDragStartListener(
+          index: index,
+          child: Padding(
+            padding: const EdgeInsets.only(
+              right: AppSpacing.sm,
+              top: AppSpacing.xs,
+            ),
+            child: Icon(
+              Icons.drag_indicator,
+              size: AppSizes.iconMedium,
+              color: context.colors.faint,
+            ),
+          ),
+        ),
         Expanded(
           child: InkWell(
             onTap: onToggle,
@@ -403,15 +488,38 @@ class _ListHeader extends StatelessWidget {
             ),
           ),
         ),
-        AppButton.icon(
-          icon: Icons.edit_outlined,
-          tooltip: 'Renomear lista',
-          onPressed: () => _rename(context),
-        ),
-        AppButton.icon(
-          icon: Icons.delete_outline,
-          tooltip: 'Eliminar lista',
-          onPressed: () => _delete(context),
+        PopupMenuButton<_ListAction>(
+          tooltip: 'Opções da lista',
+          icon: Icon(
+            Icons.more_vert,
+            size: AppSizes.iconLarge,
+            color: context.colors.faint,
+          ),
+          onSelected: (action) {
+            switch (action) {
+              case _ListAction.rename:
+                _rename(context);
+              case _ListAction.clear:
+                viewModel.clearCompleted(list);
+              case _ListAction.delete:
+                _delete(context);
+            }
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(
+              value: _ListAction.rename,
+              child: Text('Renomear'),
+            ),
+            if (list.done > 0)
+              const PopupMenuItem(
+                value: _ListAction.clear,
+                child: Text('Limpar concluídas'),
+              ),
+            const PopupMenuItem(
+              value: _ListAction.delete,
+              child: Text('Eliminar lista'),
+            ),
+          ],
         ),
       ],
     );
@@ -447,15 +555,11 @@ class _ListHeader extends StatelessWidget {
 class _TaskRow extends StatelessWidget {
   const _TaskRow({
     required this.item,
-    required this.index,
-    required this.allowReorder,
     required this.onToggle,
     required this.onEdit,
   });
 
   final TodoItem item;
-  final int index;
-  final bool allowReorder;
   final VoidCallback onToggle;
   final VoidCallback onEdit;
 
@@ -476,8 +580,9 @@ class _TaskRow extends StatelessWidget {
             borderRadius: AppRadius.smAll,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-              child: Text(
-                item.text,
+              child: AnimatedDefaultTextStyle(
+                duration: AppMotion.standard,
+                curve: AppMotion.easing,
                 style: AppTextStyles.body.copyWith(
                   color: item.done ? context.colors.muted : context.colors.ink,
                   decoration: item.done
@@ -485,22 +590,11 @@ class _TaskRow extends StatelessWidget {
                       : TextDecoration.none,
                   decorationColor: context.colors.muted,
                 ),
+                child: Text(item.text),
               ),
             ),
           ),
         ),
-        if (allowReorder)
-          ReorderableDragStartListener(
-            index: index,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              child: Icon(
-                Icons.drag_handle,
-                size: AppSizes.iconMedium,
-                color: context.colors.faint,
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -518,11 +612,26 @@ class _AddTaskField extends StatefulWidget {
 class _AddTaskFieldState extends State<_AddTaskField> {
   final TextEditingController _controller = TextEditingController();
   bool _isSaving = false;
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onTextChanged);
+  }
 
   @override
   void dispose() {
+    _controller.removeListener(_onTextChanged);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onTextChanged() {
+    final hasText = _controller.text.trim().isNotEmpty;
+    if (hasText != _hasText) {
+      setState(() => _hasText = hasText);
+    }
   }
 
   Future<void> _submit() async {
@@ -545,6 +654,13 @@ class _AddTaskFieldState extends State<_AddTaskField> {
   Widget build(BuildContext context) {
     return Row(
       children: [
+        IconButton(
+          onPressed: _hasText && !_isSaving ? _submit : null,
+          tooltip: 'Adicionar tarefa',
+          iconSize: AppSizes.iconLarge,
+          color: context.colors.primary,
+          icon: const Icon(Icons.add),
+        ),
         Expanded(
           child: TextField(
             controller: _controller,
@@ -555,15 +671,13 @@ class _AddTaskFieldState extends State<_AddTaskField> {
               isDense: true,
               hintText: 'Adicionar tarefa',
               counterText: '',
+              filled: false,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
             ),
             onSubmitted: (_) => _submit(),
           ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        AppButton.icon(
-          icon: Icons.send,
-          tooltip: 'Adicionar tarefa',
-          onPressed: _isSaving ? null : _submit,
         ),
       ],
     );
@@ -723,50 +837,6 @@ class _DismissBackground extends StatelessWidget {
   }
 }
 
-class _ActionErrorBanner extends StatelessWidget {
-  const _ActionErrorBanner({required this.message, required this.onDismiss});
-
-  final String message;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: context.colors.dangerSoft,
-        borderRadius: AppRadius.smAll,
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: AppSizes.iconMedium,
-            color: context.colors.dangerOnSoft,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              message,
-              style: AppTextStyles.small(
-                context.colors,
-              ).copyWith(color: context.colors.dangerOnSoft),
-            ),
-          ),
-          AppButton.icon(
-            icon: Icons.close,
-            tooltip: 'Fechar aviso',
-            onPressed: onDismiss,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Prompts for a single line of text; resolves to the trimmed value or null.
 Future<String?> _promptText(
   BuildContext context, {
@@ -878,3 +948,30 @@ Future<bool> _confirmDelete(
   );
   return confirmed ?? false;
 }
+
+/// Shows the post-swipe snack bar with a "Desfazer" action that restores the
+/// just-removed task.
+void _showUndoDeleteSnackBar(
+  BuildContext context,
+  TodosViewModel viewModel,
+  TodoList list,
+  TodoItem item,
+) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text('"${item.text}" apagada.'),
+        action: SnackBarAction(
+          label: 'Desfazer',
+          onPressed: () => viewModel.restoreItem(list, item),
+        ),
+      ),
+    );
+}
+
+/// The secondary actions in the app bar's overflow menu.
+enum _TodosMenu { toggleCompleted, archived }
+
+/// The per-list actions in a card's overflow menu.
+enum _ListAction { rename, clear, delete }

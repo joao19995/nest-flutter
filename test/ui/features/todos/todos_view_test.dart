@@ -63,6 +63,15 @@ void _setPhone(WidgetTester tester) {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
+/// The animated text style applied to a task's label.
+TextStyle _taskStyle(WidgetTester tester, String text) {
+  final finder = find.ancestor(
+    of: find.text(text),
+    matching: find.byType(AnimatedDefaultTextStyle),
+  );
+  return tester.widget<AnimatedDefaultTextStyle>(finder.first).style;
+}
+
 void main() {
   testWidgets('renders each list with its tasks and progress', (tester) async {
     _setPhone(tester);
@@ -78,18 +87,14 @@ void main() {
 
     expect(find.text('Casa'), findsOneWidget);
     expect(find.text('1/2 concluídas'), findsOneWidget);
-    expect(find.text('Comprar leite'), findsNothing);
-
-    await tester.tap(find.byIcon(Icons.expand_more));
-    await tester.pumpAndSettle();
-
     expect(find.text('Comprar leite'), findsOneWidget);
     expect(find.text('Pagar renda'), findsOneWidget);
 
-    final done = tester.widget<Text>(find.text('Comprar leite'));
-    expect(done.style?.decoration, TextDecoration.lineThrough);
-    final pending = tester.widget<Text>(find.text('Pagar renda'));
-    expect(pending.style?.decoration, TextDecoration.none);
+    expect(
+      _taskStyle(tester, 'Comprar leite').decoration,
+      TextDecoration.lineThrough,
+    );
+    expect(_taskStyle(tester, 'Pagar renda').decoration, TextDecoration.none);
     expect(tester.takeException(), isNull);
   });
 
@@ -128,8 +133,6 @@ void main() {
 
     await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.expand_more));
-    await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Concluir'));
     await tester.pumpAndSettle();
@@ -137,14 +140,17 @@ void main() {
     expect(patchedPath, '/api/todo-lists/l1/items/i2');
     expect((patchedBody as Map<String, dynamic>)['done'], isTrue);
     expect(find.text('2/2 concluídas'), findsOneWidget);
-    final updated = tester.widget<Text>(find.text('Pagar renda'));
-    expect(updated.style?.decoration, TextDecoration.lineThrough);
+    expect(
+      _taskStyle(tester, 'Pagar renda').decoration,
+      TextDecoration.lineThrough,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('swiping a task to the left deletes it', (tester) async {
+  testWidgets('swiping a task deletes it and offers undo', (tester) async {
     _setPhone(tester);
     String? deletedPath;
+    String? restoredPath;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
         return _json(_lists());
@@ -153,23 +159,81 @@ void main() {
         deletedPath = request.url.path;
         return _json(const {'id': 'i2'});
       }
+      if (request.url.path == '/api/todo-lists/l1/items/i2/restore' &&
+          request.method == 'POST') {
+        restoredPath = request.url.path;
+        return _json(const {
+          'id': 'i2',
+          'listId': 'l1',
+          'text': 'Pagar renda',
+          'done': false,
+          'position': 2000,
+        });
+      }
       return _json(<Object>[], status: 404);
     });
 
     await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.expand_more));
-    await tester.pumpAndSettle();
 
     await tester.drag(find.text('Pagar renda'), const Offset(-600, 0));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Eliminar'));
     await tester.pumpAndSettle();
 
     expect(deletedPath, '/api/todo-lists/l1/items/i2');
     expect(find.text('Pagar renda'), findsNothing);
     expect(find.text('1/1 concluídas'), findsOneWidget);
+
+    await tester.tap(find.text('Desfazer'));
+    await tester.pumpAndSettle();
+
+    expect(restoredPath, '/api/todo-lists/l1/items/i2/restore');
+    expect(find.text('Pagar renda'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reorders lists through the drag handles', (tester) async {
+    _setPhone(tester);
+    Object? reorderBody;
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
+        return _json(<Object>[
+          {
+            'id': 'l1',
+            'name': 'Casa',
+            'position': 1000,
+            'active': true,
+            'items': <Object>[],
+          },
+          {
+            'id': 'l2',
+            'name': 'Mercado',
+            'position': 2000,
+            'active': true,
+            'items': <Object>[],
+          },
+        ]);
+      }
+      if (request.url.path == '/api/todo-lists/reorder' &&
+          request.method == 'POST') {
+        reorderBody = jsonDecode(request.body);
+        return _json(const <Object>[]);
+      }
+      return _json(<Object>[], status: 404);
+    });
+
+    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Casa'), findsOneWidget);
+    expect(find.text('Mercado'), findsOneWidget);
+
+    final listView = tester.widget<ReorderableListView>(
+      find.byType(ReorderableListView),
+    );
+    listView.onReorder(1, 0);
+    await tester.pumpAndSettle();
+
+    expect((reorderBody as Map<String, dynamic>)['ids'], ['l2', 'l1']);
     expect(tester.takeException(), isNull);
   });
 
@@ -196,10 +260,9 @@ void main() {
 
     await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.expand_more));
-    await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Comprar pão');
+    await tester.pump();
     await tester.tap(find.byTooltip('Adicionar tarefa'));
     await tester.pumpAndSettle();
 
@@ -263,11 +326,11 @@ void main() {
 
     await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.expand_more));
-    await tester.pumpAndSettle();
     expect(find.text('Comprar leite'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Ocultar concluídas'));
+    await tester.tap(find.byTooltip('Mais opções'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ocultar concluídas'), warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(find.text('Comprar leite'), findsNothing);
@@ -277,27 +340,28 @@ void main() {
 
   testWidgets('clears the completed tasks', (tester) async {
     _setPhone(tester);
-    final deleted = <String>[];
+    String? clearedPath;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
         return _json(_lists());
       }
-      if (request.method == 'DELETE') {
-        deleted.add(request.url.path);
-        return _json(const {'id': 'i1'});
+      if (request.url.path == '/api/todo-lists/l1/clear-completed' &&
+          request.method == 'POST') {
+        clearedPath = request.url.path;
+        return _json(const {'deleted': 1});
       }
       return _json(<Object>[], status: 404);
     });
 
     await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.expand_more));
+
+    await tester.tap(find.byTooltip('Opções da lista'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Limpar concluídas'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Limpar concluídas'));
-    await tester.pumpAndSettle();
-
-    expect(deleted, ['/api/todo-lists/l1/items/i1']);
+    expect(clearedPath, '/api/todo-lists/l1/clear-completed');
     expect(find.text('Comprar leite'), findsNothing);
     expect(find.text('0/1 concluídas'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -324,8 +388,6 @@ void main() {
     });
 
     await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.expand_more));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Pagar renda'));
@@ -381,7 +443,9 @@ void main() {
     await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Listas arquivadas'));
+    await tester.tap(find.byTooltip('Mais opções'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Listas arquivadas'));
     await tester.pumpAndSettle();
     expect(find.text('Arquivada'), findsOneWidget);
 

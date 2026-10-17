@@ -36,7 +36,7 @@ class TodoItem {
 /// A named list of tasks in the shared to-do feature.
 ///
 /// [items] holds only the visible (non-deleted) items; the API soft-deletes
-/// items and never returns them again.
+/// items on swipe and can restore them on undo.
 class TodoList {
   const TodoList({
     required this.id,

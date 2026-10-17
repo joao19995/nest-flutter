@@ -47,6 +47,18 @@ class TodoListsRepository {
     return _list(data);
   }
 
+  /// Persists the given [ids] as the new list order, renumbered by the server.
+  Future<List<TodoList>> reorderLists(List<String> ids) async {
+    final data = await _client.post('/api/todo-lists/reorder', {'ids': ids});
+    if (data is! List) {
+      return const [];
+    }
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map((json) => TodoListModel.fromJson(json).toDomain())
+        .toList(growable: false);
+  }
+
   /// Soft-deletes the list [id] (sets `active = false`).
   Future<void> deleteList(String id) => _client.delete('/api/todo-lists/$id');
 
@@ -74,9 +86,45 @@ class TodoListsRepository {
     return _item(data);
   }
 
-  /// Soft-deletes the task [itemId] (the swipe gesture); not reversible.
+  /// Persists the given [ids] as the new item order of [listId], renumbered by
+  /// the server.
+  Future<List<TodoItem>> reorderItems(String listId, List<String> ids) async {
+    final data = await _client.post('/api/todo-lists/$listId/items/reorder', {
+      'ids': ids,
+    });
+    if (data is! List) {
+      return const [];
+    }
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map((json) => TodoItemModel.fromJson(json).toDomain())
+        .toList(growable: false);
+  }
+
+  /// Soft-deletes the task [itemId] (the swipe gesture).
   Future<void> deleteItem(String listId, String itemId) =>
       _client.delete('/api/todo-lists/$listId/items/$itemId');
+
+  /// Restores a soft-deleted task [itemId].
+  Future<TodoItem> restoreItem(String listId, String itemId) async {
+    final data = await _client.post(
+      '/api/todo-lists/$listId/items/$itemId/restore',
+      const {},
+    );
+    return _item(data);
+  }
+
+  /// Deletes every done task of [listId] in one request; returns how many.
+  Future<int> clearCompleted(String listId) async {
+    final data = await _client.post(
+      '/api/todo-lists/$listId/clear-completed',
+      const {},
+    );
+    if (data is Map<String, dynamic>) {
+      return (data['deleted'] as num?)?.toInt() ?? 0;
+    }
+    return 0;
+  }
 
   TodoList _list(dynamic data) {
     if (data is! Map<String, dynamic>) {

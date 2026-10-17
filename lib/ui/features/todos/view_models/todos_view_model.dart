@@ -13,9 +13,6 @@ class TodosViewModel extends ChangeNotifier {
   TodosViewModel({required TodoListsRepository todoListsRepository})
     : _todoListsRepository = todoListsRepository;
 
-  /// The position increment used between items (the API's 1000 gap).
-  static const int _positionGap = 1000;
-
   final TodoListsRepository _todoListsRepository;
 
   bool _isLoading = true;
@@ -43,6 +40,12 @@ class TodosViewModel extends ChangeNotifier {
   /// The total number of pending (not done) tasks across every list.
   int get pendingCount =>
       _lists.fold<int>(0, (sum, list) => sum + list.remaining);
+
+  /// The total number of done tasks across every list.
+  int get doneCount => _lists.fold<int>(0, (sum, list) => sum + list.done);
+
+  /// The total number of tasks across every list.
+  int get totalCount => _lists.fold<int>(0, (sum, list) => sum + list.total);
 
   /// The tasks to display for [list], honouring [hideCompleted].
   List<TodoItem> itemsFor(TodoList list) => _hideCompleted
@@ -156,6 +159,20 @@ class TodosViewModel extends ChangeNotifier {
     }
   }
 
+  /// Restores a task the user just removed (the "Desfazer" action).
+  Future<void> restoreItem(TodoList list, TodoItem item) async {
+    _actionError = null;
+    notifyListeners();
+    try {
+      final restored = await _todoListsRepository.restoreItem(list.id, item.id);
+      _insertItem(list.id, restored);
+    } on ApiFailure catch (failure) {
+      _actionError = failure.message;
+    } finally {
+      notifyListeners();
+    }
+  }
+
   /// Removes every done task from [list], optimistically.
   Future<void> clearCompleted(TodoList list) async {
     final done = [
@@ -179,9 +196,7 @@ class TodosViewModel extends ChangeNotifier {
     );
     notifyListeners();
     try {
-      for (final item in done) {
-        await _todoListsRepository.deleteItem(list.id, item.id);
-      }
+      await _todoListsRepository.clearCompleted(list.id);
     } on ApiFailure catch (failure) {
       _updateList(list.id, (current) => current.copyWith(items: original));
       _actionError = failure.message;
@@ -191,8 +206,8 @@ class TodosViewModel extends ChangeNotifier {
     }
   }
 
-  /// Moves the task at [oldIndex] to [newIndex] (both into [list].items),
-  /// renumbering its `position` to the midpoint of its new neighbours.
+  /// Moves the task at [oldIndex] to [newIndex] (both into [list].items) and
+  /// persists the new order; the server renumbers the positions.
   Future<void> reorderItem(TodoList list, int oldIndex, int newIndex) async {
     if (oldIndex == newIndex ||
         oldIndex < 0 ||
@@ -204,19 +219,49 @@ class TodosViewModel extends ChangeNotifier {
     final items = [...list.items];
     final moved = items.removeAt(oldIndex);
     items.insert(newIndex, moved);
-    final position = _positionAt(items, newIndex);
     _actionError = null;
     _updateList(list.id, (current) => current.copyWith(items: items));
     notifyListeners();
     try {
-      final updated = await _todoListsRepository.updateItem(
-        list.id,
-        moved.id,
-        position: position,
-      );
-      _replaceItem(list.id, updated);
+      final updated = await _todoListsRepository.reorderItems(list.id, [
+        for (final item in items) item.id,
+      ]);
+      if (updated.isNotEmpty) {
+        _updateList(list.id, (current) => current.copyWith(items: updated));
+      }
     } on ApiFailure catch (failure) {
       _updateList(list.id, (current) => current.copyWith(items: list.items));
+      _actionError = failure.message;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  /// Moves the list at [oldIndex] to [newIndex], persisting the new order.
+  Future<void> reorderLists(int oldIndex, int newIndex) async {
+    if (oldIndex == newIndex ||
+        oldIndex < 0 ||
+        oldIndex >= _lists.length ||
+        newIndex < 0 ||
+        newIndex > _lists.length) {
+      return;
+    }
+    final original = _lists;
+    final reordered = [..._lists];
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+    _actionError = null;
+    _lists = reordered;
+    notifyListeners();
+    try {
+      final updated = await _todoListsRepository.reorderLists([
+        for (final list in reordered) list.id,
+      ]);
+      if (updated.isNotEmpty) {
+        _lists = updated;
+      }
+    } on ApiFailure catch (failure) {
+      _lists = original;
       _actionError = failure.message;
     } finally {
       notifyListeners();
@@ -351,24 +396,6 @@ class TodosViewModel extends ChangeNotifier {
       _isBusy = false;
       notifyListeners();
     }
-  }
-
-  /// The `position` for an item inserted at [index] in [items]: the midpoint
-  /// of its neighbours, or a full gap away at either end.
-  static int _positionAt(List<TodoItem> items, int index) {
-    final before = index > 0 ? items[index - 1].position : null;
-    final after = index < items.length - 1 ? items[index + 1].position : null;
-    if (before != null && after != null) {
-      return (before + after) ~/ 2;
-    }
-    if (before != null) {
-      return before + _positionGap;
-    }
-    if (after != null) {
-      final candidate = after - _positionGap;
-      return candidate < 0 ? 0 : candidate;
-    }
-    return 0;
   }
 
   void _updateList(String listId, TodoList Function(TodoList) transform) {
