@@ -1,20 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:nest/config/app_constants.dart';
+import 'package:nest/config/dependencies.dart';
+import 'package:nest/ui/core/dependencies_scope.dart';
+import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/features/dashboard/views/dashboard_view.dart';
 
-import 'core/theme/app_theme.dart';
-import 'features/home/presentation/pages/home_page.dart';
+/// Root widget: installs the dependency scope and the app theme.
+class App extends StatefulWidget {
+  const App({super.key, required this.dependencies});
 
-class App extends StatelessWidget {
-  const App({super.key});
+  final AppDependencies dependencies;
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  @override
+  void dispose() {
+    widget.dependencies.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Nest',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
-      home: const HomePage(),
+    return DependenciesScope(
+      dependencies: widget.dependencies,
+      child: MaterialApp(
+        title: AppConstants.appName,
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        home: const DashboardView(),
+      ),
     );
   }
 }

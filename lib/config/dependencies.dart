@@ -1,0 +1,23 @@
+import 'package:nest/data/repositories/accounts_repository.dart';
+import 'package:nest/data/repositories/people_repository.dart';
+import 'package:nest/data/services/nest_api_client.dart';
+
+/// The application's composition root.
+///
+/// Constructs the API client and repositories once and exposes them to the
+/// widget tree via `DependenciesScope`. No DI package is used — the graph is
+/// small and explicit.
+class AppDependencies {
+  AppDependencies({NestApiClient? apiClient})
+    : apiClient = apiClient ?? NestApiClient() {
+    peopleRepository = PeopleRepository(client: this.apiClient);
+    accountsRepository = AccountsRepository(client: this.apiClient);
+  }
+
+  final NestApiClient apiClient;
+  late final PeopleRepository peopleRepository;
+  late final AccountsRepository accountsRepository;
+
+  /// Releases the underlying HTTP client.
+  void dispose() => apiClient.dispose();
+}
