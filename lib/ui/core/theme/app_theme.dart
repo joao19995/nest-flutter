@@ -35,6 +35,17 @@ abstract final class AppTheme {
       fontFamily: GoogleFonts.dmSans().fontFamily,
       scaffoldBackgroundColor: AppColors.paper,
       dividerColor: AppColors.line,
+      splashFactory: InkSparkle.splashFactory,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: <TargetPlatform, PageTransitionsBuilder>{
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: ZoomPageTransitionsBuilder(),
+          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+          TargetPlatform.macOS: ZoomPageTransitionsBuilder(),
+          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+        },
+      ),
       textTheme: TextTheme(
         headlineMedium: AppTextStyles.pageTitle,
         titleMedium: AppTextStyles.sectionHeading,
@@ -114,7 +125,7 @@ abstract final class AppTheme {
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius: AppRadius.smAll,
-          borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
         ),
         errorBorder: const OutlineInputBorder(
           borderRadius: AppRadius.smAll,

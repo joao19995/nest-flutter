@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 
-/// A standard Nest surface: white fill, hairline border, subtle card shadow.
+/// A Material 3 elevated card: surface fill, rounded corners and a soft
+/// shadow — no hairline border (that pairing is the web look).
 class AppCard extends StatelessWidget {
   const AppCard({super.key, required this.child, this.padding, this.onTap});
 
@@ -21,7 +22,6 @@ class AppCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.mdAll,
-        border: Border.all(color: AppColors.line),
         boxShadow: AppShadows.card,
       ),
       child: onTap == null
