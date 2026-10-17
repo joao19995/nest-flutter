@@ -12,6 +12,10 @@ class ExpensesViewModel extends ChangeNotifier {
   /// The earliest year the API accepts.
   static const int _minYear = 2000;
 
+  /// The latest year that can be selected: the current one plus the next, so
+  /// the following year can be planned ahead.
+  static int get _maxYear => DateTime.now().year + 1;
+
   final ExpensesRepository _expensesRepository;
 
   int _selectedYear;
@@ -19,7 +23,7 @@ class ExpensesViewModel extends ChangeNotifier {
 
   bool get canGoToPreviousYear => _selectedYear > _minYear;
 
-  bool get canGoToNextYear => _selectedYear < DateTime.now().year;
+  bool get canGoToNextYear => _selectedYear < _maxYear;
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
@@ -30,7 +34,7 @@ class ExpensesViewModel extends ChangeNotifier {
   ExpenseYearSummary? _summary;
   ExpenseYearSummary? get summary => _summary;
 
-  bool get isEmpty => _summary == null || !_summary!.hasData;
+  bool get isEmpty => _summary?.hasData != true;
 
   /// The twelve months of the selected year, in calendar order.
   List<ExpenseMonthSummary> get months => _summary?.months ?? const [];
