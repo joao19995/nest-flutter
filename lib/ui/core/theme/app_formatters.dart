@@ -29,6 +29,21 @@ abstract final class AppFormatters {
     'dez',
   ];
 
+  static const List<String> _monthNamesFull = [
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro',
+  ];
+
   /// Formats a numeric value as a EUR currency string.
   /// Example: `12.9` → `"12,90 €"`.
   static String currency(num value) => _currency.format(value);
@@ -48,5 +63,30 @@ abstract final class AppFormatters {
       return isoDate;
     }
     return '${_monthNames[month - 1]} $year';
+  }
+
+  /// Formats a month (`YYYY-MM`) as a capitalised short month name.
+  /// Example: `"2026-01"` → `"Jan"`.
+  static String monthShort(String isoMonth) {
+    final month = int.tryParse(
+      isoMonth.length >= 7 ? isoMonth.substring(5, 7) : '',
+    );
+    if (month == null || month < 1 || month > 12) {
+      return isoMonth;
+    }
+    final name = _monthNames[month - 1];
+    return name.isEmpty ? name : name[0].toUpperCase() + name.substring(1);
+  }
+
+  /// Formats a month (`YYYY-MM`) as its full, capitalised name.
+  /// Example: `"2026-10"` → `"Outubro"`.
+  static String monthName(String isoMonth) {
+    final month = int.tryParse(
+      isoMonth.length >= 7 ? isoMonth.substring(5, 7) : '',
+    );
+    if (month == null || month < 1 || month > 12) {
+      return isoMonth;
+    }
+    return _monthNamesFull[month - 1];
   }
 }

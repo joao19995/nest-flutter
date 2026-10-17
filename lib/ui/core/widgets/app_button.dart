@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 
-/// The visual variants of an [AppButton].
+/// The visual variants of an [AppButton], following Material 3 roles.
 enum AppButtonVariant { primary, secondary, ghost, destructive }
 
-/// A Nest button.
+/// Material 3 state-layer opacities.
+const double _stateHoverOpacity = 0.08;
+const double _statePressedOpacity = 0.10;
+
+/// A Nest button in the Material 3 style.
 ///
-/// Variants follow the web system: [primary] is ink-filled, [secondary] is
-/// outlined, [ghost] is low-emphasis, [destructive] uses the coral pair.
+/// [primary] is a filled button, [secondary] a tonal one, [ghost] a text
+/// button and [destructive] a filled error button. Corner radius, height,
+/// ripple and state layers follow the Material 3 button specs.
 class AppButton extends StatelessWidget {
   const AppButton({
     super.key,
@@ -39,6 +44,8 @@ class AppButton extends StatelessWidget {
   final bool isFullWidth;
   final String? tooltip;
 
+  bool get _isIconOnly => label.isEmpty;
+
   @override
   Widget build(BuildContext context) {
     final button = TextButton(
@@ -66,7 +73,7 @@ class AppButton extends StatelessWidget {
         child: CircularProgressIndicator(strokeWidth: 2),
       );
     }
-    if (label.isEmpty) {
+    if (_isIconOnly) {
       return Icon(icon, size: AppSizes.iconMedium);
     }
     if (icon == null) {
@@ -86,54 +93,81 @@ class AppButton extends StatelessWidget {
     return ButtonStyle(
       elevation: const WidgetStatePropertyAll(0),
       textStyle: WidgetStatePropertyAll(AppTextStyles.button),
-      padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.sm,
-        ),
+      alignment: Alignment.center,
+      padding: WidgetStatePropertyAll(
+        _isIconOnly
+            ? const EdgeInsets.all(AppSpacing.sm)
+            : const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: AppSpacing.sm,
+              ),
       ),
-      minimumSize: const WidgetStatePropertyAll(Size(0, AppSizes.buttonHeight)),
-      shape: const WidgetStatePropertyAll(
-        RoundedRectangleBorder(borderRadius: AppRadius.smAll),
+      minimumSize: WidgetStatePropertyAll(
+        _isIconOnly
+            ? const Size.square(AppSizes.buttonHeight)
+            : const Size(0, AppSizes.buttonHeight),
       ),
-      overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-      backgroundColor: WidgetStateProperty.resolveWith((states) {
-        final isActive =
-            states.contains(WidgetState.hovered) ||
-            states.contains(WidgetState.pressed);
-        switch (variant) {
-          case AppButtonVariant.primary:
-            return isActive ? AppColors.inkSoft : AppColors.ink;
-          case AppButtonVariant.secondary:
-            return AppColors.surface;
-          case AppButtonVariant.ghost:
-            return isActive ? AppColors.mintSoft : Colors.transparent;
-          case AppButtonVariant.destructive:
-            return AppColors.dangerSoft;
-        }
-      }),
-      foregroundColor: WidgetStateProperty.resolveWith((states) {
-        final isActive =
-            states.contains(WidgetState.hovered) ||
-            states.contains(WidgetState.pressed);
-        switch (variant) {
-          case AppButtonVariant.primary:
-            return AppColors.surface;
-          case AppButtonVariant.secondary:
-            return isActive ? AppColors.primaryDark : AppColors.inkSoft;
-          case AppButtonVariant.ghost:
-            return isActive ? AppColors.ink : AppColors.muted;
-          case AppButtonVariant.destructive:
-            return AppColors.dangerOnSoft;
-        }
-      }),
-      side: WidgetStateProperty.resolveWith((states) {
-        if (variant != AppButtonVariant.secondary) {
-          return BorderSide.none;
-        }
-        final isActive = states.contains(WidgetState.hovered);
-        return BorderSide(color: isActive ? AppColors.primary : AppColors.line);
-      }),
+      shape: WidgetStatePropertyAll(
+        _isIconOnly ? const CircleBorder() : const StadiumBorder(),
+      ),
+      tapTargetSize: MaterialTapTargetSize.padded,
+      mouseCursor: const WidgetStatePropertyAll(SystemMouseCursors.click),
+      enableFeedback: true,
+      animationDuration: AppMotion.standard,
+      splashFactory: InkSparkle.splashFactory,
+      overlayColor: WidgetStateProperty.resolveWith(_overlayColor),
+      backgroundColor: WidgetStateProperty.resolveWith(_backgroundColor),
+      foregroundColor: WidgetStateProperty.resolveWith(_foregroundColor),
     );
+  }
+
+  Color _backgroundColor(Set<WidgetState> states) {
+    if (states.contains(WidgetState.disabled)) {
+      return variant == AppButtonVariant.ghost
+          ? AppColors.transparent
+          : AppColors.lineSoft;
+    }
+    switch (variant) {
+      case AppButtonVariant.primary:
+        return AppColors.primary;
+      case AppButtonVariant.secondary:
+        return AppColors.mint;
+      case AppButtonVariant.ghost:
+        return AppColors.transparent;
+      case AppButtonVariant.destructive:
+        return AppColors.over;
+    }
+  }
+
+  Color _foregroundColor(Set<WidgetState> states) {
+    if (states.contains(WidgetState.disabled)) {
+      return AppColors.faint;
+    }
+    switch (variant) {
+      case AppButtonVariant.primary:
+        return AppColors.surface;
+      case AppButtonVariant.secondary:
+        return AppColors.primaryDark;
+      case AppButtonVariant.ghost:
+        return AppColors.primary;
+      case AppButtonVariant.destructive:
+        return AppColors.surface;
+    }
+  }
+
+  /// The Material 3 state layer: a translucent tint of the label colour.
+  Color _overlayColor(Set<WidgetState> states) {
+    if (states.contains(WidgetState.disabled)) {
+      return AppColors.transparent;
+    }
+    final base = _foregroundColor(states);
+    if (states.contains(WidgetState.pressed)) {
+      return base.withValues(alpha: _statePressedOpacity);
+    }
+    if (states.contains(WidgetState.hovered) ||
+        states.contains(WidgetState.focused)) {
+      return base.withValues(alpha: _stateHoverOpacity);
+    }
+    return AppColors.transparent;
   }
 }

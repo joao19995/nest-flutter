@@ -71,8 +71,12 @@ abstract final class AppTextStyles {
   /// Button label.
   ///
   /// Colour is applied by the button's `foregroundColor`, never set here.
-  static TextStyle get button =>
-      GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700);
+  /// Matches the Material 3 label-large scale.
+  static TextStyle get button => GoogleFonts.dmSans(
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.1,
+  );
 
   /// Status badge label.
   ///

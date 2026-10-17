@@ -70,4 +70,7 @@ abstract final class AppColors {
   // ── Overlay ─────────────────────────────────────────────────────────────
   /// `--color-ink` at 40% — backdrops behind modals, sheets and drawers.
   static const Color scrim = Color(0x6617372D);
+
+  /// Fully transparent — for clearing backgrounds and overlay layers.
+  static const Color transparent = Color(0x00000000);
 }

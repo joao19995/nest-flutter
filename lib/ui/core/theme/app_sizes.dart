@@ -23,4 +23,10 @@ abstract final class AppSizes {
 
   /// Minimum height of an interactive button.
   static const double buttonHeight = 40;
+
+  /// Thickness of a progress bar.
+  static const double progressBarHeight = 6;
+
+  /// Width of an editable money field in the expense ledger.
+  static const double moneyFieldWidth = 112;
 }

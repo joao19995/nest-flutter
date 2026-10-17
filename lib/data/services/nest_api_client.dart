@@ -29,6 +29,9 @@ class NestApiClient {
   Future<dynamic> post(String path, Map<String, dynamic> body) =>
       _send('POST', path, body: body);
 
+  Future<dynamic> patch(String path, Map<String, dynamic> body) =>
+      _send('PATCH', path, body: body);
+
   Future<dynamic> put(String path, Map<String, dynamic> body) =>
       _send('PUT', path, body: body);
 
