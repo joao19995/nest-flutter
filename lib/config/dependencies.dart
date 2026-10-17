@@ -2,6 +2,7 @@ import 'package:nest/data/repositories/accounts_repository.dart';
 import 'package:nest/data/repositories/expenses_repository.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/repositories/people_repository.dart';
+import 'package:nest/data/repositories/todo_lists_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 
 /// The application's composition root.
@@ -16,6 +17,7 @@ class AppDependencies {
     accountsRepository = AccountsRepository(client: this.apiClient);
     expensesRepository = ExpensesRepository(client: this.apiClient);
     goalsRepository = GoalsRepository(client: this.apiClient);
+    todoListsRepository = TodoListsRepository(client: this.apiClient);
   }
 
   final NestApiClient apiClient;
@@ -23,6 +25,7 @@ class AppDependencies {
   late final AccountsRepository accountsRepository;
   late final ExpensesRepository expensesRepository;
   late final GoalsRepository goalsRepository;
+  late final TodoListsRepository todoListsRepository;
 
   /// Releases the underlying HTTP client.
   void dispose() => apiClient.dispose();
