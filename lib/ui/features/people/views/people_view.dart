@@ -82,7 +82,10 @@ class _PeopleContent extends StatelessWidget {
             children: [
               _HouseholdIncomeHero(income: viewModel.householdIncome),
               const SizedBox(height: AppSpacing.xl),
-              Text('POR PESSOA', style: AppTextStyles.navSection),
+              Text(
+                'Por pessoa',
+                style: AppTextStyles.navSection(context.colors),
+              ),
               const SizedBox(height: AppSpacing.md),
               if (isWide)
                 Wrap(
@@ -111,7 +114,7 @@ class _PeopleContent extends StatelessWidget {
 
 /// The household total shown above the per-person breakdown.
 ///
-/// Uses a tinted, shadowless panel so it reads as a summary banner rather than
+/// A dark, gradient panel so it reads as a summary banner rather than
 /// another entry in the list below.
 class _HouseholdIncomeHero extends StatelessWidget {
   const _HouseholdIncomeHero({required this.income});
@@ -120,25 +123,20 @@ class _HouseholdIncomeHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(AppBreakpoints.cardPadding(context)),
-      decoration: const BoxDecoration(
-        color: AppColors.mint,
-        borderRadius: AppRadius.mdAll,
-      ),
+    return HeroPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'RENDA DO AGREGADO',
-            style: AppTextStyles.navSection.copyWith(
-              color: AppColors.primaryDark,
-            ),
+            'Renda do agregado',
+            style: AppTextStyles.navSection(
+              context.colors,
+            ).copyWith(color: AppColors.onHeroMuted),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            AppFormatters.currency(income),
-            style: AppTextStyles.statDisplay.copyWith(color: AppColors.primary),
+          AnimatedAmount(
+            value: income,
+            style: AppTextStyles.statDisplay.copyWith(color: AppColors.onHero),
           ),
         ],
       ),
@@ -173,10 +171,10 @@ class _SalaryCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
                 size: AppSizes.iconMedium,
-                color: AppColors.faint,
+                color: context.colors.faint,
               ),
             ],
           ),
@@ -188,7 +186,7 @@ class _SalaryCard extends StatelessWidget {
                 child: _Figure(
                   label: 'Vencimento',
                   value: AppFormatters.currency(summary.monthlyIncome),
-                  accent: AppColors.primaryDark,
+                  accent: context.colors.primaryDark,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -198,7 +196,7 @@ class _SalaryCard extends StatelessWidget {
                       'Gasto diário '
                       '(${AppFormatters.percentage(person.dailySpendingPercentage)})',
                   value: AppFormatters.currency(summary.dailySpending),
-                  accent: AppColors.ink,
+                  accent: context.colors.ink,
                 ),
               ),
             ],
@@ -212,7 +210,7 @@ class _SalaryCard extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.colors.surface,
       builder: (sheetContext) => _SalaryHistorySheet(summary: summary),
     );
   }
@@ -229,13 +227,15 @@ class _Avatar extends StatelessWidget {
       width: AppSizes.buttonHeight,
       height: AppSizes.buttonHeight,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: AppColors.terraSoft,
+      decoration: BoxDecoration(
+        color: context.colors.terraSoft,
         shape: BoxShape.circle,
       ),
       child: Text(
         initial,
-        style: AppTextStyles.label.copyWith(color: AppColors.terraDark),
+        style: AppTextStyles.label(
+          context.colors,
+        ).copyWith(color: context.colors.terraDark),
       ),
     );
   }
@@ -257,7 +257,7 @@ class _Figure extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTextStyles.small),
+        Text(label, style: AppTextStyles.small(context.colors)),
         const SizedBox(height: AppSpacing.xs),
         Text(
           value,
@@ -289,10 +289,16 @@ class _SalaryHistorySheet extends StatelessWidget {
         children: [
           Text(summary.person.name, style: AppTextStyles.pageTitle),
           const SizedBox(height: AppSpacing.xs),
-          Text('Histórico de vencimento', style: AppTextStyles.bodyMuted),
+          Text(
+            'Histórico de vencimento',
+            style: AppTextStyles.bodyMuted(context.colors),
+          ),
           const SizedBox(height: AppSpacing.lg),
           if (records.isEmpty)
-            Text('Sem vencimento registado.', style: AppTextStyles.bodyMuted)
+            Text(
+              'Sem vencimento registado.',
+              style: AppTextStyles.bodyMuted(context.colors),
+            )
           else
             for (var index = 0; index < records.length; index++) ...[
               if (index > 0) const SizedBox(height: AppSpacing.sm),
@@ -325,14 +331,14 @@ class _HistoryRow extends StatelessWidget {
       children: [
         Expanded(child: Text(label, style: AppTextStyles.body)),
         if (isCurrent) ...[
-          const AppBadge(label: 'ATUAL', style: AppBadgeStyles.open),
+          AppBadge(label: 'ATUAL', style: AppBadgeStyles.open(context.colors)),
           const SizedBox(width: AppSpacing.md),
         ],
         Text(
           amount,
           style: AppTextStyles.body.copyWith(
             fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
-            color: isCurrent ? AppColors.ink : AppColors.muted,
+            color: isCurrent ? context.colors.ink : context.colors.muted,
           ),
         ),
       ],

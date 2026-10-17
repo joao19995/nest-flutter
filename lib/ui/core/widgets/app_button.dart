@@ -49,7 +49,7 @@ class AppButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final button = TextButton(
-      style: _style(),
+      style: _style(context.colors),
       onPressed: isLoading ? null : onPressed,
       child: _buildChild(),
     );
@@ -89,7 +89,7 @@ class AppButton extends StatelessWidget {
     );
   }
 
-  ButtonStyle _style() {
+  ButtonStyle _style(NestColors colors) {
     return ButtonStyle(
       elevation: const WidgetStatePropertyAll(0),
       textStyle: WidgetStatePropertyAll(AppTextStyles.button),
@@ -115,52 +115,58 @@ class AppButton extends StatelessWidget {
       enableFeedback: true,
       animationDuration: AppMotion.standard,
       splashFactory: InkSparkle.splashFactory,
-      overlayColor: WidgetStateProperty.resolveWith(_overlayColor),
-      backgroundColor: WidgetStateProperty.resolveWith(_backgroundColor),
-      foregroundColor: WidgetStateProperty.resolveWith(_foregroundColor),
+      overlayColor: WidgetStateProperty.resolveWith(
+        (states) => _overlayColor(states, colors),
+      ),
+      backgroundColor: WidgetStateProperty.resolveWith(
+        (states) => _backgroundColor(states, colors),
+      ),
+      foregroundColor: WidgetStateProperty.resolveWith(
+        (states) => _foregroundColor(states, colors),
+      ),
     );
   }
 
-  Color _backgroundColor(Set<WidgetState> states) {
+  Color _backgroundColor(Set<WidgetState> states, NestColors colors) {
     if (states.contains(WidgetState.disabled)) {
       return variant == AppButtonVariant.ghost
           ? AppColors.transparent
-          : AppColors.lineSoft;
+          : colors.lineSoft;
     }
     switch (variant) {
       case AppButtonVariant.primary:
-        return AppColors.primary;
+        return colors.primary;
       case AppButtonVariant.secondary:
-        return AppColors.mint;
+        return colors.mint;
       case AppButtonVariant.ghost:
         return AppColors.transparent;
       case AppButtonVariant.destructive:
-        return AppColors.over;
+        return colors.over;
     }
   }
 
-  Color _foregroundColor(Set<WidgetState> states) {
+  Color _foregroundColor(Set<WidgetState> states, NestColors colors) {
     if (states.contains(WidgetState.disabled)) {
-      return AppColors.faint;
+      return colors.faint;
     }
     switch (variant) {
       case AppButtonVariant.primary:
-        return AppColors.surface;
+        return colors.surface;
       case AppButtonVariant.secondary:
-        return AppColors.primaryDark;
+        return colors.primaryDark;
       case AppButtonVariant.ghost:
-        return AppColors.primary;
+        return colors.primary;
       case AppButtonVariant.destructive:
-        return AppColors.surface;
+        return colors.surface;
     }
   }
 
   /// The Material 3 state layer: a translucent tint of the label colour.
-  Color _overlayColor(Set<WidgetState> states) {
+  Color _overlayColor(Set<WidgetState> states, NestColors colors) {
     if (states.contains(WidgetState.disabled)) {
       return AppColors.transparent;
     }
-    final base = _foregroundColor(states);
+    final base = _foregroundColor(states, colors);
     if (states.contains(WidgetState.pressed)) {
       return base.withValues(alpha: _statePressedOpacity);
     }

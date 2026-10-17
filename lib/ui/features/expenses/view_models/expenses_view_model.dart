@@ -39,6 +39,16 @@ class ExpensesViewModel extends ChangeNotifier {
   /// The twelve months of the selected year, in calendar order.
   List<ExpenseMonthSummary> get months => _summary?.months ?? const [];
 
+  /// The month (`YYYY-MM`) to highlight in the year chart, or null when the
+  /// selected year is not the current one.
+  String? get currentMonth {
+    final now = DateTime.now();
+    if (_selectedYear != now.year) {
+      return null;
+    }
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}';
+  }
+
   /// Loads the panorama for the selected year.
   ///
   /// Ignoring a summary whose year is no longer selected keeps rapid year

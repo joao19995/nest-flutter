@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nest/domain/models/month_settlement.dart';
 import 'package:nest/domain/models/monthly_plan.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
@@ -19,6 +20,75 @@ class MonthDetailView extends StatefulWidget {
 }
 
 class _MonthDetailViewState extends State<MonthDetailView> {
+  /// The page whose month is [MonthDetailView.month]. Pages shift from here,
+  /// so the carousel is effectively unbounded.
+  static const int _anchor = 1000;
+
+  late final PageController _controller = PageController(initialPage: _anchor);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Despesas mensais')),
+      body: PageView.builder(
+        controller: _controller,
+        itemBuilder: (context, index) => _MonthPage(
+          month: _shift(widget.month, index - _anchor),
+          onPreviousMonth: () => _animateBy(-1),
+          onNextMonth: () => _animateBy(1),
+        ),
+      ),
+    );
+  }
+
+  void _animateBy(int delta) {
+    if (!_controller.hasClients) {
+      return;
+    }
+    final current = _controller.page?.round() ?? _anchor;
+    _controller.animateToPage(
+      current + delta,
+      duration: AppMotion.dialog,
+      curve: AppMotion.easing,
+    );
+  }
+
+  /// Shifts a `YYYY-MM` month by [delta] months.
+  static String _shift(String month, int delta) {
+    final parts = month.split('-');
+    final year = int.tryParse(parts.isNotEmpty ? parts[0] : '');
+    final monthNumber = int.tryParse(parts.length > 1 ? parts[1] : '');
+    if (year == null || monthNumber == null) {
+      return month;
+    }
+    final shifted = DateTime(year, monthNumber + delta);
+    return '${shifted.year}-${shifted.month.toString().padLeft(2, '0')}';
+  }
+}
+
+/// One month in the pager, owning its own presentation state.
+class _MonthPage extends StatefulWidget {
+  const _MonthPage({
+    required this.month,
+    required this.onPreviousMonth,
+    required this.onNextMonth,
+  });
+
+  final String month;
+  final VoidCallback onPreviousMonth;
+  final VoidCallback onNextMonth;
+
+  @override
+  State<_MonthPage> createState() => _MonthPageState();
+}
+
+class _MonthPageState extends State<_MonthPage> {
   MonthDetailViewModel? _viewModel;
 
   @override
@@ -46,29 +116,67 @@ class _MonthDetailViewState extends State<MonthDetailView> {
     if (viewModel == null) {
       return const SizedBox.shrink();
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Despesas mensais')),
-      body: ListenableBuilder(
-        listenable: viewModel,
-        builder: (context, _) => SingleChildScrollView(
-          padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _MonthHero(
+    return ListenableBuilder(
+      listenable: viewModel,
+      builder: (context, _) => SingleChildScrollView(
+        padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Hero(
+              tag: 'expense-month-${viewModel.month}',
+              flightShuttleBuilder: _heroShuttle,
+              child: MonthSummaryHero(
+                title: 'Despesa do mês',
                 month: viewModel.month,
-                plan: viewModel.plan,
-                onPreviousMonth: viewModel.showPreviousMonth,
-                onNextMonth: viewModel.showNextMonth,
+                actual: viewModel.plan?.actual ?? 0,
+                planned: viewModel.plan?.planned ?? 0,
+                closed: viewModel.plan?.closed ?? false,
+                hasPlan: viewModel.plan != null,
+                onPreviousMonth: widget.onPreviousMonth,
+                onNextMonth: widget.onNextMonth,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              _MonthBody(viewModel: viewModel),
-            ],
-          ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _MonthBody(viewModel: viewModel),
+          ],
         ),
       ),
     );
   }
+}
+
+/// The Hero flight shows a plain surface that fades from the list's light
+/// card into the hero's dark gradient (and back), so the motion reads well in
+/// both directions without the complex hero content having to fit the
+/// morphing rectangle mid-flight.
+Widget _heroShuttle(
+  BuildContext flightContext,
+  Animation<double> animation,
+  HeroFlightDirection flightDirection,
+  BuildContext fromHeroContext,
+  BuildContext toHeroContext,
+) {
+  return AnimatedBuilder(
+    animation: animation,
+    builder: (context, child) {
+      final surface = flightContext.colors.surface;
+      final t = AppMotion.easing.transform(animation.value);
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(surface, AppColors.ink, t)!,
+              Color.lerp(surface, AppColors.primaryDark, t)!,
+            ],
+          ),
+          borderRadius: AppRadius.lgAll,
+        ),
+      );
+    },
+  );
 }
 
 class _MonthBody extends StatelessWidget {
@@ -140,16 +248,13 @@ class _CreateMonthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _CardHeading(
-            icon: Icons.event_busy_outlined,
-            title: 'Mês não criado',
-          ),
+          Text('Mês não criado', style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.md),
           Text(
             'Ao criar, copia-se o template aplicável a '
             '${AppFormatters.monthName(viewModel.month)}. '
             'O planeado fica logo fixo.',
-            style: AppTextStyles.bodyMuted,
+            style: AppTextStyles.bodyMuted(context.colors),
           ),
           if (actionError != null) ...[
             const SizedBox(height: AppSpacing.md),
@@ -178,211 +283,28 @@ class _ErrorBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: const BoxDecoration(
-        color: AppColors.dangerSoft,
+      decoration: BoxDecoration(
+        color: context.colors.dangerSoft,
         borderRadius: AppRadius.smAll,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
+          Icon(
             Icons.error_outline,
             size: AppSizes.iconMedium,
-            color: AppColors.dangerOnSoft,
+            color: context.colors.dangerOnSoft,
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               message,
-              style: AppTextStyles.small.copyWith(
-                color: AppColors.dangerOnSoft,
-              ),
+              style: AppTextStyles.small(
+                context.colors,
+              ).copyWith(color: context.colors.dangerOnSoft),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// The summary panel: real total, month selector and deviation.
-class _MonthHero extends StatelessWidget {
-  const _MonthHero({
-    required this.month,
-    required this.plan,
-    required this.onPreviousMonth,
-    required this.onNextMonth,
-  });
-
-  final String month;
-  final MonthlyPlan? plan;
-  final VoidCallback onPreviousMonth;
-  final VoidCallback onNextMonth;
-
-  @override
-  Widget build(BuildContext context) {
-    final plan = this.plan;
-    return Container(
-      padding: EdgeInsets.all(AppBreakpoints.cardPadding(context)),
-      decoration: const BoxDecoration(
-        color: AppColors.mint,
-        borderRadius: AppRadius.mdAll,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'DESPESA DO MÊS',
-                  style: AppTextStyles.navSection.copyWith(
-                    color: AppColors.primaryDark,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              _MonthStepper(
-                month: month,
-                onPrevious: onPreviousMonth,
-                onNext: onNextMonth,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          _HeroValue(actual: plan?.actual ?? 0, planned: plan?.planned),
-          if (plan != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(child: _DeviationLine(plan: plan)),
-                const SizedBox(width: AppSpacing.md),
-                AppBadge(
-                  label: plan.closed ? 'Fechado' : 'Aberto',
-                  style: plan.closed
-                      ? AppBadgeStyles.closed
-                      : AppBadgeStyles.open,
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// The real total, with the planned total trailing it in small type.
-class _HeroValue extends StatelessWidget {
-  const _HeroValue({required this.actual, required this.planned});
-
-  final double actual;
-  final double? planned;
-
-  @override
-  Widget build(BuildContext context) {
-    final planned = this.planned;
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(
-            text: AppFormatters.currency(actual),
-            style: AppTextStyles.statDisplay.copyWith(color: AppColors.primary),
-          ),
-          if (planned != null)
-            TextSpan(
-              text: '  / ${AppFormatters.currency(planned)}',
-              style: AppTextStyles.small.copyWith(color: AppColors.primaryDark),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A subtle line: how far the month's real spend deviates from the plan.
-class _DeviationLine extends StatelessWidget {
-  const _DeviationLine({required this.plan});
-
-  final MonthlyPlan plan;
-
-  @override
-  Widget build(BuildContext context) {
-    final diff = plan.diff;
-    final over = plan.isOver;
-    final under = diff < -0.005;
-    if (!over && !under) {
-      return Text(
-        'No planeado',
-        style: AppTextStyles.small.copyWith(color: AppColors.primaryDark),
-      );
-    }
-    final pct = plan.planned > 0 ? (diff / plan.planned * 100) : 0.0;
-    final sign = diff > 0 ? '+' : '';
-    final direction = over ? 'acima' : 'abaixo';
-    return Text(
-      'Desvio $sign${AppFormatters.currency(diff)}  ·  '
-      '${AppFormatters.percentage(pct.abs().round())} $direction',
-      style: AppTextStyles.small.copyWith(
-        color: over ? AppColors.over : AppColors.primaryDark,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-  }
-}
-
-/// The month selector: previous arrow, month name, next arrow.
-class _MonthStepper extends StatelessWidget {
-  const _MonthStepper({
-    required this.month,
-    required this.onPrevious,
-    required this.onNext,
-  });
-
-  final String month;
-  final VoidCallback onPrevious;
-  final VoidCallback onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.fullAll,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _StepperIconButton(icon: Icons.chevron_left, onTap: onPrevious),
-          Text(
-            AppFormatters.monthName(month),
-            style: AppTextStyles.label.copyWith(color: AppColors.primaryDark),
-          ),
-          _StepperIconButton(icon: Icons.chevron_right, onTap: onNext),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepperIconButton extends StatelessWidget {
-  const _StepperIconButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: Icon(
-          icon,
-          size: AppSizes.iconMedium,
-          color: AppColors.primaryDark,
-        ),
       ),
     );
   }
@@ -409,21 +331,23 @@ class _EntriesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _CardHeading(
-            icon: Icons.receipt_long_outlined,
-            title: 'Despesas',
-          ),
+          Text('Despesas', style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.lg),
           if (entries.isEmpty)
-            Text('Este mês não tem categorias.', style: AppTextStyles.bodyMuted)
+            Text(
+              'Este mês não tem categorias.',
+              style: AppTextStyles.bodyMuted(context.colors),
+            )
           else
-            for (var index = 0; index < entries.length; index++) ...[
-              if (index > 0) const Divider(),
-              _EntryRow(
-                entry: entries[index],
-                onSaveActual: editable ? onSaveActual : null,
-              ),
-            ],
+            AppStagger(
+              children: [
+                for (var index = 0; index < entries.length; index++)
+                  _EntryRow(
+                    entry: entries[index],
+                    onSaveActual: editable ? onSaveActual : null,
+                  ),
+              ],
+            ),
           if (editable) ...[
             const SizedBox(height: AppSpacing.lg),
             Align(
@@ -479,13 +403,16 @@ class _EntryRow extends StatefulWidget {
   State<_EntryRow> createState() => _EntryRowState();
 }
 
-class _EntryRowState extends State<_EntryRow> {
+class _EntryRowState extends State<_EntryRow>
+    with SingleTickerProviderStateMixin {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
+  late final AnimationController _tick;
 
   @override
   void initState() {
     super.initState();
+    _tick = AnimationController(vsync: this, duration: AppMotion.confirm);
     _controller = TextEditingController(text: _format(widget.entry.actual));
     _focusNode = FocusNode()..addListener(_handleFocusChange);
   }
@@ -503,6 +430,7 @@ class _EntryRowState extends State<_EntryRow> {
     _focusNode.removeListener(_handleFocusChange);
     _focusNode.dispose();
     _controller.dispose();
+    _tick.dispose();
     super.dispose();
   }
 
@@ -528,6 +456,8 @@ class _EntryRowState extends State<_EntryRow> {
       return;
     }
     onSaveActual(widget.entry.id, parsed);
+    HapticFeedback.selectionClick();
+    _tick.forward(from: 0);
   }
 
   static String _format(double value) =>
@@ -537,7 +467,7 @@ class _EntryRowState extends State<_EntryRow> {
   Widget build(BuildContext context) {
     final entry = widget.entry;
     final editable = widget.onSaveActual != null;
-    final accent = entry.isOver ? AppColors.over : AppColors.ink;
+    final accent = entry.isOver ? context.colors.over : context.colors.ink;
     final diff = entry.diff;
     final deltaLabel = diff >= 0
         ? '+${AppFormatters.currency(diff)}'
@@ -550,6 +480,8 @@ class _EntryRowState extends State<_EntryRow> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              CategoryIcon(category: entry.categoryName),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -558,13 +490,11 @@ class _EntryRowState extends State<_EntryRow> {
                       entry.categoryName,
                       style: AppTextStyles.sectionHeading,
                     ),
-                    if (editable) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Planeado ${AppFormatters.currency(entry.planned)}',
-                        style: AppTextStyles.small,
-                      ),
-                    ],
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Planeado ${AppFormatters.currency(entry.planned)}',
+                      style: AppTextStyles.small(context.colors),
+                    ),
                   ],
                 ),
               ),
@@ -573,52 +503,48 @@ class _EntryRowState extends State<_EntryRow> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (editable)
-                    SizedBox(
-                      width: AppSizes.moneyFieldWidth,
-                      child: TextField(
-                        controller: _controller,
-                        focusNode: _focusNode,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        textAlign: TextAlign.end,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _save(),
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          suffixText: '€',
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.sm,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: AppFormatters.currency(entry.actual),
-                            style: AppTextStyles.sectionHeading.copyWith(
-                              color: accent,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AppSavedTick(animation: _tick),
+                        const SizedBox(width: AppSpacing.sm),
+                        SizedBox(
+                          width: AppSizes.moneyFieldWidth,
+                          child: TextField(
+                            controller: _controller,
+                            focusNode: _focusNode,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            textAlign: TextAlign.end,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _save(),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              suffixText: '€',
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: AppSpacing.sm,
+                              ),
                             ),
                           ),
-                          TextSpan(
-                            text:
-                                '  / ${AppFormatters.currency(entry.planned)}',
-                            style: AppTextStyles.small,
-                          ),
-                        ],
+                        ),
+                      ],
+                    )
+                  else
+                    Text(
+                      AppFormatters.currency(entry.actual),
+                      style: AppTextStyles.sectionHeading.copyWith(
+                        color: accent,
                       ),
                     ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     deltaLabel,
-                    style: AppTextStyles.small.copyWith(
+                    style: AppTextStyles.small(context.colors).copyWith(
                       color: entry.isOver
-                          ? AppColors.over
-                          : AppColors.primaryDark,
+                          ? context.colors.over
+                          : context.colors.primaryDark,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -632,8 +558,10 @@ class _EntryRowState extends State<_EntryRow> {
             child: LinearProgressIndicator(
               value: entry.progress,
               minHeight: AppSizes.progressBarHeight,
-              backgroundColor: AppColors.lineSoft,
-              color: entry.isOver ? AppColors.over : AppColors.primary,
+              backgroundColor: context.colors.lineSoft,
+              color: entry.isOver
+                  ? context.colors.over
+                  : context.colors.primary,
             ),
           ),
         ],
@@ -654,21 +582,20 @@ class _ContributionsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _CardHeading(
-            icon: Icons.payments_outlined,
-            title: 'Contribuições',
-          ),
+          Text('Contribuições', style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.lg),
           if (!isOk)
             Text(
               settlement.message ?? 'Sem rendimento registado.',
-              style: AppTextStyles.bodyMuted,
+              style: AppTextStyles.bodyMuted(context.colors),
             )
           else
-            for (var index = 0; index < settlement.people.length; index++) ...[
-              if (index > 0) const Divider(),
-              _ContributionRow(person: settlement.people[index]),
-            ],
+            AppStagger(
+              children: [
+                for (var index = 0; index < settlement.people.length; index++)
+                  _ContributionRow(person: settlement.people[index]),
+              ],
+            ),
         ],
       ),
     );
@@ -682,7 +609,7 @@ class _ContributionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final transfer = _transfer();
+    final transfer = _transfer(context.colors);
     final amount = transfer.amount;
     final name = person.personName.trim();
     final initial = name.isEmpty ? '?' : name[0].toUpperCase();
@@ -700,7 +627,9 @@ class _ContributionRow extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   transfer.direction,
-                  style: AppTextStyles.small.copyWith(color: transfer.color),
+                  style: AppTextStyles.small(
+                    context.colors,
+                  ).copyWith(color: transfer.color),
                 ),
               ],
             ),
@@ -719,52 +648,24 @@ class _ContributionRow extends StatelessWidget {
     );
   }
 
-  ({double? amount, String direction, Color color}) _transfer() {
+  ({double? amount, String direction, Color color}) _transfer(
+    NestColors colors,
+  ) {
     if (person.transfersToJoint) {
       return (
         amount: person.transferToJoint,
         direction: 'para a conta conjunta',
-        color: AppColors.primaryDark,
+        color: colors.primaryDark,
       );
     }
     if (person.transfersToPerson) {
       return (
         amount: person.transferToPerson,
         direction: 'da conta conjunta',
-        color: AppColors.primaryDark,
+        color: colors.primaryDark,
       );
     }
-    return (amount: null, direction: 'Está certo', color: AppColors.muted);
-  }
-}
-
-class _CardHeading extends StatelessWidget {
-  const _CardHeading({required this.icon, required this.title});
-
-  final IconData icon;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: AppSizes.buttonHeight,
-          height: AppSizes.buttonHeight,
-          decoration: const BoxDecoration(
-            color: AppColors.mintSoft,
-            borderRadius: AppRadius.smAll,
-          ),
-          child: Icon(
-            icon,
-            size: AppSizes.iconMedium,
-            color: AppColors.primaryDark,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Text(title, style: AppTextStyles.sectionHeading),
-      ],
-    );
+    return (amount: null, direction: 'Está certo', color: colors.muted);
   }
 }
 
@@ -779,13 +680,15 @@ class _InitialAvatar extends StatelessWidget {
       width: AppSizes.buttonHeight,
       height: AppSizes.buttonHeight,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        color: AppColors.terraSoft,
+      decoration: BoxDecoration(
+        color: context.colors.terraSoft,
         shape: BoxShape.circle,
       ),
       child: Text(
         initial,
-        style: AppTextStyles.label.copyWith(color: AppColors.terraDark),
+        style: AppTextStyles.label(
+          context.colors,
+        ).copyWith(color: context.colors.terraDark),
       ),
     );
   }

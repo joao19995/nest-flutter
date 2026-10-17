@@ -70,13 +70,14 @@ class _ExpensesContent extends StatelessWidget {
           _ExpenseYearHero(
             year: viewModel.selectedYear,
             summary: viewModel.summary,
+            highlightMonth: viewModel.currentMonth,
             canGoToPreviousYear: viewModel.canGoToPreviousYear,
             canGoToNextYear: viewModel.canGoToNextYear,
             onPreviousYear: viewModel.showPreviousYear,
             onNextYear: viewModel.showNextYear,
           ),
           const SizedBox(height: AppSpacing.xl),
-          Text('POR MÊS', style: AppTextStyles.navSection),
+          Text('Por mês', style: AppTextStyles.navSection(context.colors)),
           const SizedBox(height: AppSpacing.md),
           AsyncView(
             isLoading: viewModel.isLoading,
@@ -89,15 +90,13 @@ class _ExpensesContent extends StatelessWidget {
                 horizontal: AppBreakpoints.cardPadding(context),
                 vertical: AppSpacing.sm,
               ),
-              child: Column(
+              child: AppStagger(
                 children: [
-                  for (var index = 0; index < months.length; index++) ...[
-                    if (index > 0) const Divider(),
+                  for (var index = 0; index < months.length; index++)
                     _MonthRow(
                       month: months[index],
                       onTap: () => _openMonth(context, months[index].month),
                     ),
-                  ],
                 ],
               ),
             ),
@@ -116,12 +115,13 @@ class _ExpensesContent extends StatelessWidget {
 
 /// The year's total spent, shown above the monthly breakdown.
 ///
-/// A tinted, shadowless panel that also hosts the year selector and a couple
-/// of subtle secondary figures (year deviation and monthly rebalancing).
+/// A dark, gradient panel that also hosts the year selector, the twelve-month
+/// bar chart and a couple of status pills (year deviation and rebalancing).
 class _ExpenseYearHero extends StatelessWidget {
   const _ExpenseYearHero({
     required this.year,
     required this.summary,
+    required this.highlightMonth,
     required this.canGoToPreviousYear,
     required this.canGoToNextYear,
     required this.onPreviousYear,
@@ -130,6 +130,10 @@ class _ExpenseYearHero extends StatelessWidget {
 
   final int year;
   final ExpenseYearSummary? summary;
+
+  /// The month (`YYYY-MM`) to emphasise in the chart, or null for none.
+  final String? highlightMonth;
+
   final bool canGoToPreviousYear;
   final bool canGoToNextYear;
   final VoidCallback onPreviousYear;
@@ -138,12 +142,7 @@ class _ExpenseYearHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final summary = this.summary;
-    return Container(
-      padding: EdgeInsets.all(AppBreakpoints.cardPadding(context)),
-      decoration: const BoxDecoration(
-        color: AppColors.mint,
-        borderRadius: AppRadius.mdAll,
-      ),
+    return HeroPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -151,10 +150,10 @@ class _ExpenseYearHero extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'DESPESA DO ANO',
-                  style: AppTextStyles.navSection.copyWith(
-                    color: AppColors.primaryDark,
-                  ),
+                  'Despesa do ano',
+                  style: AppTextStyles.navSection(
+                    context.colors,
+                  ).copyWith(color: AppColors.onHeroMuted),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -168,24 +167,40 @@ class _ExpenseYearHero extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            AppFormatters.currency(summary?.actual ?? 0),
-            style: AppTextStyles.statDisplay.copyWith(color: AppColors.primary),
+          AnimatedAmount(
+            value: summary?.actual ?? 0,
+            style: AppTextStyles.statDisplay.copyWith(color: AppColors.onHero),
           ),
           if (summary != null && summary.hasData) ...[
             const SizedBox(height: AppSpacing.sm),
-            _DeviationLine(
-              diff: summary.diff,
-              diffPct: summary.diffPct,
-              over: summary.over,
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _DeviationPill(
+                  diff: summary.diff,
+                  diffPct: summary.diffPct,
+                  over: summary.over,
+                ),
+                if (summary.over && summary.remainingMonths > 0)
+                  _RebalancePill(
+                    perRemainingMonth: summary.perRemainingMonth,
+                    remainingMonths: summary.remainingMonths,
+                  ),
+              ],
             ),
-            if (summary.over && summary.remainingMonths > 0) ...[
-              const SizedBox(height: AppSpacing.xs),
-              _RebalanceLine(
-                perRemainingMonth: summary.perRemainingMonth,
-                remainingMonths: summary.remainingMonths,
-              ),
-            ],
+            const SizedBox(height: AppSpacing.lg),
+            AppBarChart(
+              bars: [
+                for (final month in summary.months)
+                  (
+                    label: AppFormatters.monthShort(month.month),
+                    value: month.actual,
+                    over: month.over,
+                    highlighted: month.month == highlightMonth,
+                  ),
+              ],
+            ),
           ],
         ],
       ),
@@ -193,9 +208,9 @@ class _ExpenseYearHero extends StatelessWidget {
   }
 }
 
-/// A subtle line: how far the year deviates from the plan.
-class _DeviationLine extends StatelessWidget {
-  const _DeviationLine({
+/// A translucent pill: how far the year deviates from the plan.
+class _DeviationPill extends StatelessWidget {
+  const _DeviationPill({
     required this.diff,
     required this.diffPct,
     required this.over,
@@ -208,27 +223,25 @@ class _DeviationLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (diff == 0) {
-      return Text(
-        'Sem desvio do plano',
-        style: AppTextStyles.small.copyWith(color: AppColors.primaryDark),
+      return const HeroDeltaPill(
+        label: 'Sem desvio do plano',
+        color: AppColors.onHeroMuted,
       );
     }
     final sign = diff > 0 ? '+' : '';
     final direction = over ? 'acima' : 'abaixo';
-    return Text(
-      'Desvio $sign${AppFormatters.currency(diff)}  ·  '
-      '${AppFormatters.percentage(diffPct.round())} $direction',
-      style: AppTextStyles.small.copyWith(
-        color: over ? AppColors.over : AppColors.primaryDark,
-        fontWeight: FontWeight.w600,
-      ),
+    return HeroDeltaPill(
+      label:
+          'Desvio $sign${AppFormatters.currency(diff)}  ·  '
+          '${AppFormatters.percentage(diffPct.round())} $direction',
+      color: over ? AppColors.overOnDark : AppColors.mint,
     );
   }
 }
 
-/// A subtle line: what to set aside each remaining month to balance the year.
-class _RebalanceLine extends StatelessWidget {
-  const _RebalanceLine({
+/// A translucent pill: what to set aside each remaining month to balance.
+class _RebalancePill extends StatelessWidget {
+  const _RebalancePill({
     required this.perRemainingMonth,
     required this.remainingMonths,
   });
@@ -241,10 +254,11 @@ class _RebalanceLine extends StatelessWidget {
     final monthLabel = remainingMonths == 1
         ? '1 mês'
         : '$remainingMonths meses';
-    return Text(
-      'Para equilibrar ${AppFormatters.currency(perRemainingMonth)}/mês '
-      'a poupar em $monthLabel',
-      style: AppTextStyles.small.copyWith(color: AppColors.primaryDark),
+    return HeroDeltaPill(
+      label:
+          'Para equilibrar ${AppFormatters.currency(perRemainingMonth)}/mês '
+          'a poupar em $monthLabel',
+      color: AppColors.onHeroMuted,
     );
   }
 }
@@ -267,11 +281,10 @@ class _YearStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.fullAll,
-      ),
+    return Material(
+      color: AppColors.surface,
+      borderRadius: AppRadius.fullAll,
+      clipBehavior: Clip.antiAlias,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -282,7 +295,9 @@ class _YearStepper extends StatelessWidget {
           ),
           Text(
             '$year',
-            style: AppTextStyles.label.copyWith(color: AppColors.primaryDark),
+            style: AppTextStyles.label(
+              context.colors,
+            ).copyWith(color: AppColors.primaryDark),
           ),
           _StepperButton(
             icon: Icons.chevron_right,
@@ -336,63 +351,68 @@ class _MonthRow extends StatelessWidget {
     final deltaLabel = delta >= 0
         ? '+${AppFormatters.currency(delta)}'
         : AppFormatters.currency(delta);
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      AppFormatters.monthShort(month.month),
-                      style: AppTextStyles.sectionHeading,
-                    ),
-                  ),
-                  Text(
-                    hasPlan ? AppFormatters.currency(month.actual) : '—',
-                    style: AppTextStyles.sectionHeading.copyWith(
-                      color: month.over ? AppColors.over : AppColors.ink,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              _MonthBar(month: month, hasPlan: hasPlan),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      hasPlan
-                          ? 'Planeado ${AppFormatters.currency(month.planned)}'
-                          : 'Sem plano',
-                      style: AppTextStyles.small,
-                    ),
-                  ),
-                  if (hasPlan)
-                    Text(
-                      deltaLabel,
-                      style: AppTextStyles.small.copyWith(
-                        color: month.over
-                            ? AppColors.over
-                            : AppColors.primaryDark,
-                        fontWeight: FontWeight.w700,
+    return Hero(
+      tag: 'expense-month-${month.month}',
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        AppFormatters.monthShort(month.month),
+                        style: AppTextStyles.sectionHeading,
                       ),
                     ),
-                  const SizedBox(width: AppSpacing.sm),
-                  const Icon(
-                    Icons.chevron_right,
-                    size: AppSizes.iconSmall,
-                    color: AppColors.faint,
-                  ),
-                ],
-              ),
-            ],
+                    Text(
+                      hasPlan ? AppFormatters.currency(month.actual) : '—',
+                      style: AppTextStyles.sectionHeading.copyWith(
+                        color: month.over
+                            ? context.colors.over
+                            : context.colors.ink,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _MonthBar(month: month, hasPlan: hasPlan),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        hasPlan
+                            ? 'Planeado ${AppFormatters.currency(month.planned)}'
+                            : 'Sem plano',
+                        style: AppTextStyles.small(context.colors),
+                      ),
+                    ),
+                    if (hasPlan)
+                      Text(
+                        deltaLabel,
+                        style: AppTextStyles.small(context.colors).copyWith(
+                          color: month.over
+                              ? context.colors.over
+                              : context.colors.primaryDark,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Icon(
+                      Icons.chevron_right,
+                      size: AppSizes.iconSmall,
+                      color: context.colors.faint,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -414,8 +434,8 @@ class _MonthBar extends StatelessWidget {
     return LinearProgressIndicator(
       value: factor,
       minHeight: AppSizes.progressBarHeight,
-      backgroundColor: AppColors.lineSoft,
-      color: month.over ? AppColors.over : AppColors.primary,
+      backgroundColor: context.colors.lineSoft,
+      color: month.over ? context.colors.over : context.colors.primary,
       borderRadius: AppRadius.fullAll,
     );
   }

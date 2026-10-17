@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:nest/ui/core/theme/app_colors.dart';
+import 'package:nest/ui/core/theme/nest_colors.dart';
 
 /// Nest typography tokens.
 ///
 /// Body copy uses DM Sans; headings and large numbers use Manrope — matching
-/// the web type scale. Colour comes from the role unless noted otherwise.
+/// the web type scale.
+///
+/// Styles that carry a role colour take the active [NestColors] so they adapt
+/// to light and dark: `AppTextStyles.bodyMuted(context.colors)`. Styles whose
+/// colour is applied at the call site (or inherited) have no colour.
 abstract final class AppTextStyles {
+  /// Tabular figures keep monetary digits aligned in columns.
+  static const List<FontFeature> _tabular = [FontFeature.tabularFigures()];
+
   /// Page-level heading — list pages, detail pages, module headers.
   static TextStyle get pageTitle => GoogleFonts.manrope(
     fontSize: 22,
     fontWeight: FontWeight.w800,
     letterSpacing: -0.3,
-    color: AppColors.ink,
   );
 
   /// Card and section heading.
@@ -20,52 +26,56 @@ abstract final class AppTextStyles {
     fontSize: 17,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.3,
-    color: AppColors.ink,
+    fontFeatures: _tabular,
   );
 
   /// Large numeric value on stat cards.
   ///
   /// Colour is applied at the call site using the card's accent token:
-  /// `AppTextStyles.statDisplay.copyWith(color: AppColors.primary)`.
+  /// `AppTextStyles.statDisplay.copyWith(color: context.colors.primary)`.
   static TextStyle get statDisplay => GoogleFonts.manrope(
     fontSize: 32,
     fontWeight: FontWeight.w800,
     letterSpacing: -0.5,
+    fontFeatures: _tabular,
   );
 
   /// General body content.
   static TextStyle get body => GoogleFonts.dmSans(
     fontSize: 14,
     fontWeight: FontWeight.w400,
-    color: AppColors.ink,
+    fontFeatures: _tabular,
   );
 
   /// Secondary body copy — descriptions, table cells.
-  static TextStyle get bodyMuted => GoogleFonts.dmSans(
+  static TextStyle bodyMuted(NestColors colors) => GoogleFonts.dmSans(
     fontSize: 12,
     fontWeight: FontWeight.w400,
-    color: AppColors.muted,
+    color: colors.muted,
+    fontFeatures: _tabular,
   );
 
   /// Small secondary text — subtitles, counts, breadcrumbs.
-  static TextStyle get small => GoogleFonts.dmSans(
+  static TextStyle small(NestColors colors) => GoogleFonts.dmSans(
     fontSize: 12,
     fontWeight: FontWeight.w400,
-    color: AppColors.muted,
+    color: colors.muted,
+    fontFeatures: _tabular,
   );
 
   /// Form and inline labels.
-  static TextStyle get label => GoogleFonts.dmSans(
+  static TextStyle label(NestColors colors) => GoogleFonts.dmSans(
     fontSize: 12,
     fontWeight: FontWeight.w600,
-    color: AppColors.inkSoft,
+    color: colors.inkSoft,
+    fontFeatures: _tabular,
   );
 
   /// Assistive text below inputs.
-  static TextStyle get helper => GoogleFonts.dmSans(
+  static TextStyle helper(NestColors colors) => GoogleFonts.dmSans(
     fontSize: 12,
     fontWeight: FontWeight.w400,
-    color: AppColors.faint,
+    color: colors.faint,
   );
 
   /// Button label.
@@ -84,11 +94,10 @@ abstract final class AppTextStyles {
   static TextStyle get badge =>
       GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700);
 
-  /// All-caps navigation section label.
-  static TextStyle get navSection => GoogleFonts.dmSans(
-    fontSize: 11,
-    fontWeight: FontWeight.w700,
-    letterSpacing: 1.2,
-    color: AppColors.faint,
+  /// Section eyebrow above a list or panel, e.g. `Por mês`.
+  static TextStyle navSection(NestColors colors) => GoogleFonts.dmSans(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: colors.muted,
   );
 }

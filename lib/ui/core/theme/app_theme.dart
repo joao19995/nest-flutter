@@ -1,40 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:nest/ui/core/theme/app_colors.dart';
 import 'package:nest/ui/core/theme/app_radius.dart';
 import 'package:nest/ui/core/theme/app_sizes.dart';
 import 'package:nest/ui/core/theme/app_spacing.dart';
 import 'package:nest/ui/core/theme/app_text_styles.dart';
+import 'package:nest/ui/core/theme/nest_colors.dart';
 
 /// The only place in the project that builds a `ThemeData`.
 ///
-/// Nest is light-only; the token palette defines no dark variants.
+/// Both brightnesses are built from the same token set — [NestColors.light]
+/// and [NestColors.dark] — so the palette stays in one place.
 abstract final class AppTheme {
-  static ThemeData get light {
-    final colorScheme = ColorScheme.fromSeed(seedColor: AppColors.primary)
-        .copyWith(
-          primary: AppColors.primary,
-          onPrimary: AppColors.surface,
-          primaryContainer: AppColors.mintSoft,
-          onPrimaryContainer: AppColors.primaryDark,
-          surface: AppColors.surface,
-          onSurface: AppColors.ink,
-          onSurfaceVariant: AppColors.muted,
-          outline: AppColors.line,
-          outlineVariant: AppColors.lineSoft,
-          error: AppColors.over,
-          onError: AppColors.surface,
-          errorContainer: AppColors.dangerSoft,
-          onErrorContainer: AppColors.dangerOnSoft,
-          scrim: AppColors.scrim,
+  static ThemeData get light => _build(NestColors.light, Brightness.light);
+
+  static ThemeData get dark => _build(NestColors.dark, Brightness.dark);
+
+  static ThemeData _build(NestColors colors, Brightness brightness) {
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: colors.primary,
+          brightness: brightness,
+        ).copyWith(
+          primary: colors.primary,
+          onPrimary: colors.surface,
+          primaryContainer: colors.mintSoft,
+          onPrimaryContainer: colors.primaryDark,
+          surface: colors.surface,
+          onSurface: colors.ink,
+          onSurfaceVariant: colors.muted,
+          outline: colors.line,
+          outlineVariant: colors.lineSoft,
+          error: colors.over,
+          onError: colors.surface,
+          errorContainer: colors.dangerSoft,
+          onErrorContainer: colors.dangerOnSoft,
+          scrim: colors.scrim,
         );
 
     return ThemeData(
       useMaterial3: true,
+      brightness: brightness,
       colorScheme: colorScheme,
+      extensions: [colors],
       fontFamily: GoogleFonts.dmSans().fontFamily,
-      scaffoldBackgroundColor: AppColors.paper,
-      dividerColor: AppColors.line,
+      scaffoldBackgroundColor: colors.paper,
+      dividerColor: colors.line,
       splashFactory: InkSparkle.splashFactory,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: <TargetPlatform, PageTransitionsBuilder>{
@@ -50,26 +60,28 @@ abstract final class AppTheme {
         headlineMedium: AppTextStyles.pageTitle,
         titleMedium: AppTextStyles.sectionHeading,
         bodyMedium: AppTextStyles.body,
-        bodySmall: AppTextStyles.small,
-        labelMedium: AppTextStyles.label,
-        labelSmall: AppTextStyles.helper,
+        bodySmall: AppTextStyles.small(colors),
+        labelMedium: AppTextStyles.label(colors),
+        labelSmall: AppTextStyles.helper(colors),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.ink,
+        backgroundColor: colors.surface,
+        foregroundColor: colors.ink,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTextStyles.sectionHeading,
+        titleTextStyle: AppTextStyles.sectionHeading.copyWith(
+          color: colors.ink,
+        ),
       ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.line,
+      dividerTheme: DividerThemeData(
+        color: colors.line,
         thickness: 1,
         space: 0,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.surface,
-        indicatorColor: AppColors.mint,
+        backgroundColor: colors.surface,
+        indicatorColor: colors.mint,
         elevation: 0,
         height: AppSizes.mobileBottomNavHeight,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -77,67 +89,67 @@ abstract final class AppTheme {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
             size: AppSizes.iconLarge,
-            color: selected ? AppColors.primaryDark : AppColors.faint,
+            color: selected ? colors.primaryDark : colors.faint,
           );
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
-          return AppTextStyles.label.copyWith(
-            color: selected ? AppColors.primaryDark : AppColors.muted,
-          );
+          return AppTextStyles.label(
+            colors,
+          ).copyWith(color: selected ? colors.primaryDark : colors.muted);
         }),
       ),
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: AppColors.surface,
-        indicatorColor: AppColors.mint,
-        selectedIconTheme: const IconThemeData(
+        backgroundColor: colors.surface,
+        indicatorColor: colors.mint,
+        selectedIconTheme: IconThemeData(
           size: AppSizes.iconLarge,
-          color: AppColors.primaryDark,
+          color: colors.primaryDark,
         ),
-        unselectedIconTheme: const IconThemeData(
+        unselectedIconTheme: IconThemeData(
           size: AppSizes.iconLarge,
-          color: AppColors.faint,
+          color: colors.faint,
         ),
-        selectedLabelTextStyle: AppTextStyles.label.copyWith(
-          color: AppColors.primaryDark,
-        ),
-        unselectedLabelTextStyle: AppTextStyles.label.copyWith(
-          color: AppColors.muted,
-        ),
+        selectedLabelTextStyle: AppTextStyles.label(
+          colors,
+        ).copyWith(color: colors.primaryDark),
+        unselectedLabelTextStyle: AppTextStyles.label(
+          colors,
+        ).copyWith(color: colors.muted),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.inputBg,
-        hintStyle: AppTextStyles.body.copyWith(color: AppColors.faint),
-        labelStyle: AppTextStyles.label,
-        helperStyle: AppTextStyles.helper,
+        fillColor: colors.inputBg,
+        hintStyle: AppTextStyles.body.copyWith(color: colors.faint),
+        labelStyle: AppTextStyles.label(colors),
+        helperStyle: AppTextStyles.helper(colors),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.md,
         ),
-        border: const OutlineInputBorder(
+        border: OutlineInputBorder(
           borderRadius: AppRadius.smAll,
-          borderSide: BorderSide(color: AppColors.line),
+          borderSide: BorderSide(color: colors.line),
         ),
-        enabledBorder: const OutlineInputBorder(
+        enabledBorder: OutlineInputBorder(
           borderRadius: AppRadius.smAll,
-          borderSide: BorderSide(color: AppColors.line),
+          borderSide: BorderSide(color: colors.line),
         ),
-        focusedBorder: const OutlineInputBorder(
+        focusedBorder: OutlineInputBorder(
           borderRadius: AppRadius.smAll,
-          borderSide: BorderSide(color: AppColors.primary, width: 2),
+          borderSide: BorderSide(color: colors.primary, width: 2),
         ),
-        errorBorder: const OutlineInputBorder(
+        errorBorder: OutlineInputBorder(
           borderRadius: AppRadius.smAll,
-          borderSide: BorderSide(color: AppColors.over),
+          borderSide: BorderSide(color: colors.over),
         ),
-        focusedErrorBorder: const OutlineInputBorder(
+        focusedErrorBorder: OutlineInputBorder(
           borderRadius: AppRadius.smAll,
-          borderSide: BorderSide(color: AppColors.over, width: 1.5),
+          borderSide: BorderSide(color: colors.over, width: 1.5),
         ),
-        disabledBorder: const OutlineInputBorder(
+        disabledBorder: OutlineInputBorder(
           borderRadius: AppRadius.smAll,
-          borderSide: BorderSide(color: AppColors.line),
+          borderSide: BorderSide(color: colors.line),
         ),
       ),
     );

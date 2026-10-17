@@ -30,6 +30,7 @@ class _AppState extends State<App> {
         title: AppConstants.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
         home: const AppShell(),
       ),
     );

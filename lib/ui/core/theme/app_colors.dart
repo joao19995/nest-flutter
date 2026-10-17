@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 
-/// Nest colour tokens — mirrored from the web palette (`app/globals.css` `@theme`).
+/// Fixed Nest colours — mirrored from the web palette (`app/globals.css`
+/// `@theme`).
 ///
-/// No raw colour may appear in widget code; always reference a token here.
+/// These are the colours that must stay put regardless of brightness, because
+/// the hero surface is always dark; the light palette also lives here for
+/// reference. Chrome colours (pages, cards, text, lines) are theme-aware —
+/// read them from `NestColors` via `context.colors.ink` so they adapt to dark
+/// mode. No raw colour may appear in widget code.
 abstract final class AppColors {
   // ── Core ────────────────────────────────────────────────────────────────
   /// `--color-ink` — primary text and the default button fill.
@@ -66,6 +71,16 @@ abstract final class AppColors {
 
   /// Destructive badge foreground.
   static const Color dangerOnSoft = Color(0xFFA33A32);
+
+  // ── On dark hero ────────────────────────────────────────────────────────
+  /// Text and icons on the dark gradient hero.
+  static const Color onHero = Color(0xFFFFFFFF);
+
+  /// Secondary text on the dark gradient hero — eyebrows, planned totals.
+  static const Color onHeroMuted = Color(0xCCFFFFFF);
+
+  /// Translucent white pill behind hero deltas (white at 12%).
+  static const Color heroPill = Color(0x1FFFFFFF);
 
   // ── Overlay ─────────────────────────────────────────────────────────────
   /// `--color-ink` at 40% — backdrops behind modals, sheets and drawers.

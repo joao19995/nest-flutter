@@ -13,7 +13,7 @@ class MonthDetailViewModel extends ChangeNotifier {
 
   final ExpensesRepository _expensesRepository;
 
-  String _month;
+  final String _month;
   String get month => _month;
 
   bool _isLoading = true;
@@ -120,26 +120,4 @@ class MonthDetailViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  /// Selects the previous month and reloads.
-  void showPreviousMonth() => _shiftMonth(-1);
-
-  /// Selects the next month and reloads.
-  void showNextMonth() => _shiftMonth(1);
-
-  void _shiftMonth(int delta) {
-    final parts = _month.split('-');
-    final year = int.tryParse(parts.isNotEmpty ? parts[0] : '');
-    final monthNumber = int.tryParse(parts.length > 1 ? parts[1] : '');
-    if (year == null || monthNumber == null) {
-      return;
-    }
-    final shifted = DateTime(year, monthNumber + delta);
-    _month = _format(shifted);
-    _plan = null;
-    load();
-  }
-
-  static String _format(DateTime date) =>
-      '${date.year}-${date.month.toString().padLeft(2, '0')}';
 }

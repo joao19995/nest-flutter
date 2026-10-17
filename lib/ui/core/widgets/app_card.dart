@@ -20,9 +20,9 @@ class AppCard extends StatelessWidget {
     );
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.mdAll,
-        boxShadow: AppShadows.card,
+        color: context.colors.surface,
+        borderRadius: AppRadius.lgAll,
+        boxShadow: AppShadows.card(context.colors),
       ),
       child: onTap == null
           ? content
@@ -30,7 +30,7 @@ class AppCard extends StatelessWidget {
               type: MaterialType.transparency,
               child: InkWell(
                 onTap: onTap,
-                borderRadius: AppRadius.mdAll,
+                borderRadius: AppRadius.lgAll,
                 child: content,
               ),
             ),

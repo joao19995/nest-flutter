@@ -35,7 +35,7 @@ class AppStatCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Text(value, style: AppTextStyles.statDisplay.copyWith(color: accent)),
           const SizedBox(height: AppSpacing.xs),
-          Text(label, style: AppTextStyles.small),
+          Text(label, style: AppTextStyles.small(context.colors)),
         ],
       ),
     );

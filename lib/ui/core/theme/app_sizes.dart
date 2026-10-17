@@ -18,6 +18,9 @@ abstract final class AppSizes {
   /// Stat-card icons.
   static const double iconLarge = 20;
 
+  /// Diameter of a category icon chip in an expense row.
+  static const double categoryIcon = 40;
+
   /// Empty-state and placeholder icons.
   static const double iconDisplay = 32;
 
@@ -26,6 +29,15 @@ abstract final class AppSizes {
 
   /// Thickness of a progress bar.
   static const double progressBarHeight = 6;
+
+  /// Diameter of the hero progress ring.
+  static const double progressRing = 68;
+
+  /// Stroke width of the hero progress ring.
+  static const double progressRingStroke = 7;
+
+  /// Maximum height of a bar in the mini bar chart.
+  static const double barChartHeight = 64;
 
   /// Width of an editable money field in the expense ledger.
   static const double moneyFieldWidth = 112;
