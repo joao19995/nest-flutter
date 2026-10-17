@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/animated_amount.dart';
 import 'package:nest/ui/core/widgets/app_badge.dart';
+import 'package:nest/ui/core/widgets/app_period_stepper.dart';
 import 'package:nest/ui/core/widgets/app_progress_ring.dart';
 import 'package:nest/ui/core/widgets/hero_delta_pill.dart';
 import 'package:nest/ui/core/widgets/hero_panel.dart';
@@ -61,8 +62,8 @@ class MonthSummaryHero extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
-              _MonthStepper(
-                month: month,
+              AppPeriodStepper(
+                label: AppFormatters.monthName(month),
                 onPrevious: onPreviousMonth,
                 onNext: onNextMonth,
               ),
@@ -154,64 +155,6 @@ class _DeviationPill extends StatelessWidget {
             'Desvio $sign${AppFormatters.currency(diff)}  ·  '
             '${AppFormatters.percentage(pct.abs().round())} $direction',
         color: over ? AppColors.overOnDark : AppColors.mint,
-      ),
-    );
-  }
-}
-
-/// The month selector: previous arrow, month name, next arrow.
-class _MonthStepper extends StatelessWidget {
-  const _MonthStepper({
-    required this.month,
-    required this.onPrevious,
-    required this.onNext,
-  });
-
-  final String month;
-  final VoidCallback onPrevious;
-  final VoidCallback onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: AppRadius.fullAll,
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _StepperIconButton(icon: Icons.chevron_left, onTap: onPrevious),
-          Text(
-            AppFormatters.monthName(month),
-            style: AppTextStyles.label(
-              context.colors,
-            ).copyWith(color: AppColors.primaryDark),
-          ),
-          _StepperIconButton(icon: Icons.chevron_right, onTap: onNext),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepperIconButton extends StatelessWidget {
-  const _StepperIconButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: Icon(
-          icon,
-          size: AppSizes.iconMedium,
-          color: AppColors.primaryDark,
-        ),
       ),
     );
   }

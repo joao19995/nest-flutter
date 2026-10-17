@@ -157,12 +157,10 @@ class _ExpenseYearHero extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
-              _YearStepper(
-                year: year,
-                canGoBack: canGoToPreviousYear,
-                canGoForward: canGoToNextYear,
-                onPrevious: onPreviousYear,
-                onNext: onNextYear,
+              AppPeriodStepper(
+                label: '$year',
+                onPrevious: canGoToPreviousYear ? onPreviousYear : null,
+                onNext: canGoToNextYear ? onNextYear : null,
               ),
             ],
           ),
@@ -259,81 +257,6 @@ class _RebalancePill extends StatelessWidget {
           'Para equilibrar ${AppFormatters.currency(perRemainingMonth)}/mês '
           'a poupar em $monthLabel',
       color: AppColors.onHeroMuted,
-    );
-  }
-}
-
-/// A compact year selector: previous arrow, year, next arrow.
-class _YearStepper extends StatelessWidget {
-  const _YearStepper({
-    required this.year,
-    required this.canGoBack,
-    required this.canGoForward,
-    required this.onPrevious,
-    required this.onNext,
-  });
-
-  final int year;
-  final bool canGoBack;
-  final bool canGoForward;
-  final VoidCallback onPrevious;
-  final VoidCallback onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: AppRadius.fullAll,
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _StepperButton(
-            icon: Icons.chevron_left,
-            enabled: canGoBack,
-            onTap: onPrevious,
-          ),
-          Text(
-            '$year',
-            style: AppTextStyles.label(
-              context.colors,
-            ).copyWith(color: AppColors.primaryDark),
-          ),
-          _StepperButton(
-            icon: Icons.chevron_right,
-            enabled: canGoForward,
-            onTap: onNext,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepperButton extends StatelessWidget {
-  const _StepperButton({
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      customBorder: const CircleBorder(),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: Icon(
-          icon,
-          size: AppSizes.iconMedium,
-          color: enabled ? AppColors.primaryDark : AppColors.faint,
-        ),
-      ),
     );
   }
 }

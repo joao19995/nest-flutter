@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/features/calendar/views/calendar_view.dart';
 import 'package:nest/ui/features/expenses/views/expenses_view.dart';
 import 'package:nest/ui/features/goals/views/goals_view.dart';
 import 'package:nest/ui/features/people/views/people_view.dart';
@@ -63,6 +64,7 @@ class _AppShellState extends State<AppShell> {
   Widget _buildScaffold(int pending) {
     final pages = <Widget>[
       TodosView(viewModel: _todosViewModel),
+      const CalendarView(),
       const ExpensesView(),
       const GoalsView(),
       const PeopleView(),
@@ -145,6 +147,11 @@ enum _NavigationItem {
     label: 'Tarefas',
     icon: Icons.checklist_outlined,
     selectedIcon: Icons.checklist,
+  ),
+  calendar(
+    label: 'Calendário',
+    icon: Icons.calendar_month_outlined,
+    selectedIcon: Icons.calendar_month,
   ),
   expenses(
     label: 'Despesas',

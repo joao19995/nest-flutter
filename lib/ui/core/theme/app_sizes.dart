@@ -27,6 +27,17 @@ abstract final class AppSizes {
   /// Minimum height of an interactive button.
   static const double buttonHeight = 40;
 
+  /// Height of a single day row in the calendar grid. The width is derived
+  /// from the available space, never fixed, so the seven columns never
+  /// overflow a narrow phone.
+  static const double calendarCell = 48;
+
+  /// Diameter of the highlighted (selected / today) day circle.
+  static const double calendarDayCircle = 36;
+
+  /// Diameter of a single event dot under a day number.
+  static const double calendarDot = 5;
+
   /// Thickness of a progress bar.
   static const double progressBarHeight = 6;
 
@@ -41,4 +52,8 @@ abstract final class AppSizes {
 
   /// Width of an editable money field in the expense ledger.
   static const double moneyFieldWidth = 112;
+
+  /// Maximum width of a single-column content area, so it does not stretch
+  /// uncomfortably wide on desktop viewports.
+  static const double contentMaxWidth = 720;
 }

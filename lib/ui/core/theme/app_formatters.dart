@@ -44,6 +44,28 @@ abstract final class AppFormatters {
     'Dezembro',
   ];
 
+  /// Weekday abbreviations, indexed by `DateTime.weekday` (1 = Monday).
+  static const List<String> _weekdayShort = [
+    'Seg',
+    'Ter',
+    'Qua',
+    'Qui',
+    'Sex',
+    'Sáb',
+    'Dom',
+  ];
+
+  /// Full weekday names, indexed by `DateTime.weekday` (1 = Monday).
+  static const List<String> _weekdayFull = [
+    'Segunda-feira',
+    'Terça-feira',
+    'Quarta-feira',
+    'Quinta-feira',
+    'Sexta-feira',
+    'Sábado',
+    'Domingo',
+  ];
+
   /// Formats a numeric value as a EUR currency string.
   /// Example: `12.9` → `"12,90 €"`.
   static String currency(num value) => _currency.format(value);
@@ -89,4 +111,35 @@ abstract final class AppFormatters {
     }
     return _monthNamesFull[month - 1];
   }
+
+  /// Formats a date's month and year with its full, capitalised name.
+  /// Example: `2026-10-20` → `"Outubro 2026"`.
+  static String monthTitle(DateTime date) =>
+      '${_monthNamesFull[date.month - 1]} ${date.year}';
+
+  /// A three-letter weekday abbreviation (`1` = Monday).
+  /// Example: `DateTime.monday` → `"Seg"`.
+  static String weekdayShort(int weekday) {
+    if (weekday < DateTime.monday || weekday > DateTime.sunday) {
+      return '';
+    }
+    return _weekdayShort[weekday - 1];
+  }
+
+  /// A long, human date with the full weekday.
+  /// Example: `2026-10-20` → `"Terça-feira, 20 de outubro"`.
+  static String dayLong(DateTime date) =>
+      '${_weekdayFull[date.weekday - 1]}, ${date.day} de '
+      '${_monthNames[date.month - 1]}';
+
+  /// A compact date.
+  /// Example: `2026-10-20` → `"20 out 2026"`.
+  static String shortDate(DateTime date) =>
+      '${date.day} ${_monthNames[date.month - 1]} ${date.year}';
+
+  /// A wall-clock time with zero-padded hour and minute.
+  /// Example: `09:30`.
+  static String time(DateTime date) =>
+      '${date.hour.toString().padLeft(2, '0')}:'
+      '${date.minute.toString().padLeft(2, '0')}';
 }

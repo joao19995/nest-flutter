@@ -217,7 +217,7 @@ class _Content extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (actionError != null) ...[
-          _ErrorBanner(message: actionError),
+          AppErrorBanner(message: actionError),
           const SizedBox(height: AppSpacing.lg),
         ],
         _GoalsCard(
@@ -258,7 +258,7 @@ class _CreateMonthCard extends StatelessWidget {
           ),
           if (actionError != null) ...[
             const SizedBox(height: AppSpacing.md),
-            _ErrorBanner(message: actionError),
+            AppErrorBanner(message: actionError),
           ],
           const SizedBox(height: AppSpacing.lg),
           AppButton(
@@ -619,43 +619,6 @@ class _TransferRow extends StatelessWidget {
               style: AppTextStyles.small(context.colors),
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-/// A coral panel stating why the last write action failed.
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: context.colors.dangerSoft,
-        borderRadius: AppRadius.smAll,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: AppSizes.iconMedium,
-            color: context.colors.dangerOnSoft,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              message,
-              style: AppTextStyles.small(
-                context.colors,
-              ).copyWith(color: context.colors.dangerOnSoft),
-            ),
-          ),
         ],
       ),
     );
