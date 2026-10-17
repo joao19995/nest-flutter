@@ -1,7 +1,9 @@
+import 'package:nest/data/models/person_income_model.dart';
 import 'package:nest/data/models/person_model.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/person.dart';
+import 'package:nest/domain/models/person_income.dart';
 
 /// Reads and writes household members.
 class PeopleRepository {
@@ -18,6 +20,18 @@ class PeopleRepository {
     return data
         .whereType<Map<String, dynamic>>()
         .map((json) => PersonModel.fromJson(json).toDomain())
+        .toList(growable: false);
+  }
+
+  /// Returns the income history of [personId], ordered by `validFrom`.
+  Future<List<PersonIncome>> fetchIncomes(String personId) async {
+    final data = await _client.get('/api/people/$personId/income');
+    if (data is! List) {
+      return const [];
+    }
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map((json) => PersonIncomeModel.fromJson(json).toDomain())
         .toList(growable: false);
   }
 

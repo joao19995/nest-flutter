@@ -2,8 +2,34 @@ import 'package:flutter/foundation.dart';
 import 'package:nest/data/repositories/people_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/person.dart';
+import 'package:nest/domain/models/person_income.dart';
 
-/// Presentation state for the people list and its create form.
+/// Read-only salary summary for one household member.
+class PersonSalarySummary {
+  const PersonSalarySummary({
+    required this.person,
+    required this.monthlyIncome,
+    required this.currentIncomeId,
+    required this.dailySpending,
+    required this.incomes,
+  });
+
+  final Person person;
+
+  /// The income applicable to the current month, in euros.
+  final double monthlyIncome;
+
+  /// The id of the income record applicable to the current month, if any.
+  final String? currentIncomeId;
+
+  /// The amount of [monthlyIncome] allocated to daily spending, in euros.
+  final double dailySpending;
+
+  /// The full income history, ordered by `validFrom` (oldest first).
+  final List<PersonIncome> incomes;
+}
+
+/// Presentation state for the informative people/salaries page.
 class PeopleViewModel extends ChangeNotifier {
   PeopleViewModel({required PeopleRepository peopleRepository})
     : _peopleRepository = peopleRepository;
@@ -16,18 +42,39 @@ class PeopleViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  List<Person> _people = const [];
-  List<Person> get people => _people;
+  List<PersonSalarySummary> _summaries = const [];
+  List<PersonSalarySummary> get summaries => _summaries;
 
-  bool get isEmpty => _people.isEmpty;
+  bool get isEmpty => _summaries.isEmpty;
 
-  /// Loads the people list.
+  /// Loads people and their income history, then derives the current salary
+  /// and daily spending per person.
+  ///
+  /// Reads run sequentially: the API shares a single database connection, so
+  /// concurrent requests gain nothing and can stall.
   Future<void> load() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
     try {
-      _people = await _peopleRepository.fetchPeople();
+      final people = await _peopleRepository.fetchPeople();
+      final month = _currentMonth();
+      final summaries = <PersonSalarySummary>[];
+      for (final person in people) {
+        final incomes = await _peopleRepository.fetchIncomes(person.id);
+        final current = PersonIncome.applicableFor(incomes, person.id, month);
+        final monthlyIncome = current?.amount ?? 0;
+        summaries.add(
+          PersonSalarySummary(
+            person: person,
+            monthlyIncome: monthlyIncome,
+            currentIncomeId: current?.id,
+            dailySpending: monthlyIncome * person.dailySpendingPercentage / 100,
+            incomes: incomes,
+          ),
+        );
+      }
+      _summaries = summaries;
     } on ApiFailure catch (failure) {
       _errorMessage = failure.message;
     } finally {
@@ -36,27 +83,10 @@ class PeopleViewModel extends ChangeNotifier {
     }
   }
 
-  /// Creates a person and reloads the list.
-  ///
-  /// Returns `true` on success; on failure sets [errorMessage] and returns
-  /// `false` so the form can stay open.
-  Future<bool> createPerson({
-    required String name,
-    required double dailySpendingPercentage,
-    required int emergencyFundMonths,
-  }) async {
-    try {
-      await _peopleRepository.createPerson(
-        name: name,
-        dailySpendingPercentage: dailySpendingPercentage,
-        emergencyFundMonths: emergencyFundMonths,
-      );
-      await load();
-      return true;
-    } on ApiFailure catch (failure) {
-      _errorMessage = failure.message;
-      notifyListeners();
-      return false;
-    }
+  static String _currentMonth() {
+    final now = DateTime.now();
+    final year = now.year.toString().padLeft(4, '0');
+    final month = now.month.toString().padLeft(2, '0');
+    return '$year-$month';
   }
 }
