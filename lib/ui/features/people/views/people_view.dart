@@ -54,7 +54,7 @@ class _PeopleViewState extends State<PeopleView> {
             isEmpty: viewModel.isEmpty,
             onRetry: viewModel.load,
             emptyMessage: 'Ainda não há pessoas.',
-            child: _SalaryList(summaries: viewModel.summaries),
+            child: _PeopleContent(viewModel: viewModel),
           ),
         ),
       ),
@@ -62,40 +62,86 @@ class _PeopleViewState extends State<PeopleView> {
   }
 }
 
-class _SalaryList extends StatelessWidget {
-  const _SalaryList({required this.summaries});
+class _PeopleContent extends StatelessWidget {
+  const _PeopleContent({required this.viewModel});
 
-  final List<PersonSalarySummary> summaries;
+  final PeopleViewModel viewModel;
 
   @override
   Widget build(BuildContext context) {
+    final summaries = viewModel.summaries;
+    final cards = <Widget>[
+      for (final summary in summaries) _SalaryCard(summary: summary),
+    ];
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= AppBreakpoints.md;
-        if (!isWide) {
-          return ListView.separated(
-            itemCount: summaries.length,
-            separatorBuilder: (context, index) =>
-                const SizedBox(height: AppSpacing.md),
-            itemBuilder: (context, index) =>
-                _SalaryCard(summary: summaries[index]),
-          );
-        }
-        final cardWidth = (constraints.maxWidth - AppSpacing.lg) / 2;
         return SingleChildScrollView(
-          child: Wrap(
-            spacing: AppSpacing.lg,
-            runSpacing: AppSpacing.lg,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final summary in summaries)
-                SizedBox(
-                  width: cardWidth,
-                  child: _SalaryCard(summary: summary),
-                ),
+              _HouseholdIncomeHero(income: viewModel.householdIncome),
+              const SizedBox(height: AppSpacing.xl),
+              Text('POR PESSOA', style: AppTextStyles.navSection),
+              const SizedBox(height: AppSpacing.md),
+              if (isWide)
+                Wrap(
+                  spacing: AppSpacing.lg,
+                  runSpacing: AppSpacing.lg,
+                  children: [
+                    for (final card in cards)
+                      SizedBox(
+                        width: (constraints.maxWidth - AppSpacing.lg) / 2,
+                        child: card,
+                      ),
+                  ],
+                )
+              else
+                for (var index = 0; index < cards.length; index++) ...[
+                  if (index > 0) const SizedBox(height: AppSpacing.md),
+                  cards[index],
+                ],
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// The household total shown above the per-person breakdown.
+///
+/// Uses a tinted, shadowless panel so it reads as a summary banner rather than
+/// another entry in the list below.
+class _HouseholdIncomeHero extends StatelessWidget {
+  const _HouseholdIncomeHero({required this.income});
+
+  final double income;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(AppBreakpoints.cardPadding(context)),
+      decoration: const BoxDecoration(
+        color: AppColors.mint,
+        borderRadius: AppRadius.mdAll,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'RENDA DO AGREGADO',
+            style: AppTextStyles.navSection.copyWith(
+              color: AppColors.primaryDark,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            AppFormatters.currency(income),
+            style: AppTextStyles.statDisplay.copyWith(color: AppColors.primary),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -47,6 +47,10 @@ class PeopleViewModel extends ChangeNotifier {
 
   bool get isEmpty => _summaries.isEmpty;
 
+  /// The household's total monthly income, in euros.
+  double get householdIncome =>
+      _summaries.fold<double>(0, (sum, summary) => sum + summary.monthlyIncome);
+
   /// Loads people and their income history, then derives the current salary
   /// and daily spending per person.
   ///
