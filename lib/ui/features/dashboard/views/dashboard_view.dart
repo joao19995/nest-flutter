@@ -126,6 +126,7 @@ class _StatGrid extends StatelessWidget {
       builder: (context, constraints) {
         if (constraints.maxWidth < AppBreakpoints.md) {
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (final card in cards) ...[
                 card,

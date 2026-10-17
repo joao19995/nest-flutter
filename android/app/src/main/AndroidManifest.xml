@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Nest talks to the household API over the network. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="nest"
         android:name="${applicationName}"

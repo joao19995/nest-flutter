@@ -108,8 +108,9 @@ class _PersonCard extends StatelessWidget {
                 Text(person.name, style: AppTextStyles.sectionHeading),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Gasto diário: ${person.dailySpendingPercentage}% · '
-                  'Emergência: ${person.emergencyFundMonths} meses',
+                  'Gasto diário: '
+                  '${AppFormatters.percentage(person.dailySpendingPercentage)}'
+                  ' · Emergência: ${person.emergencyFundMonths} meses',
                   style: AppTextStyles.bodyMuted,
                 ),
               ],
