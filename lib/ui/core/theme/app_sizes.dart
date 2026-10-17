@@ -18,6 +18,9 @@ abstract final class AppSizes {
   /// Stat-card icons.
   static const double iconLarge = 20;
 
+  /// Empty-state and placeholder icons.
+  static const double iconDisplay = 32;
+
   /// Minimum height of an interactive button.
   static const double buttonHeight = 40;
 }

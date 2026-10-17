@@ -93,7 +93,7 @@ class _StateMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 32, color: AppColors.faint),
+            Icon(icon, size: AppSizes.iconDisplay, color: AppColors.faint),
             const SizedBox(height: AppSpacing.md),
             Text(
               title,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:nest/ui/core/theme/app_colors.dart';
 import 'package:nest/ui/core/theme/app_radius.dart';
+import 'package:nest/ui/core/theme/app_sizes.dart';
 import 'package:nest/ui/core/theme/app_spacing.dart';
 import 'package:nest/ui/core/theme/app_text_styles.dart';
 
@@ -54,6 +55,44 @@ abstract final class AppTheme {
         color: AppColors.line,
         thickness: 1,
         space: 0,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: AppColors.surface,
+        indicatorColor: AppColors.mint,
+        elevation: 0,
+        height: AppSizes.mobileBottomNavHeight,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            size: AppSizes.iconLarge,
+            color: selected ? AppColors.primaryDark : AppColors.faint,
+          );
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return AppTextStyles.label.copyWith(
+            color: selected ? AppColors.primaryDark : AppColors.muted,
+          );
+        }),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: AppColors.surface,
+        indicatorColor: AppColors.mint,
+        selectedIconTheme: const IconThemeData(
+          size: AppSizes.iconLarge,
+          color: AppColors.primaryDark,
+        ),
+        unselectedIconTheme: const IconThemeData(
+          size: AppSizes.iconLarge,
+          color: AppColors.faint,
+        ),
+        selectedLabelTextStyle: AppTextStyles.label.copyWith(
+          color: AppColors.primaryDark,
+        ),
+        unselectedLabelTextStyle: AppTextStyles.label.copyWith(
+          color: AppColors.muted,
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
