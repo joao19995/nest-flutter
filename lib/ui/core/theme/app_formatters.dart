@@ -137,6 +137,12 @@ abstract final class AppFormatters {
   static String shortDate(DateTime date) =>
       '${date.day} ${_monthNames[date.month - 1]} ${date.year}';
 
+  /// A compact weekday-and-date label without the year.
+  /// Example: `2026-10-18` → `"Dom, 18 out"`.
+  static String weekdayDayMonth(DateTime date) =>
+      '${_weekdayShort[date.weekday - 1]}, ${date.day} '
+      '${_monthNames[date.month - 1]}';
+
   /// A wall-clock time with zero-padded hour and minute.
   /// Example: `09:30`.
   static String time(DateTime date) =>

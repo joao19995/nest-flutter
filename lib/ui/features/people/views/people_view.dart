@@ -35,13 +35,21 @@ class _PeopleViewState extends State<PeopleView>
         listenable: viewModel,
         builder: (context, _) => Padding(
           padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
-          child: AsyncView(
-            isLoading: viewModel.isLoading,
-            errorMessage: viewModel.errorMessage,
-            isEmpty: viewModel.isEmpty,
-            onRetry: viewModel.load,
-            emptyMessage: 'Ainda não há pessoas.',
-            child: _PeopleContent(viewModel: viewModel),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppSizes.contentMaxWidth,
+              ),
+              child: AsyncView(
+                isLoading: viewModel.isLoading,
+                errorMessage: viewModel.errorMessage,
+                isEmpty: viewModel.isEmpty,
+                onRetry: viewModel.load,
+                emptyMessage: 'Ainda não há pessoas.',
+                child: _PeopleContent(viewModel: viewModel),
+              ),
+            ),
           ),
         ),
       ),
@@ -62,7 +70,7 @@ class _PeopleContent extends StatelessWidget {
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= AppBreakpoints.md;
+        final isWide = constraints.maxWidth >= AppBreakpoints.sm;
         return SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

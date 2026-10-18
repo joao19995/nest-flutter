@@ -23,6 +23,10 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
+# Local API config (contains NEST_API_KEY). Copy config/dev.example.json.
+/config/dev.json
+/config/android.json
+
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id

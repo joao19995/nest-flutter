@@ -9,7 +9,11 @@ import 'package:nest/ui/features/goals/views/goal_month_detail_view.dart';
 /// A read-only panorama of the year's savings goals: how much was reserved in
 /// total and per month, and how much went to each goal.
 class GoalsView extends StatefulWidget {
-  const GoalsView({super.key});
+  const GoalsView({super.key, this.embedded = false});
+
+  /// When true the view renders only its content — no [Scaffold] or [AppBar] —
+  /// so a parent (e.g. Finanças) can host it under a shared app bar.
+  final bool embedded;
 
   @override
   State<GoalsView> createState() => _GoalsViewState();
@@ -28,15 +32,19 @@ class _GoalsViewState extends State<GoalsView>
 
   @override
   Widget build(BuildContext context) {
+    final body = ListenableBuilder(
+      listenable: viewModel,
+      builder: (context, _) => Padding(
+        padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
+        child: _GoalsContent(viewModel: viewModel),
+      ),
+    );
+    if (widget.embedded) {
+      return body;
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Objectivos')),
-      body: ListenableBuilder(
-        listenable: viewModel,
-        builder: (context, _) => Padding(
-          padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
-          child: _GoalsContent(viewModel: viewModel),
-        ),
-      ),
+      body: body,
     );
   }
 }

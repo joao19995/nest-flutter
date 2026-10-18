@@ -10,7 +10,11 @@ import 'package:nest/ui/features/expenses/views/month_detail_view.dart';
 /// A read-only panorama of the year's expenses: the total spent and a
 /// month-by-month breakdown of what was spent against what was planned.
 class ExpensesView extends StatefulWidget {
-  const ExpensesView({super.key});
+  const ExpensesView({super.key, this.embedded = false});
+
+  /// When true the view renders only its content — no [Scaffold] or [AppBar] —
+  /// so a parent (e.g. Finanças) can host it under a shared app bar.
+  final bool embedded;
 
   @override
   State<ExpensesView> createState() => _ExpensesViewState();
@@ -31,15 +35,19 @@ class _ExpensesViewState extends State<ExpensesView>
 
   @override
   Widget build(BuildContext context) {
+    final body = ListenableBuilder(
+      listenable: viewModel,
+      builder: (context, _) => Padding(
+        padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
+        child: _ExpensesContent(viewModel: viewModel),
+      ),
+    );
+    if (widget.embedded) {
+      return body;
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Despesas')),
-      body: ListenableBuilder(
-        listenable: viewModel,
-        builder: (context, _) => Padding(
-          padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
-          child: _ExpensesContent(viewModel: viewModel),
-        ),
-      ),
+      body: body,
     );
   }
 }

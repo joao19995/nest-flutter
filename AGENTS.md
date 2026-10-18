@@ -119,12 +119,24 @@ The web app must be running first (its `NEST_API_KEY` is in the web repo
 `.env.local`). `--dart-define` values are compile-time, so the built binary
 bakes them in — always pass them on the command line you actually run.
 
-| Target         | `NEST_API_BASE_URL`         |
-| -------------- | --------------------------- |
-| Windows/Linux  | `http://localhost:3000`     |
-| Android emu.   | `http://10.0.2.2:3000`      |
-| iOS simulator  | `http://localhost:3000`     |
-| Physical phone | `http://<LAN IP>:3000`      |
+Do **not** retype the URL and key: keep them in a local JSON file and run
+`flutter` with `--dart-define-from-file`. Copy the committed template once per
+target and paste the key from the web `.env.local`.
+
+```powershell
+Copy-Item config/dev.example.json config/dev.json      # desktop / iOS
+Copy-Item config/dev.example.json config/android.json  # Android emulator
+```
+
+`config/dev.json` and `config/android.json` are git-ignored; only
+`config/dev.example.json` is committed.
+
+| Target         | `NEST_API_BASE_URL`         | File                  |
+| -------------- | --------------------------- | --------------------- |
+| Windows/Linux  | `http://localhost:3000`     | `config/dev.json`     |
+| Android emu.   | `http://10.0.2.2:3000`      | `config/android.json` |
+| iOS simulator  | `http://localhost:3000`     | `config/dev.json`     |
+| Physical phone | `http://<LAN IP>:3000`      | `config/dev.json`     |
 
 `10.0.2.2` is the Android emulator's alias for the host machine; `localhost`
 inside the emulator means the emulator itself. For a physical device the web
@@ -132,11 +144,11 @@ server must listen on `0.0.0.0` and the firewall must allow port 3000.
 
 ```powershell
 # Desktop (hot reload: r = reload, R = restart, q = quit)
-flutter run -d windows --dart-define=NEST_API_BASE_URL=http://localhost:3000 --dart-define=NEST_API_KEY=<key>
+flutter run -d windows --dart-define-from-file=config/dev.json
 
 # Android emulator
 flutter emulators --launch Medium_Phone_API_36.0
-flutter run -d emulator-5554 --dart-define=NEST_API_BASE_URL=http://10.0.2.2:3000 --dart-define=NEST_API_KEY=<key>
+flutter run -d emulator-5554 --dart-define-from-file=config/android.json
 ```
 
 Flutter web (`-d chrome`) is **not** usable against the local API: the browser

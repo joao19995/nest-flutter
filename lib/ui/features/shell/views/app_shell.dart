@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:nest/domain/models/todo_list.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/calendar/views/calendar_view.dart';
-import 'package:nest/ui/features/expenses/views/expenses_view.dart';
-import 'package:nest/ui/features/goals/views/goals_view.dart';
+import 'package:nest/ui/features/dashboard/views/dashboard_view.dart';
+import 'package:nest/ui/features/expenses/views/month_detail_view.dart';
+import 'package:nest/ui/features/finances/views/finances_view.dart';
+import 'package:nest/ui/features/more/views/more_view.dart';
 import 'package:nest/ui/features/people/views/people_view.dart';
+import 'package:nest/ui/features/settings/views/settings_view.dart';
 import 'package:nest/ui/features/todos/view_models/todos_view_model.dart';
 import 'package:nest/ui/features/todos/views/todos_view.dart';
 
 /// The application shell: hosts the primary destinations and the navigation
 /// that switches between them.
 ///
-/// Small viewports get a bottom navigation bar; tablet and wider get a side
-/// rail. Pages live in an [IndexedStack] so their state survives tab changes.
-/// The shell owns the to-do view model so the pending count can badge the
-/// Tarefas destination.
+/// Small viewports get four primary tabs plus a "Mais" hub; tablet and wider
+/// get a flat side rail that surfaces every destination directly. Pages live
+/// in an [IndexedStack] so their state survives tab changes. The shell owns the
+/// to-do view model so the pending count can badge the Tarefas destination.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -23,9 +27,30 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  static const List<_NavDestination> _mobileDestinations = [
+    _NavDestination.inicio,
+    _NavDestination.tarefas,
+    _NavDestination.calendario,
+    _NavDestination.financas,
+    _NavDestination.mais,
+  ];
+
+  static const List<_NavDestination> _tabletDestinations = [
+    _NavDestination.inicio,
+    _NavDestination.tarefas,
+    _NavDestination.calendario,
+    _NavDestination.financas,
+    _NavDestination.pessoas,
+    _NavDestination.definicoes,
+  ];
+
   TodosViewModel? _todosViewModel;
 
-  int _selectedIndex = 0;
+  _NavDestination _selected = _NavDestination.inicio;
+
+  /// The section Finanças opens on, so the dashboard's goals card can deep-link
+  /// straight to Objectivos.
+  FinancesSection _financesSection = FinancesSection.expenses;
 
   @override
   void didChangeDependencies() {
@@ -45,8 +70,27 @@ class _AppShellState extends State<AppShell> {
     super.dispose();
   }
 
-  void _select(int index) {
-    setState(() => _selectedIndex = index);
+  void _select(_NavDestination destination) {
+    setState(() => _selected = destination);
+  }
+
+  /// Opens Finanças on the Objectivos section.
+  void _openGoals() {
+    setState(() {
+      _financesSection = FinancesSection.goals;
+      _selected = _NavDestination.financas;
+    });
+  }
+
+  /// Opens Finanças on Despesas and the given month's detail.
+  void _openMonth(String month) {
+    setState(() {
+      _financesSection = FinancesSection.expenses;
+      _selected = _NavDestination.financas;
+    });
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => MonthDetailView(month: month)),
+    );
   }
 
   @override
@@ -62,36 +106,37 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildScaffold(int pending) {
-    final pages = <Widget>[
-      TodosView(viewModel: _todosViewModel),
-      const CalendarView(),
-      const ExpensesView(),
-      const GoalsView(),
-      const PeopleView(),
-    ];
-    final body = IndexedStack(index: _selectedIndex, children: pages);
-    if (AppBreakpoints.isTabletOrWider(context)) {
+    final isTablet = AppBreakpoints.isTabletOrWider(context);
+    final destinations = isTablet ? _tabletDestinations : _mobileDestinations;
+    final selectedIndex = _indexOf(destinations);
+
+    final body = IndexedStack(
+      index: selectedIndex,
+      children: [for (final destination in destinations) _pageFor(destination)],
+    );
+
+    if (isTablet) {
       return Scaffold(
         body: Row(
           children: [
             NavigationRail(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: _select,
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (index) => _select(destinations[index]),
               labelType: NavigationRailLabelType.all,
               destinations: [
-                for (final item in _NavigationItem.values)
+                for (final destination in destinations)
                   NavigationRailDestination(
                     icon: _destinationIcon(
-                      item,
+                      destination,
                       selected: false,
                       pending: pending,
                     ),
                     selectedIcon: _destinationIcon(
-                      item,
+                      destination,
                       selected: true,
                       pending: pending,
                     ),
-                    label: Text(item.label),
+                    label: Text(destination.label),
                   ),
               ],
             ),
@@ -101,35 +146,77 @@ class _AppShellState extends State<AppShell> {
         ),
       );
     }
+
     return Scaffold(
       body: body,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _select,
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (index) => _select(destinations[index]),
         destinations: [
-          for (final item in _NavigationItem.values)
+          for (final destination in destinations)
             NavigationDestination(
-              icon: _destinationIcon(item, selected: false, pending: pending),
+              icon: _destinationIcon(
+                destination,
+                selected: false,
+                pending: pending,
+              ),
               selectedIcon: _destinationIcon(
-                item,
+                destination,
                 selected: true,
                 pending: pending,
               ),
-              label: item.label,
+              label: destination.label,
             ),
         ],
       ),
     );
   }
 
+  /// The index of the selected destination in [destinations], falling back to
+  /// the first when the current selection is not available in this layout.
+  int _indexOf(List<_NavDestination> destinations) {
+    final index = destinations.indexOf(_selected);
+    return index < 0 ? 0 : index;
+  }
+
+  Widget _pageFor(_NavDestination destination) {
+    return switch (destination) {
+      _NavDestination.inicio => DashboardView(
+        pendingTaskCount: _todosViewModel?.pendingCount ?? 0,
+        pendingTaskLists: [
+          for (final list in _todosViewModel?.lists ?? const <TodoList>[])
+            if (list.remaining > 0)
+              DashboardTaskList(
+                name: list.name,
+                done: list.done,
+                total: list.total,
+              ),
+        ],
+        onOpenCalendar: () => _select(_NavDestination.calendario),
+        onOpenTodos: () => _select(_NavDestination.tarefas),
+        onOpenGoals: _openGoals,
+        onOpenMonth: _openMonth,
+      ),
+      _NavDestination.tarefas => TodosView(viewModel: _todosViewModel),
+      _NavDestination.calendario => const CalendarView(),
+      _NavDestination.financas => FinancesView(
+        key: ValueKey(_financesSection),
+        initialSection: _financesSection,
+      ),
+      _NavDestination.pessoas => const PeopleView(),
+      _NavDestination.definicoes => const SettingsView(),
+      _NavDestination.mais => const MoreView(),
+    };
+  }
+
   /// The destination icon, badged with the pending task count on Tarefas.
   Widget _destinationIcon(
-    _NavigationItem item, {
+    _NavDestination destination, {
     required bool selected,
     required int pending,
   }) {
-    final icon = Icon(selected ? item.selectedIcon : item.icon);
-    if (item != _NavigationItem.todos || pending <= 0) {
+    final icon = Icon(selected ? destination.selectedIcon : destination.icon);
+    if (destination != _NavDestination.tarefas || pending <= 0) {
       return icon;
     }
     return Badge(
@@ -141,35 +228,40 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-/// The primary destinations, in the order they appear in the shell.
-enum _NavigationItem {
-  todos(
+/// The primary destinations.
+///
+/// Mobile shows the first four plus [mais]; tablet and wider also surface
+/// [pessoas] and [definicoes] directly and drop the [mais] hub.
+enum _NavDestination {
+  inicio(label: 'Início', icon: Icons.home_outlined, selectedIcon: Icons.home),
+  tarefas(
     label: 'Tarefas',
     icon: Icons.checklist_outlined,
     selectedIcon: Icons.checklist,
   ),
-  calendar(
+  calendario(
     label: 'Calendário',
     icon: Icons.calendar_month_outlined,
     selectedIcon: Icons.calendar_month,
   ),
-  expenses(
-    label: 'Despesas',
-    icon: Icons.receipt_long_outlined,
-    selectedIcon: Icons.receipt_long,
+  financas(
+    label: 'Finanças',
+    icon: Icons.account_balance_wallet_outlined,
+    selectedIcon: Icons.account_balance_wallet,
   ),
-  goals(
-    label: 'Objectivos',
-    icon: Icons.flag_outlined,
-    selectedIcon: Icons.flag,
-  ),
-  people(
+  mais(label: 'Mais', icon: Icons.more_horiz, selectedIcon: Icons.more_horiz),
+  pessoas(
     label: 'Pessoas',
     icon: Icons.people_outline,
     selectedIcon: Icons.people,
+  ),
+  definicoes(
+    label: 'Definições',
+    icon: Icons.settings_outlined,
+    selectedIcon: Icons.settings,
   );
 
-  const _NavigationItem({
+  const _NavDestination({
     required this.label,
     required this.icon,
     required this.selectedIcon,
