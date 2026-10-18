@@ -1,3 +1,4 @@
+import 'package:nest/data/models/expense_year_summary_model.dart';
 import 'package:nest/domain/models/month_settlement.dart';
 import 'package:nest/domain/models/monthly_plan.dart';
 
@@ -8,11 +9,13 @@ class MonthlyPlanModel {
     required this.month,
     required this.closed,
     required this.entries,
+    required this.summary,
     required this.settlement,
   });
 
   factory MonthlyPlanModel.fromJson(Map<String, dynamic> json) {
     final entries = json['entries'];
+    final summary = json['summary'];
     final settlement = json['settlement'];
     return MonthlyPlanModel(
       id: json['id'] as String,
@@ -24,6 +27,9 @@ class MonthlyPlanModel {
                 .map(MonthlyPlanEntryModel.fromJson)
                 .toList(growable: false)
           : const [],
+      summary: summary is Map<String, dynamic>
+          ? ExpenseMonthSummaryModel.fromJson(summary)
+          : ExpenseMonthSummaryModel.empty(json['month'] as String? ?? ''),
       settlement: settlement is Map<String, dynamic>
           ? MonthSettlementModel.fromJson(settlement)
           : null,
@@ -34,6 +40,7 @@ class MonthlyPlanModel {
   final String month;
   final bool closed;
   final List<MonthlyPlanEntryModel> entries;
+  final ExpenseMonthSummaryModel summary;
   final MonthSettlementModel? settlement;
 
   MonthlyPlan toDomain() => MonthlyPlan(
@@ -41,6 +48,7 @@ class MonthlyPlanModel {
     month: month,
     closed: closed,
     entries: entries.map((entry) => entry.toDomain()).toList(growable: false),
+    summary: summary.toDomain(),
     settlement: settlement?.toDomain(),
   );
 }

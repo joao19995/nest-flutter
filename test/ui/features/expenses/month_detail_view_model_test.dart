@@ -45,6 +45,14 @@ Map<String, dynamic> _month({
       'actual': actual,
     },
   ],
+  'summary': {
+    'month': '2026-02',
+    'status': closed ? 'closed' : 'open',
+    'planned': 450,
+    'actual': actual,
+    'progressPct': actual / 450 * 100,
+    'over': actual > 450.005,
+  },
   'settlement': null,
 };
 
@@ -122,7 +130,7 @@ void main() {
     await viewModel.load();
     await viewModel.updateEntryActual('e1', 500);
 
-    expect(patchedPath, '/api/months/m2/entries/e1');
+    expect(patchedPath, '/api/months/2026-02/entries/e1');
     expect((body as Map<String, dynamic>)['actual'], 500);
     expect(viewModel.plan?.actual, 500);
     expect(viewModel.isBusy, isFalse);

@@ -18,7 +18,6 @@ void main() {
       expect(income.personId, 'p1');
       expect(income.amount, 1500);
       expect(income.validFrom, '2025-01-01');
-      expect(income.validFromMonth, '2025-01');
     });
   });
 }

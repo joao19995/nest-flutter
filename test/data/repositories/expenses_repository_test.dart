@@ -88,9 +88,29 @@ void main() {
       }),
     );
 
-    await repository.updateEntryActual('m1', 'e1', 500);
+    await repository.updateEntryActual('2026-01', 'e1', 500);
 
-    expect(path, '/api/months/m1/entries/e1');
+    expect(path, '/api/months/2026-01/entries/e1');
     expect((body as Map<String, dynamic>)['actual'], 500);
+  });
+
+  test('closeMonth posts to the month close endpoint', () async {
+    String? path;
+    final repository = _repository(
+      MockClient((request) async {
+        path = request.url.path;
+        return _json(const {
+          'id': 'm1',
+          'month': '2026-01',
+          'closed': true,
+          'entries': <Object>[],
+          'settlement': null,
+        });
+      }),
+    );
+
+    await repository.closeMonth('2026-01');
+
+    expect(path, '/api/months/2026-01/close');
   });
 }

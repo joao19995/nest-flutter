@@ -1,29 +1,25 @@
 import 'package:flutter/foundation.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
-import 'package:nest/data/repositories/people_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
-import 'package:nest/domain/models/goal_transfer.dart';
+import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/goal_year.dart';
-import 'package:nest/domain/models/person_income.dart';
 
 /// Presentation state for a single month's goal detail.
+///
+/// The month's plan, available amount and per-person quotas all come from the
+/// server (`GET /api/goal-plan/{month}`); the client only edits the reserved
+/// values and asks the server to recompute the quotas.
 class GoalMonthDetailViewModel extends ChangeNotifier {
   GoalMonthDetailViewModel({
     required GoalsRepository goalsRepository,
-    required PeopleRepository peopleRepository,
     required String month,
   }) : _goalsRepository = goalsRepository,
-       _peopleRepository = peopleRepository,
        _month = month;
-
-  /// Months with a fixed bonus (June and December allowances).
-  static const List<int> _bonusMonths = [6, 12];
 
   /// The tolerance under which an amount is treated as zero.
   static const double _epsilon = 0.005;
 
   final GoalsRepository _goalsRepository;
-  final PeopleRepository _peopleRepository;
 
   final String _month;
   String get month => _month;
@@ -34,15 +30,12 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  GoalPlan? _plan;
-  GoalPlan? get plan => _plan;
+  GoalMonthView? _view;
 
-  List<GoalTransfer> _transfers = const [];
+  GoalPlan? get plan => _view?.plan;
 
-  /// Who transfers what towards this month's goals.
-  List<GoalTransfer> get transfers => _transfers;
-
-  List<GoalEarning> _earnings = const [];
+  /// Who transfers what towards this month's goals, computed by the server.
+  List<GoalMonthQuota> get transfers => _view?.quotas ?? const [];
 
   bool _isBusy = false;
   bool get isBusy => _isBusy;
@@ -52,24 +45,25 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
 
   /// True when the month is created and still open for editing.
   bool get isOpen {
-    final plan = _plan;
+    final plan = _view?.plan;
     return plan != null && !plan.closed;
   }
 
   /// The month's total planned, in euros.
   double get planned =>
-      _plan?.allocations.fold<double>(0, (sum, item) => sum + item.planned) ??
+      _view?.plan?.allocations.fold<double>(
+        0,
+        (sum, item) => sum + item.planned,
+      ) ??
       0;
 
   /// The month's total reserved, in euros.
-  double get reserved => _plan?.reserved ?? 0;
+  double get reserved => _view?.plan?.reserved ?? 0;
 
   /// The month's available amount, in euros.
-  double get available => _plan?.availableAmount ?? 0;
+  double get available => _view?.availableAmount ?? 0;
 
-  /// Loads the plan of the selected month and the monthly transfers.
-  ///
-  /// Reads run sequentially: the API shares a single database connection.
+  /// Loads the month view (plan, available amount and quotas).
   Future<void> load() async {
     _isLoading = true;
     _errorMessage = null;
@@ -77,19 +71,11 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
     notifyListeners();
     final month = _month;
     try {
-      final plan = await _goalsRepository.fetchGoalMonth(month);
-      final earnings = plan == null
-          ? const <GoalEarning>[]
-          : await _loadEarnings(month);
-      final transfers = plan == null
-          ? const <GoalTransfer>[]
-          : _distribute(plan, earnings);
+      final view = await _goalsRepository.fetchGoalMonth(month);
       if (month != _month) {
         return;
       }
-      _earnings = earnings;
-      _plan = plan;
-      _transfers = transfers;
+      _view = view;
     } on ApiFailure catch (failure) {
       if (month == _month) {
         _errorMessage = failure.message;
@@ -121,9 +107,10 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
     }
   }
 
-  /// Saves the reserved amount of [goalId] in the open month.
+  /// Saves the reserved amount of [goalId] in the open month and refreshes the
+  /// quotas from the server.
   Future<void> updateAllocationActual(String goalId, double actual) async {
-    final plan = _plan;
+    final plan = _view?.plan;
     if (plan == null || plan.closed || _isBusy) {
       return;
     }
@@ -132,12 +119,22 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final updated = await _goalsRepository.updateGoalAllocation(
-        plan.id,
+        _month,
         goalId,
         actual,
       );
-      _plan = updated;
-      _transfers = _distribute(updated, _earnings);
+      final quotas = await _goalsRepository.computeGoalQuotas(
+        _month,
+        _drafts(updated),
+      );
+      final view = _view;
+      if (view != null) {
+        _view = GoalMonthView(
+          plan: updated,
+          availableAmount: view.availableAmount,
+          quotas: quotas,
+        );
+      }
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
     } finally {
@@ -149,7 +146,7 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
   /// Saves untouched reserved amounts, distributes what is missing and closes
   /// the month. The reserved defaults to the planned value per goal.
   Future<void> closeMonth() async {
-    final plan = _plan;
+    final plan = _view?.plan;
     if (plan == null || plan.closed || _isBusy) {
       return;
     }
@@ -161,7 +158,7 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
       for (final allocation in plan.allocations) {
         if (allocation.actual <= _epsilon && allocation.planned > 0) {
           current = await _goalsRepository.updateGoalAllocation(
-            current.id,
+            _month,
             allocation.goalId,
             allocation.planned,
           );
@@ -174,54 +171,28 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
       if ((current.availableAmount - plannedTotal).abs() > _epsilon) {
         await _goalsRepository.adjustGoalPlanFromTemplate(_month);
       }
-      final closed = await _goalsRepository.closeGoalPlan(current.id);
-      _plan = closed;
-      _transfers = _distribute(closed, _earnings);
+      await _goalsRepository.closeGoalPlan(_month);
+      _isBusy = false;
+      await load();
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
-    } finally {
       _isBusy = false;
       notifyListeners();
     }
   }
 
-  List<GoalTransfer> _distribute(GoalPlan plan, List<GoalEarning> earnings) {
-    if (plan.reserved <= 0) {
-      return const [];
-    }
-    return GoalTransfer.distribute(
-      reservedTotal: plan.reserved,
-      earnings: earnings,
-      goals: <GoalTransferPart>[
-        for (final allocation in plan.allocations)
-          GoalTransferPart(
-            goalId: allocation.goalId,
-            name: allocation.goalName,
-            amount: allocation.actual,
-          ),
-      ],
-    );
-  }
-
-  Future<List<GoalEarning>> _loadEarnings(String month) async {
-    final people = await _peopleRepository.fetchPeople();
-    final bonus = _bonusMonths.contains(_monthNumber(month));
-    final earnings = <GoalEarning>[];
-    for (final person in people) {
-      final incomes = await _peopleRepository.fetchIncomes(person.id);
-      final salary =
-          PersonIncome.applicableFor(incomes, person.id, month)?.amount ?? 0;
-      earnings.add(
-        GoalEarning(
-          personId: person.id,
-          name: person.name,
-          earning: bonus ? salary * 2 : salary,
-        ),
-      );
-    }
-    return earnings;
-  }
-
-  static int _monthNumber(String month) =>
-      int.tryParse(month.length >= 7 ? month.substring(5, 7) : '') ?? 0;
+  /// The reserved value each allocation contributes to the quotas: the actual
+  /// when set, otherwise the planned (the pre-fill convention, server-side).
+  List<GoalQuotaDraft> _drafts(GoalPlan plan) => [
+    for (final allocation in plan.allocations)
+      (
+        goalId: allocation.goalId,
+        name: allocation.goalName,
+        amount: plan.closed
+            ? allocation.actual
+            : allocation.actual > 0
+            ? allocation.actual
+            : allocation.planned,
+      ),
+  ];
 }

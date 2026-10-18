@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nest/domain/models/goal_transfer.dart';
+import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/goal_year.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
@@ -53,7 +53,6 @@ class _GoalMonthPageState extends State<_GoalMonthPage>
     final dependencies = DependenciesScope.of(context);
     return GoalMonthDetailViewModel(
       goalsRepository: dependencies.goalsRepository,
-      peopleRepository: dependencies.peopleRepository,
       month: widget.month,
     );
   }
@@ -314,7 +313,7 @@ class _GoalRow extends StatelessWidget {
 class _TransfersCard extends StatelessWidget {
   const _TransfersCard({required this.transfers, required this.reserved});
 
-  final List<GoalTransfer> transfers;
+  final List<GoalMonthQuota> transfers;
   final double reserved;
 
   @override
@@ -346,7 +345,7 @@ class _TransfersCard extends StatelessWidget {
 class _TransferRow extends StatelessWidget {
   const _TransferRow({required this.transfer, required this.reserved});
 
-  final GoalTransfer transfer;
+  final GoalMonthQuota transfer;
   final double reserved;
 
   @override

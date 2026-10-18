@@ -42,6 +42,14 @@ void main() {
             },
           ],
         },
+        'summary': {
+          'month': '2026-01',
+          'status': 'closed',
+          'planned': 470,
+          'actual': 491.94,
+          'progressPct': 104.7,
+          'over': true,
+        },
       };
 
       final MonthlyPlan plan = MonthlyPlanModel.fromJson(json).toDomain();
@@ -56,8 +64,8 @@ void main() {
       final casa = plan.entries.first;
       expect(casa.categoryName, 'Casa');
       expect(casa.accountName, 'João');
-      expect(casa.diff, closeTo(21.94, 0.001));
-      expect(casa.isOver, isTrue);
+      expect(casa.planned, 450);
+      expect(casa.actual, 471.94);
 
       final settlement = plan.settlement;
       expect(settlement, isNotNull);

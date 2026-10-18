@@ -1,3 +1,4 @@
+import 'package:nest/domain/models/expense_year_summary.dart';
 import 'package:nest/domain/models/month_settlement.dart';
 
 /// A single planned expense line inside a month.
@@ -23,29 +24,20 @@ class MonthlyPlanEntry {
 
   /// The amount actually spent on the line, in euros.
   final double actual;
-
-  /// `actual - planned`, in euros. Positive means over plan.
-  double get diff => actual - planned;
-
-  /// True when the actual spend exceeds the planned amount.
-  bool get isOver => diff > 0.005;
-
-  /// The share of the plan consumed, clamped to a 0..1 fraction.
-  double get progress {
-    if (planned <= 0) {
-      return actual > 0 ? 1 : 0;
-    }
-    return (actual / planned).clamp(0.0, 1.0).toDouble();
-  }
 }
 
-/// A month of expenses: its planned lines and, once closed, its settlement.
+/// A month of expenses: its planned lines, the server-derived summary and,
+/// once closed, its settlement.
+///
+/// The month totals, progress and over/under flag are computed by the server
+/// (`summary`) — the client never recalculates them.
 class MonthlyPlan {
   const MonthlyPlan({
     required this.id,
     required this.month,
     required this.closed,
     required this.entries,
+    required this.summary,
     required this.settlement,
   });
 
@@ -59,22 +51,23 @@ class MonthlyPlan {
 
   final List<MonthlyPlanEntry> entries;
 
+  /// The server-derived month summary (status, totals, progress).
+  final ExpenseMonthSummary summary;
+
   /// The contributions snapshot, present only once the month is closed.
   final MonthSettlement? settlement;
 
   /// Total planned for the month, in euros.
-  double get planned =>
-      entries.fold<double>(0, (sum, entry) => sum + entry.planned);
+  double get planned => summary.planned;
 
   /// Total actually spent in the month, in euros.
-  double get actual =>
-      entries.fold<double>(0, (sum, entry) => sum + entry.actual);
+  double get actual => summary.actual;
 
-  /// `actual - planned`, in euros. Positive means over plan.
-  double get diff => actual - planned;
+  /// Whether the actual spend exceeds the planned amount (server rule).
+  bool get isOver => summary.over;
 
-  /// True when the actual spend exceeds the planned amount.
-  bool get isOver => diff > 0.005;
+  /// How much of the plan was consumed, as a percentage (server rule).
+  double get progressPct => summary.progressPct;
 
   bool get isEmpty => entries.isEmpty;
 }

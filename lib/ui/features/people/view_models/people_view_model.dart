@@ -10,18 +10,14 @@ class PersonSalarySummary {
   const PersonSalarySummary({
     required this.person,
     required this.monthlyIncome,
-    required this.currentIncomeId,
     required this.dailySpending,
     required this.incomes,
   });
 
   final Person person;
 
-  /// The income applicable to the current month, in euros.
+  /// The income applicable to the current month, in euros (server-provided).
   final double monthlyIncome;
-
-  /// The id of the income record applicable to the current month, if any.
-  final String? currentIncomeId;
 
   /// The amount of [monthlyIncome] allocated to daily spending, in euros.
   final double dailySpending;
@@ -52,8 +48,8 @@ class PeopleViewModel extends ChangeNotifier {
   double get householdIncome =>
       _summaries.fold<double>(0, (sum, summary) => sum + summary.monthlyIncome);
 
-  /// Loads people and their income history, then derives the current salary
-  /// and daily spending per person.
+  /// Loads the people (with the server-applied income for the current month)
+  /// and their income history, then derives the daily spending per person.
   ///
   /// Reads run sequentially: the API shares a single database connection, so
   /// concurrent requests gain nothing and can stall.
@@ -62,23 +58,25 @@ class PeopleViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      final people = await _peopleRepository.fetchPeople();
       final month = MonthKey.current();
-      final summaries = <PersonSalarySummary>[];
-      for (final person in people) {
-        final incomes = await _peopleRepository.fetchIncomes(person.id);
-        final current = PersonIncome.applicableFor(incomes, person.id, month);
-        final monthlyIncome = current?.amount ?? 0;
-        summaries.add(
+      final people = await _peopleRepository.fetchPeople(incomeMonth: month);
+      final allIncomes = await _peopleRepository.fetchAllIncomes();
+      final incomesByPerson = <String, List<PersonIncome>>{};
+      for (final income in allIncomes) {
+        (incomesByPerson[income.personId] ??= <PersonIncome>[]).add(income);
+      }
+      final summaries = <PersonSalarySummary>[
+        for (final person in people)
           PersonSalarySummary(
             person: person,
-            monthlyIncome: monthlyIncome,
-            currentIncomeId: current?.id,
-            dailySpending: monthlyIncome * person.dailySpendingPercentage / 100,
-            incomes: incomes,
+            monthlyIncome: person.applicableIncome ?? 0,
+            dailySpending:
+                (person.applicableIncome ?? 0) *
+                person.dailySpendingPercentage /
+                100,
+            incomes: incomesByPerson[person.id] ?? const <PersonIncome>[],
           ),
-        );
-      }
+      ];
       _summaries = summaries;
     } on ApiFailure catch (failure) {
       _errorMessage = failure.message;

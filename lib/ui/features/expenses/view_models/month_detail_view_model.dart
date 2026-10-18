@@ -89,7 +89,7 @@ class MonthDetailViewModel extends ChangeNotifier {
     _actionError = null;
     notifyListeners();
     try {
-      _plan = await _expensesRepository.closeMonth(plan.id);
+      _plan = await _expensesRepository.closeMonth(_month);
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
     } finally {
@@ -109,7 +109,7 @@ class MonthDetailViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       _plan = await _expensesRepository.updateEntryActual(
-        plan.id,
+        _month,
         entryId,
         actual,
       );

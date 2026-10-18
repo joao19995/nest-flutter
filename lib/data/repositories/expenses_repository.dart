@@ -42,19 +42,19 @@ class ExpensesRepository {
     return _plan(data);
   }
 
-  /// Closes the month [planId] and records its settlement. Irreversible.
-  Future<MonthlyPlan> closeMonth(String planId) async {
-    final data = await _client.post('/api/months/$planId/close', const {});
+  /// Closes [month] (`YYYY-MM`) and records its settlement. Irreversible.
+  Future<MonthlyPlan> closeMonth(String month) async {
+    final data = await _client.post('/api/months/$month/close', const {});
     return _plan(data);
   }
 
-  /// Saves the real amount spent on [entryId] within [planId].
+  /// Saves the real amount spent on [entryId] within [month] (`YYYY-MM`).
   Future<MonthlyPlan> updateEntryActual(
-    String planId,
+    String month,
     String entryId,
     double actual,
   ) async {
-    final data = await _client.patch('/api/months/$planId/entries/$entryId', {
+    final data = await _client.patch('/api/months/$month/entries/$entryId', {
       'actual': actual,
     });
     return _plan(data);

@@ -16,6 +16,18 @@ void main() {
       expect(person.id, 'p1');
       expect(person.name, 'Ana');
       expect(person.dailySpendingPercentage, 25);
+      expect(person.applicableIncome, isNull);
+    });
+
+    test('maps applicableIncome when the month is requested', () {
+      final person = PersonModel.fromJson(const {
+        'id': 'p1',
+        'name': 'Ana',
+        'dailySpendingPercentage': 25,
+        'applicableIncome': 2500,
+      }).toDomain();
+
+      expect(person.applicableIncome, 2500);
     });
   });
 }

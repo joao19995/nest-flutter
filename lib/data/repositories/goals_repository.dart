@@ -5,6 +5,7 @@ import 'package:nest/data/models/goal_year_model.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/goal.dart';
+import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/goal_template.dart';
 import 'package:nest/domain/models/goal_year.dart';
 
@@ -26,16 +27,20 @@ class GoalsRepository {
         .toList(growable: false);
   }
 
-  /// Returns the annual goal-template versions, oldest first.
-  Future<List<GoalTemplate>> fetchGoalTemplates() async {
-    final data = await _client.get('/api/goal-templates');
-    if (data is! List) {
-      return const [];
+  /// Returns the goal-template version in force for [month] (`YYYY-MM`), or
+  /// `null` when none applies. Server-side domain rule (`resolveApplicableGoalTemplate`).
+  Future<GoalTemplate?> fetchApplicableGoalTemplate(String month) async {
+    final data = await _client.get(
+      '/api/goal-templates/applicable?month=$month',
+    );
+    if (data is! Map<String, dynamic>) {
+      return null;
     }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => GoalTemplateModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    final template = data['template'];
+    if (template is! Map<String, dynamic>) {
+      return null;
+    }
+    return GoalTemplateModel.fromJson(template).toDomain();
   }
 
   /// Returns the saved plans and funding of [year].
@@ -47,9 +52,9 @@ class GoalsRepository {
     return GoalYearModel.fromJson(data).toDomain();
   }
 
-  /// Returns the saved plan of [month] (`YYYY-MM`), or `null` when the month
-  /// has not been created. Loads only the requested month.
-  Future<GoalPlan?> fetchGoalMonth(String month) async {
+  /// Returns the full view of [month] (`YYYY-MM`) — plan, available amount and
+  /// per-person quotas — or `null` when the month has not been created.
+  Future<GoalMonthView?> fetchGoalMonth(String month) async {
     try {
       final data = await _client.get('/api/goal-plan/$month');
       if (data is! Map<String, dynamic>) {
@@ -64,20 +69,46 @@ class GoalsRepository {
     }
   }
 
+  /// Computes the month's per-person quotas from [drafts] (the client's current
+  /// reserved values) without saving — `POST /api/goal-plan/quotas`.
+  Future<List<GoalMonthQuota>> computeGoalQuotas(
+    String month,
+    List<GoalQuotaDraft> drafts,
+  ) async {
+    final data = await _client.post('/api/goal-plan/quotas', {
+      'month': month,
+      'allocations': [
+        for (final draft in drafts)
+          {'goalId': draft.goalId, 'name': draft.name, 'amount': draft.amount},
+      ],
+    });
+    if (data is! Map<String, dynamic>) {
+      return const [];
+    }
+    final quotas = data['quotas'];
+    if (quotas is! List) {
+      return const [];
+    }
+    return quotas
+        .whereType<Map<String, dynamic>>()
+        .map((json) => GoalMonthQuotaModel.fromJson(json).toDomain())
+        .toList(growable: false);
+  }
+
   /// Creates [month] (`YYYY-MM`) from the applicable template's snapshot.
   Future<GoalPlan> createGoalPlan(String month) async {
     final data = await _client.post('/api/goal-plan', {'month': month});
     return _plan(data);
   }
 
-  /// Saves the reserved amount of [goalId] within [planId].
+  /// Saves the reserved amount of [goalId] within [month] (`YYYY-MM`).
   Future<GoalPlan> updateGoalAllocation(
-    String planId,
+    String month,
     String goalId,
     double actual,
   ) async {
     final data = await _client.patch(
-      '/api/goal-plan/$planId/allocations/$goalId',
+      '/api/goal-plan/$month/allocations/$goalId',
       {'actual': actual},
     );
     return _plan(data);
@@ -90,9 +121,9 @@ class GoalsRepository {
     {'month': month, 'fromTemplate': true},
   );
 
-  /// Closes the month [planId], making its allocation immutable.
-  Future<GoalPlan> closeGoalPlan(String planId) async {
-    final data = await _client.post('/api/goal-plan/$planId/close', const {});
+  /// Closes [month] (`YYYY-MM`), making its allocation immutable.
+  Future<GoalPlan> closeGoalPlan(String month) async {
+    final data = await _client.post('/api/goal-plan/$month/close', const {});
     return _plan(data);
   }
 

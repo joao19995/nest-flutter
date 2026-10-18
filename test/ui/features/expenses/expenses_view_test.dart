@@ -73,6 +73,14 @@ Map<String, dynamic> _closedMonth() => <String, dynamic>{
       'actual': 471.94,
     },
   ],
+  'summary': {
+    'month': '2026-01',
+    'status': 'closed',
+    'planned': 450,
+    'actual': 471.94,
+    'progressPct': 104.88,
+    'over': true,
+  },
   'settlement': null,
 };
 

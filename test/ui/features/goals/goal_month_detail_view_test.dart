@@ -29,6 +29,31 @@ http.Response _json(Object body, {int status = 200}) => http.Response(
   headers: {'content-type': 'application/json'},
 );
 
+List<Object> _quotas() => <Object>[
+  {
+    'personId': 'p1',
+    'name': 'João',
+    'earning': 2500,
+    'share': 0.625,
+    'amount': 625,
+    'parts': [
+      {'goalId': 'g1', 'name': 'Viagem', 'amount': 600},
+      {'goalId': 'g2', 'name': 'Carro', 'amount': 25},
+    ],
+  },
+  {
+    'personId': 'p2',
+    'name': 'Nathalia',
+    'earning': 1500,
+    'share': 0.375,
+    'amount': 375,
+    'parts': [
+      {'goalId': 'g2', 'name': 'Carro', 'amount': 375},
+    ],
+  },
+];
+
+/// A saved plan (the shape returned by POST create and PATCH / close).
 Map<String, dynamic> _plan({
   bool closed = true,
   double actual1 = 600,
@@ -47,7 +72,7 @@ Map<String, dynamic> _plan({
 Map<String, dynamic> _openPlan() =>
     _plan(closed: false, actual1: 0, actual2: 0);
 
-/// The self-sufficient month view returned by `?month=YYYY-MM`.
+/// The self-sufficient month view returned by `GET /api/goal-plan/{month}`.
 Map<String, dynamic> _monthView({
   bool closed = true,
   double actual1 = 600,
@@ -55,58 +80,23 @@ Map<String, dynamic> _monthView({
 }) => <String, dynamic>{
   'month': '2026-01',
   'planId': 'p1',
-  'availableAmount': 1000,
   'closed': closed,
+  'availableAmount': 1000,
   'allocations': [
     {'goalId': 'g1', 'goalName': 'Viagem', 'planned': 600, 'actual': actual1},
     {'goalId': 'g2', 'goalName': 'Carro', 'planned': 400, 'actual': actual2},
   ],
+  'quotas': _quotas(),
 };
 
 Map<String, dynamic> _missingMonth() => <String, dynamic>{
   'month': '2026-01',
   'planId': null,
-  'availableAmount': 0,
   'closed': false,
+  'availableAmount': 0,
   'allocations': <Object>[],
+  'quotas': <Object>[],
 };
-
-List<Object> _people() => <Object>[
-  {
-    'id': 'p1',
-    'name': 'João',
-    'dailySpendingPercentage': 25,
-    'emergencyFundMonths': 6,
-  },
-  {
-    'id': 'p2',
-    'name': 'Nathalia',
-    'dailySpendingPercentage': 25,
-    'emergencyFundMonths': 6,
-  },
-];
-
-List<Object> _incomes(String personId) => <Object>[
-  {
-    'id': 'i-$personId',
-    'personId': personId,
-    'amount': personId == 'p1' ? 2500 : 1500,
-    'validFrom': '2025-01-01',
-  },
-];
-
-http.Response _route(http.Request request) {
-  if (request.url.path == '/api/people') {
-    return _json(_people());
-  }
-  final match = RegExp(
-    r'^/api/people/([^/]+)/income$',
-  ).firstMatch(request.url.path);
-  if (match != null) {
-    return _json(_incomes(match.group(1)!));
-  }
-  return _json(<Object>[], status: 404);
-}
 
 MockClient _client({bool created = false}) {
   var hasMonth = created;
@@ -115,10 +105,11 @@ MockClient _client({bool created = false}) {
       hasMonth = true;
       return _json(_plan(), status: 201);
     }
-    if (request.url.path.startsWith('/api/goal-plan/')) {
+    if (request.url.path.startsWith('/api/goal-plan/') &&
+        !request.url.path.endsWith('/quotas')) {
       return hasMonth ? _json(_monthView()) : _json(_missingMonth());
     }
-    return _route(request);
+    return _json(<Object>[], status: 404);
   });
 }
 
@@ -185,11 +176,14 @@ void main() {
       if (request.method == 'PATCH') {
         return _json(_openPlan());
       }
+      if (request.url.path == '/api/goal-plan/quotas') {
+        return _json({'quotas': _quotas()});
+      }
       if (request.method == 'POST' && request.url.path.endsWith('/close')) {
         closed = true;
         return _json(_plan());
       }
-      return _route(request);
+      return _json(<Object>[], status: 404);
     });
 
     await tester.pumpWidget(
@@ -205,6 +199,10 @@ void main() {
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
     expect(requests.any((request) => request.method == 'PATCH'), isTrue);
+    expect(
+      requests.any((request) => request.url.path == '/api/goal-plan/quotas'),
+      isTrue,
+    );
 
     await tester.tap(find.text('Fechar mês'));
     await tester.pumpAndSettle();

@@ -52,24 +52,14 @@ List<Object> _goals() => <Object>[
   {'id': 'g2', 'name': 'Carro', 'active': true},
 ];
 
-List<Object> _templates() => <Object>[
-  {
-    'id': 't1',
-    'validFrom': '2024-01',
-    'entries': [
-      {'goalId': 'g1', 'budget': 100},
-      {'goalId': 'g2', 'budget': 200},
-    ],
-  },
-  {
-    'id': 't2',
-    'validFrom': '2025-06',
-    'entries': [
-      {'goalId': 'g1', 'budget': 800},
-      {'goalId': 'g2', 'budget': 925},
-    ],
-  },
-];
+Map<String, dynamic> _applicableTemplate() => <String, dynamic>{
+  'id': 't2',
+  'validFrom': '2026-01',
+  'entries': [
+    {'goalId': 'g1', 'budget': 800},
+    {'goalId': 'g2', 'budget': 925},
+  ],
+};
 
 MockClient _client() => MockClient((request) async {
   switch (request.url.path) {
@@ -77,8 +67,8 @@ MockClient _client() => MockClient((request) async {
       return _json(_year());
     case '/api/goals':
       return _json(_goals());
-    case '/api/goal-templates':
-      return _json(_templates());
+    case '/api/goal-templates/applicable':
+      return _json({'template': _applicableTemplate()});
     default:
       return _json(<Object>[], status: 404);
   }

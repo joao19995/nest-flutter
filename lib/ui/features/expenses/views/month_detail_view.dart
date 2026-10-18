@@ -78,6 +78,8 @@ class _MonthPageState extends State<_MonthPage>
                 planned: viewModel.plan?.planned ?? 0,
                 closed: viewModel.plan?.closed ?? false,
                 hasPlan: viewModel.plan != null,
+                over: viewModel.plan?.summary.over,
+                progressPct: viewModel.plan?.summary.progressPct,
                 onPreviousMonth: widget.onPreviousMonth,
                 onNextMonth: widget.onNextMonth,
               ),
@@ -233,81 +235,41 @@ class _EntryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = entry.isOver ? context.colors.over : context.colors.ink;
-    final diff = entry.diff;
-    final deltaLabel = diff >= 0
-        ? '+${AppFormatters.currency(diff)}'
-        : AppFormatters.currency(diff);
     final onSave = onSaveActual;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CategoryIcon(category: entry.categoryName),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.categoryName,
-                      style: AppTextStyles.sectionHeading,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Planeado ${AppFormatters.currency(entry.planned)}',
-                      style: AppTextStyles.small(context.colors),
-                    ),
-                  ],
+          CategoryIcon(category: entry.categoryName),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(entry.categoryName, style: AppTextStyles.sectionHeading),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Planeado ${AppFormatters.currency(entry.planned)}',
+                  style: AppTextStyles.small(context.colors),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  if (onSave != null)
-                    MoneyField(
-                      value: entry.actual,
-                      originalValue: entry.actual,
-                      onSave: (actual) => onSave(entry.id, actual),
-                    )
-                  else
-                    Text(
-                      AppFormatters.currency(entry.actual),
-                      style: AppTextStyles.sectionHeading.copyWith(
-                        color: accent,
-                      ),
-                    ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    deltaLabel,
-                    style: AppTextStyles.small(context.colors).copyWith(
-                      color: entry.isOver
-                          ? context.colors.over
-                          : context.colors.primaryDark,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ClipRRect(
-            borderRadius: AppRadius.fullAll,
-            child: LinearProgressIndicator(
-              value: entry.progress,
-              minHeight: AppSizes.progressBarHeight,
-              backgroundColor: context.colors.lineSoft,
-              color: entry.isOver
-                  ? context.colors.over
-                  : context.colors.primary,
+              ],
             ),
           ),
+          const SizedBox(width: AppSpacing.md),
+          if (onSave != null)
+            MoneyField(
+              value: entry.actual,
+              originalValue: entry.actual,
+              onSave: (actual) => onSave(entry.id, actual),
+            )
+          else
+            Text(
+              AppFormatters.currency(entry.actual),
+              style: AppTextStyles.sectionHeading.copyWith(
+                color: context.colors.ink,
+              ),
+            ),
         ],
       ),
     );

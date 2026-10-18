@@ -92,7 +92,7 @@ class GoalsViewModel extends ChangeNotifier {
 
   GoalYear? _goalYear;
   List<Goal> _catalogue = const [];
-  List<GoalTemplate> _templates = const [];
+  GoalTemplate? _applicableTemplate;
 
   bool get isEmpty {
     final year = _goalYear;
@@ -193,21 +193,12 @@ class GoalsViewModel extends ChangeNotifier {
   }
 
   /// The goal budgets of the template version in force at the year's start,
-  /// falling back to the latest version — matching the annual plan semantics.
+  /// resolved by the server.
   Map<String, double> _targetByGoal() {
-    if (_templates.isEmpty) {
+    final template = _applicableTemplate;
+    if (template == null) {
       return const {};
     }
-    final sorted = [..._templates]
-      ..sort((a, b) => a.validFrom.compareTo(b.validFrom));
-    final start = '$_selectedYear-01';
-    GoalTemplate? applicable;
-    for (final template in sorted) {
-      if (template.validFrom.compareTo(start) <= 0) {
-        applicable = template;
-      }
-    }
-    final template = applicable ?? sorted.last;
     return <String, double>{
       for (final entry in template.entries) entry.goalId: entry.budget,
     };
@@ -225,13 +216,15 @@ class GoalsViewModel extends ChangeNotifier {
     try {
       final goalYear = await _goalsRepository.fetchGoalYear(year);
       final catalogue = await _goalsRepository.fetchGoals();
-      final templates = await _goalsRepository.fetchGoalTemplates();
+      final template = await _goalsRepository.fetchApplicableGoalTemplate(
+        '$year-01',
+      );
       if (year != _selectedYear) {
         return;
       }
       _goalYear = goalYear;
       _catalogue = catalogue;
-      _templates = templates;
+      _applicableTemplate = template;
     } on ApiFailure catch (failure) {
       if (year == _selectedYear) {
         _errorMessage = failure.message;

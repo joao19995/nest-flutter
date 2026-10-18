@@ -82,6 +82,17 @@ class ExpenseMonthSummaryModel {
         over: json['over'] as bool,
       );
 
+  /// A zeroed summary, used when a payload omits it.
+  factory ExpenseMonthSummaryModel.empty(String month) =>
+      ExpenseMonthSummaryModel(
+        month: month,
+        status: ExpenseMonthStatus.missing,
+        planned: 0,
+        actual: 0,
+        progressPct: 0,
+        over: false,
+      );
+
   final String month;
   final ExpenseMonthStatus status;
   final double planned;

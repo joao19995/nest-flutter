@@ -57,17 +57,15 @@ List<Object> _goals() => <Object>[
   {'id': 'g2', 'name': 'Carro', 'active': true},
 ];
 
-List<Object> _templates() => <Object>[
-  {
-    'id': 't1',
-    'validFrom': '2026-01',
-    'annualTotal': 4140,
-    'entries': [
-      {'goalId': 'g1', 'percentage': 19.3, 'budget': 800},
-      {'goalId': 'g2', 'percentage': 80.7, 'budget': 5000},
-    ],
-  },
-];
+Map<String, dynamic> _applicableTemplate() => <String, dynamic>{
+  'id': 't1',
+  'validFrom': '2026-01',
+  'annualTotal': 4140,
+  'entries': [
+    {'goalId': 'g1', 'percentage': 19.3, 'budget': 800},
+    {'goalId': 'g2', 'percentage': 80.7, 'budget': 5000},
+  ],
+};
 
 void _setPhone(WidgetTester tester) {
   tester.view.physicalSize = const Size(390, 844);
@@ -86,8 +84,8 @@ void main() {
       if (request.url.path == '/api/goals') {
         return _json(_goals());
       }
-      if (request.url.path == '/api/goal-templates') {
-        return _json(_templates());
+      if (request.url.path == '/api/goal-templates/applicable') {
+        return _json({'template': _applicableTemplate()});
       }
       return _json(<Object>[], status: 404);
     });

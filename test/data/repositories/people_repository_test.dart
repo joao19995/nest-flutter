@@ -38,7 +38,35 @@ void main() {
     expect(empty, isEmpty);
   });
 
-  test('fetchIncomes reads the person income endpoint', () async {
+  test(
+    'fetchPeople with incomeMonth adds the query and maps the income',
+    () async {
+      String? path;
+      String? query;
+      final repository = _repository(
+        MockClient((request) async {
+          path = request.url.path;
+          query = request.url.queryParameters['incomeMonth'];
+          return _json(const [
+            {
+              'id': 'p1',
+              'name': 'João',
+              'dailySpendingPercentage': 25,
+              'applicableIncome': 2500,
+            },
+          ]);
+        }),
+      );
+
+      final people = await repository.fetchPeople(incomeMonth: '2026-01');
+
+      expect(path, '/api/people');
+      expect(query, '2026-01');
+      expect(people.single.applicableIncome, 2500);
+    },
+  );
+
+  test('fetchAllIncomes reads the batch endpoint', () async {
     String? path;
     final repository = _repository(
       MockClient((request) async {
@@ -50,13 +78,20 @@ void main() {
             'amount': 2500,
             'validFrom': '2026-01-01',
           },
+          {
+            'id': 'i2',
+            'personId': 'p2',
+            'amount': 1500,
+            'validFrom': '2026-01-01',
+          },
         ]);
       }),
     );
 
-    final incomes = await repository.fetchIncomes('p1');
+    final incomes = await repository.fetchAllIncomes();
 
-    expect(path, '/api/people/p1/income');
-    expect(incomes.single.amount, 2500);
+    expect(path, '/api/people/incomes');
+    expect(incomes, hasLength(2));
+    expect(incomes.last.personId, 'p2');
   });
 }

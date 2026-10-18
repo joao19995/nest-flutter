@@ -265,7 +265,6 @@ class _SalaryHistorySheet extends StatelessWidget {
               _HistoryRow(
                 label: AppFormatters.monthYear(records[index].validFrom),
                 amount: AppFormatters.currency(records[index].amount),
-                isCurrent: records[index].id == summary.currentIncomeId,
               ),
             ],
         ],
@@ -275,31 +274,19 @@ class _SalaryHistorySheet extends StatelessWidget {
 }
 
 class _HistoryRow extends StatelessWidget {
-  const _HistoryRow({
-    required this.label,
-    required this.amount,
-    required this.isCurrent,
-  });
+  const _HistoryRow({required this.label, required this.amount});
 
   final String label;
   final String amount;
-  final bool isCurrent;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         Expanded(child: Text(label, style: AppTextStyles.body)),
-        if (isCurrent) ...[
-          AppBadge(label: 'ATUAL', style: AppBadgeStyles.open(context.colors)),
-          const SizedBox(width: AppSpacing.md),
-        ],
         Text(
           amount,
-          style: AppTextStyles.body.copyWith(
-            fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
-            color: isCurrent ? context.colors.ink : context.colors.muted,
-          ),
+          style: AppTextStyles.body.copyWith(color: context.colors.ink),
         ),
       ],
     );

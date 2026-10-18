@@ -20,6 +20,8 @@ class MonthSummaryHero extends StatelessWidget {
     required this.onPreviousMonth,
     required this.onNextMonth,
     this.hasPlan = true,
+    this.over,
+    this.progressPct,
   });
 
   /// The eyebrow, e.g. `DESPESA DO MÊS`.
@@ -40,13 +42,26 @@ class MonthSummaryHero extends StatelessWidget {
   /// False when the month has no saved plan yet.
   final bool hasPlan;
 
+  /// The server-derived over/under flag; computed from the totals when null.
+  final bool? over;
+
+  /// The server-derived consumed percentage; computed from the totals when null.
+  final double? progressPct;
+
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
 
   @override
   Widget build(BuildContext context) {
-    final ratio = planned > 0 ? actual / planned : (actual > 0 ? 1.0 : 0.0);
-    final over = actual - planned > 0.005;
+    final pct = progressPct;
+    final ratio = pct != null
+        ? pct / 100
+        : (planned > 0 ? actual / planned : (actual > 0 ? 1.0 : 0.0));
+    final isOver = over ?? actual - planned > 0.005;
+    final diff = actual - planned;
+    final diffPct = pct != null
+        ? pct - 100
+        : (planned > 0 ? diff / planned * 100 : 0.0);
     return HeroPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,11 +107,9 @@ class MonthSummaryHero extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       HeroDeviationPill(
-                        diff: actual - planned,
-                        diffPct: planned > 0
-                            ? ((actual - planned) / planned * 100)
-                            : 0,
-                        over: actual - planned > 0.005,
+                        diff: diff,
+                        diffPct: diffPct,
+                        over: isOver,
                         alignment: Alignment.centerLeft,
                       ),
                     ],
@@ -111,7 +124,7 @@ class MonthSummaryHero extends StatelessWidget {
                     AppProgressRing(
                       progress: ratio,
                       label: AppFormatters.percentage((ratio * 100).round()),
-                      color: over ? AppColors.overOnDark : AppColors.mint,
+                      color: isOver ? AppColors.overOnDark : AppColors.mint,
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     AppBadge(
