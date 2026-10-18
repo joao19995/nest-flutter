@@ -664,13 +664,7 @@ class _EventFormSheetState extends State<_EventFormSheet> {
   @override
   Widget build(BuildContext context) {
     final error = _error;
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        left: AppBreakpoints.pagePadding(context),
-        right: AppBreakpoints.pagePadding(context),
-        top: AppSpacing.xl,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.xl,
-      ),
+    return BottomSheetBody(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

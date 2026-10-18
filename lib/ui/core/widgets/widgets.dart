@@ -16,6 +16,7 @@ export 'app_saved_tick.dart';
 export 'app_skeleton.dart';
 export 'app_stagger.dart';
 export 'async_view.dart';
+export 'bottom_sheet_body.dart';
 export 'category_icon.dart';
 export 'confirm_dialog.dart';
 export 'create_month_card.dart';

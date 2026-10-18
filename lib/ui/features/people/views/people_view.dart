@@ -236,13 +236,7 @@ class _SalaryHistorySheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final records = summary.incomes.reversed.toList(growable: false);
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        left: AppBreakpoints.pagePadding(context),
-        right: AppBreakpoints.pagePadding(context),
-        top: AppSpacing.xl,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.xl,
-      ),
+    return BottomSheetBody(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
