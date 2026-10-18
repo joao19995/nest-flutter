@@ -28,6 +28,10 @@ migrate_working_dir/
 /config/android.json
 /config/pwa.json
 
+# Vercel CLI project link
+/.vercel/
+/build/web/.vercel/
+
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id

@@ -1,5 +1,0 @@
-{
-  "installCommand": "echo skip",
-  "buildCommand": "bash scripts/build_web.sh",
-  "outputDirectory": "build/web"
-}
