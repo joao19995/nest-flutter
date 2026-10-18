@@ -6,6 +6,7 @@ class PersonModel {
     required this.id,
     required this.name,
     required this.dailySpendingPercentage,
+    required this.emergencyFundMonths,
     this.applicableIncome,
     this.applicableIncomeId,
   });
@@ -15,6 +16,7 @@ class PersonModel {
     name: json['name'] as String,
     dailySpendingPercentage: (json['dailySpendingPercentage'] as num)
         .toDouble(),
+    emergencyFundMonths: (json['emergencyFundMonths'] as num?)?.toInt() ?? 6,
     applicableIncome: (json['applicableIncome'] as num?)?.toDouble(),
     applicableIncomeId: json['applicableIncomeId'] as String?,
   );
@@ -22,6 +24,7 @@ class PersonModel {
   final String id;
   final String name;
   final double dailySpendingPercentage;
+  final int emergencyFundMonths;
   final double? applicableIncome;
   final String? applicableIncomeId;
 
@@ -29,6 +32,7 @@ class PersonModel {
     id: id,
     name: name,
     dailySpendingPercentage: dailySpendingPercentage,
+    emergencyFundMonths: emergencyFundMonths,
     applicableIncome: applicableIncome,
     applicableIncomeId: applicableIncomeId,
   );

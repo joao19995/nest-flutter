@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/people_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
+import 'package:nest/domain/models/person_income.dart';
 
 PeopleRepository _repository(MockClient mock) => PeopleRepository(
   client: NestApiClient(
@@ -96,4 +97,121 @@ void main() {
     expect(incomes, hasLength(2));
     expect(incomes.last.personId, 'p2');
   });
+
+  test('createPerson posts the person fields', () async {
+    String? method;
+    Map<String, dynamic>? body;
+    final repository = _repository(
+      MockClient((request) async {
+        method = request.method;
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json(const {
+          'id': 'p1',
+          'name': 'João',
+          'dailySpendingPercentage': 25,
+          'emergencyFundMonths': 6,
+        }, status: 201);
+      }),
+    );
+
+    final person = await repository.createPerson(
+      name: 'João',
+      dailySpendingPercentage: 25,
+      emergencyFundMonths: 6,
+    );
+
+    expect(method, 'POST');
+    expect(body?['name'], 'João');
+    expect(body?['emergencyFundMonths'], 6);
+    expect(person.emergencyFundMonths, 6);
+  });
+
+  test('updatePerson puts the fields to the id path', () async {
+    String? path;
+    Map<String, dynamic>? body;
+    final repository = _repository(
+      MockClient((request) async {
+        path = request.url.path;
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json(const {
+          'id': 'p1',
+          'name': 'Ana',
+          'dailySpendingPercentage': 10,
+          'emergencyFundMonths': 9,
+        });
+      }),
+    );
+
+    await repository.updatePerson(
+      'p1',
+      name: 'Ana',
+      dailySpendingPercentage: 10,
+      emergencyFundMonths: 9,
+    );
+
+    expect(path, '/api/people/p1');
+    expect(body?['dailySpendingPercentage'], 10);
+    expect(body?['emergencyFundMonths'], 9);
+  });
+
+  test('saveIncomes posts the batch and maps incomes and raises', () async {
+    String? path;
+    Map<String, dynamic>? body;
+    final repository = _repository(
+      MockClient((request) async {
+        path = request.url.path;
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json(const {
+          'incomes': [
+            {
+              'id': 'i1',
+              'personId': 'p1',
+              'amount': 1600,
+              'validFrom': '2026-04-01',
+            },
+          ],
+          'raises': [
+            {
+              'year': 2026,
+              'extra': 1200.5,
+              'annualTotal': 13200.5,
+              'validFromMonth': '2026-04',
+            },
+          ],
+        });
+      }),
+    );
+
+    final result = await repository.saveIncomes('p1', const [
+      PersonIncomeDraft(amount: 1600, validFrom: '2026-04-01'),
+    ]);
+
+    expect(path, '/api/people/p1/incomes');
+    final items = (body?['incomes'] as List).cast<Map<String, dynamic>>();
+    expect(items.single.containsKey('id'), isFalse);
+    expect(items.single['amount'], 1600);
+    expect(result.incomes.single.id, 'i1');
+    expect(result.raises.single.extra, 1200.5);
+    expect(result.raises.single.validFromMonth, '2026-04');
+  });
+
+  test(
+    'saveIncomes includes the id when updating an existing record',
+    () async {
+      Map<String, dynamic>? body;
+      final repository = _repository(
+        MockClient((request) async {
+          body = jsonDecode(request.body) as Map<String, dynamic>;
+          return _json(const {'incomes': <Object>[], 'raises': <Object>[]});
+        }),
+      );
+
+      await repository.saveIncomes('p1', const [
+        PersonIncomeDraft(id: 'i1', amount: 2000, validFrom: '2026-01-01'),
+      ]);
+
+      final items = (body?['incomes'] as List).cast<Map<String, dynamic>>();
+      expect(items.single['id'], 'i1');
+    },
+  );
 }

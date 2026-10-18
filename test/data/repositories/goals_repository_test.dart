@@ -163,4 +163,63 @@ void main() {
       expect(view.plan?.closed, isTrue);
     },
   );
+
+  test(
+    'fetchGoalTemplates maps the versions and tolerates a non-list',
+    () async {
+      final templates = await _repository(
+        MockClient(
+          (request) async => _json(const [
+            {
+              'id': 't1',
+              'validFrom': '2026-01',
+              'annualTotal': 12000,
+              'entries': [
+                {'goalId': 'g1', 'budget': 6000},
+              ],
+            },
+          ]),
+        ),
+      ).fetchGoalTemplates();
+
+      expect(templates.single.validFrom, '2026-01');
+      expect(templates.single.entries.single.goalId, 'g1');
+
+      final empty = await _repository(
+        MockClient((request) async => _json(const {'not': 'a list'})),
+      ).fetchGoalTemplates();
+      expect(empty, isEmpty);
+    },
+  );
+
+  test('allocateRaise posts validFrom, goalId and extra', () async {
+    String? path;
+    Object? body;
+    final repository = _repository(
+      MockClient((request) async {
+        path = request.url.path;
+        body = jsonDecode(request.body);
+        return _json(const {
+          'template': {
+            'id': 't2',
+            'validFrom': '2026-04',
+            'entries': <Object>[],
+          },
+          'plans': <Object>[],
+        }, status: 201);
+      }),
+    );
+
+    await repository.allocateRaise(
+      validFrom: '2026-04',
+      goalId: 'g1',
+      extra: 1200.5,
+    );
+
+    expect(path, '/api/goal-templates/raise');
+    final payload = body as Map<String, dynamic>;
+    expect(payload['validFrom'], '2026-04');
+    expect(payload['goalId'], 'g1');
+    expect(payload['extra'], 1200.5);
+  });
 }

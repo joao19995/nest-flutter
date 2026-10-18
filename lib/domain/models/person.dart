@@ -4,6 +4,7 @@ class Person {
     required this.id,
     required this.name,
     required this.dailySpendingPercentage,
+    required this.emergencyFundMonths,
     this.applicableIncome,
     this.applicableIncomeId,
   });
@@ -13,6 +14,9 @@ class Person {
 
   /// The share of the income allocated to daily spending, as a percentage.
   final double dailySpendingPercentage;
+
+  /// How many months of expenses the emergency fund should cover.
+  final int emergencyFundMonths;
 
   /// The income applicable to the requested month, in euros. Only present when
   /// people are fetched with `?incomeMonth=YYYY-MM` (server-side rule).

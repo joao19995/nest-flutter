@@ -3,19 +3,23 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/repositories/people_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
+import 'package:nest/domain/models/person_income.dart';
 import 'package:nest/ui/features/people/view_models/people_view_model.dart';
 
-PeopleViewModel _viewModel(MockClient client) => PeopleViewModel(
-  peopleRepository: PeopleRepository(
-    client: NestApiClient(
-      httpClient: client,
-      baseUrl: 'http://test.local',
-      apiKey: '',
-    ),
-  ),
-);
+PeopleViewModel _viewModel(MockClient client) {
+  final api = NestApiClient(
+    httpClient: client,
+    baseUrl: 'http://test.local',
+    apiKey: '',
+  );
+  return PeopleViewModel(
+    peopleRepository: PeopleRepository(client: api),
+    goalsRepository: GoalsRepository(client: api),
+  );
+}
 
 http.Response _json(Object body, {int status = 200}) => http.Response(
   jsonEncode(body),
@@ -146,4 +150,96 @@ void main() {
     expect(viewModel.errorMessage, 'Falhou.');
     expect(viewModel.isEmpty, isTrue);
   });
+
+  test(
+    'savePerson saves the incomes and exposes the raise to allocate',
+    () async {
+      final calls = <String>[];
+      final client = MockClient((request) async {
+        final path = request.url.path;
+        calls.add('${request.method} $path');
+        if (path == '/api/people') {
+          return _json(const {
+            'id': 'p1',
+            'name': 'João',
+            'dailySpendingPercentage': 25,
+            'emergencyFundMonths': 6,
+          }, status: 201);
+        }
+        if (path == '/api/people/p1/incomes') {
+          return _json(const {
+            'incomes': [
+              {
+                'id': 'i1',
+                'personId': 'p1',
+                'amount': 1600,
+                'validFrom': '2026-04-01',
+              },
+            ],
+            'raises': [
+              {
+                'year': 2026,
+                'extra': 1200.5,
+                'annualTotal': 13200.5,
+                'validFromMonth': '2026-04',
+              },
+            ],
+          });
+        }
+        if (path == '/api/goal-templates') {
+          return _json(const [
+            {
+              'id': 't1',
+              'validFrom': '2026-01',
+              'annualTotal': 12000,
+              'entries': [
+                {'goalId': 'g1', 'budget': 6000},
+              ],
+            },
+          ]);
+        }
+        if (path == '/api/goals') {
+          return _json(const [
+            {'id': 'g1', 'name': 'Viagem', 'active': true},
+          ]);
+        }
+        if (path == '/api/goal-templates/raise') {
+          return _json(const {
+            'template': {
+              'id': 't2',
+              'validFrom': '2026-04',
+              'entries': <Object>[],
+            },
+            'plans': <Object>[],
+          }, status: 201);
+        }
+        return _json(const <Object>[], status: 404);
+      });
+
+      final viewModel = _viewModel(client);
+      final failure = await viewModel.savePerson(
+        name: 'João',
+        dailySpendingPercentage: 25,
+        emergencyFundMonths: 6,
+        incomes: const [
+          PersonIncomeDraft(amount: 1600, validFrom: '2026-04-01'),
+        ],
+      );
+
+      expect(failure, isNull);
+      expect(calls.first, 'POST /api/people');
+      expect(calls[1], 'POST /api/people/p1/incomes');
+      expect(viewModel.summaries.single.person.name, 'João');
+      expect(viewModel.pendingRaise?.extra, 1200.5);
+      expect(viewModel.pendingRaise?.validFromMonth, '2026-04');
+      expect(viewModel.raiseGoalOptions.single.name, 'Viagem');
+      expect(viewModel.raiseMonthTaken, isFalse);
+
+      final allocateFailure = await viewModel.allocateRaise('g1');
+
+      expect(allocateFailure, isNull);
+      expect(calls.last, 'POST /api/goal-templates/raise');
+      expect(viewModel.pendingRaise, isNull);
+    },
+  );
 }

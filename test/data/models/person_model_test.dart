@@ -9,6 +9,7 @@ void main() {
         'id': 'p1',
         'name': 'Ana',
         'dailySpendingPercentage': 25,
+        'emergencyFundMonths': 8,
       });
 
       final Person person = model.toDomain();
@@ -16,7 +17,18 @@ void main() {
       expect(person.id, 'p1');
       expect(person.name, 'Ana');
       expect(person.dailySpendingPercentage, 25);
+      expect(person.emergencyFundMonths, 8);
       expect(person.applicableIncome, isNull);
+    });
+
+    test('defaults a missing emergencyFundMonths to 6', () {
+      final person = PersonModel.fromJson(const {
+        'id': 'p1',
+        'name': 'Ana',
+        'dailySpendingPercentage': 25,
+      }).toDomain();
+
+      expect(person.emergencyFundMonths, 6);
     });
 
     test('maps applicableIncome when the month is requested', () {

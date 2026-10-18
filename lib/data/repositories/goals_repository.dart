@@ -27,6 +27,32 @@ class GoalsRepository {
         .toList(growable: false);
   }
 
+  /// Returns the annual goal-template versions, oldest first.
+  Future<List<GoalTemplate>> fetchGoalTemplates() async {
+    final data = await _client.get('/api/goal-templates');
+    if (data is! List) {
+      return const [];
+    }
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map((json) => GoalTemplateModel.fromJson(json).toDomain())
+        .toList(growable: false);
+  }
+
+  /// Allocates a detected salary raise to [goalId]: the server tops up the
+  /// goal's budget (renormalising the percentages to 100%), creates a new
+  /// template version starting at [validFrom] (`YYYY-MM`) and recalculates the
+  /// year, all in one transaction.
+  Future<void> allocateRaise({
+    required String validFrom,
+    required String goalId,
+    required double extra,
+  }) => _client.post('/api/goal-templates/raise', {
+    'validFrom': validFrom,
+    'goalId': goalId,
+    'extra': extra,
+  });
+
   /// Returns the goal-template version in force for [month] (`YYYY-MM`), or
   /// `null` when none applies. Server-side domain rule (`resolveApplicableGoalTemplate`).
   Future<GoalTemplate?> fetchApplicableGoalTemplate(String month) async {

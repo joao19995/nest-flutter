@@ -29,3 +29,33 @@ class PersonIncomeModel {
     validFrom: validFrom,
   );
 }
+
+/// API-facing representation of a [PersonIncomeRaise], with JSON mapping.
+class PersonIncomeRaiseModel {
+  const PersonIncomeRaiseModel({
+    required this.year,
+    required this.extra,
+    required this.annualTotal,
+    required this.validFromMonth,
+  });
+
+  factory PersonIncomeRaiseModel.fromJson(Map<String, dynamic> json) =>
+      PersonIncomeRaiseModel(
+        year: (json['year'] as num).toInt(),
+        extra: (json['extra'] as num).toDouble(),
+        annualTotal: (json['annualTotal'] as num).toDouble(),
+        validFromMonth: json['validFromMonth'] as String,
+      );
+
+  final int year;
+  final double extra;
+  final double annualTotal;
+  final String validFromMonth;
+
+  PersonIncomeRaise toDomain() => PersonIncomeRaise(
+    year: year,
+    extra: extra,
+    annualTotal: annualTotal,
+    validFromMonth: validFromMonth,
+  );
+}
