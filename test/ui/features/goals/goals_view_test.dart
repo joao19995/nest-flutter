@@ -75,7 +75,9 @@ void _setPhone(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('renders the year hero and both lists', (tester) async {
+  testWidgets('renders the year hero and opens the per-goal accumulation', (
+    tester,
+  ) async {
     _setPhone(tester);
     final client = MockClient((request) async {
       if (request.url.path == '/api/goal-plan') {
@@ -96,8 +98,16 @@ void main() {
     expect(find.text('2026'), findsOneWidget);
     expect(find.text('Objetivos do ano'), findsOneWidget);
     expect(find.text('Por mês'), findsOneWidget);
-    expect(find.text('Por objetivo'), findsOneWidget);
     expect(find.text('Jan'), findsOneWidget);
+    expect(find.text('Distribuição'), findsOneWidget);
+    expect(find.text('Acumulado'), findsOneWidget);
+    expect(find.text('Viagem'), findsNothing);
+
+    await tester.ensureVisible(find.text('Acumulado'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Acumulado'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Viagem'), findsOneWidget);
     expect(find.text('Carro'), findsOneWidget);
     expect(find.textContaining('Completo'), findsOneWidget);

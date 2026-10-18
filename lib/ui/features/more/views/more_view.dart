@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/accounts/views/accounts_view.dart';
-import 'package:nest/ui/features/categories/views/categories_view.dart';
 import 'package:nest/ui/features/people/views/people_view.dart';
 import 'package:nest/ui/features/settings/views/settings_view.dart';
 
@@ -36,12 +35,6 @@ class MoreView extends StatelessWidget {
                   icon: Icons.account_balance_outlined,
                   label: 'Contas',
                   onTap: () => _push(context, const AccountsView()),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _MoreTile(
-                  icon: Icons.category_outlined,
-                  label: 'Categorias',
-                  onTap: () => _push(context, const CategoriesView()),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _MoreTile(

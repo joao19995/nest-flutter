@@ -5,6 +5,9 @@ import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 import 'package:nest/ui/features/goals/views/goal_month_detail_view.dart';
+import 'package:nest/ui/features/goals/views/goal_templates_view.dart';
+import 'package:nest/ui/features/goals/views/goals_breakdown_view.dart';
+import 'package:nest/ui/features/goals/views/goals_catalog_view.dart';
 
 /// A read-only panorama of the year's savings goals: how much was reserved in
 /// total and per month, and how much went to each goal.
@@ -87,18 +90,75 @@ class _GoalsContent extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _MonthsCard(months: viewModel.months),
-                const SizedBox(height: AppSpacing.xl),
-                Text(
-                  'Por objetivo',
-                  style: AppTextStyles.navSection(context.colors),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _GoalsCard(goals: viewModel.goals),
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.xl),
+          _GoalsTools(
+            onOpenBreakdown: () => _openBreakdown(context),
+            onOpenCatalog: () => _open(context, const GoalsCatalogView()),
+            onOpenDistribution: () => _open(context, const GoalTemplatesView()),
+          ),
         ],
       ),
+    );
+  }
+
+  /// Opens the per-goal accumulation page with the already loaded data.
+  void _openBreakdown(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => GoalsBreakdownView(
+          year: viewModel.selectedYear,
+          goals: viewModel.goals,
+        ),
+      ),
+    );
+  }
+
+  /// Opens [view] and reloads the year afterwards, so catalogue and
+  /// distribution edits are reflected when the user comes back.
+  Future<void> _open(BuildContext context, Widget view) async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => view));
+    await viewModel.load();
+  }
+}
+
+/// The bottom action tiles: the per-goal accumulation, the goals catalogue and
+/// the annual distribution.
+class _GoalsTools extends StatelessWidget {
+  const _GoalsTools({
+    required this.onOpenBreakdown,
+    required this.onOpenCatalog,
+    required this.onOpenDistribution,
+  });
+
+  final VoidCallback onOpenBreakdown;
+  final VoidCallback onOpenCatalog;
+  final VoidCallback onOpenDistribution;
+
+  @override
+  Widget build(BuildContext context) {
+    return NavTileGroup(
+      tiles: [
+        NavTile(
+          icon: Icons.savings_outlined,
+          label: 'Acumulado',
+          onTap: onOpenBreakdown,
+        ),
+        NavTile(
+          icon: Icons.list_alt_outlined,
+          label: 'Catálogo',
+          onTap: onOpenCatalog,
+        ),
+        NavTile(
+          icon: Icons.pie_chart_outline,
+          label: 'Distribuição',
+          onTap: onOpenDistribution,
+        ),
+      ],
     );
   }
 }
@@ -309,114 +369,5 @@ class _MonthRow extends StatelessWidget {
     return month.fundedCount == 1
         ? '1 objetivo'
         : '${month.fundedCount} objetivos';
-  }
-}
-
-class _GoalsCard extends StatelessWidget {
-  const _GoalsCard({required this.goals});
-
-  final List<GoalSummary> goals;
-
-  @override
-  Widget build(BuildContext context) {
-    if (goals.isEmpty) {
-      return AppCard(
-        child: Text(
-          'Ainda não há objetivos.',
-          style: AppTextStyles.bodyMuted(context.colors),
-        ),
-      );
-    }
-    return AppCard(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppBreakpoints.cardPadding(context),
-        vertical: AppSpacing.sm,
-      ),
-      child: AppStagger(
-        children: [
-          for (var index = 0; index < goals.length; index++)
-            _GoalRow(goal: goals[index]),
-        ],
-      ),
-    );
-  }
-}
-
-class _GoalRow extends StatelessWidget {
-  const _GoalRow({required this.goal});
-
-  final GoalSummary goal;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  goal.name,
-                  style: AppTextStyles.sectionHeading,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Text(
-                AppFormatters.currency(goal.reserved),
-                style: AppTextStyles.sectionHeading.copyWith(
-                  color: context.colors.ink,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ClipRRect(
-            borderRadius: AppRadius.fullAll,
-            child: LinearProgressIndicator(
-              value: goal.progress,
-              minHeight: AppSizes.progressBarHeight,
-              backgroundColor: context.colors.lineSoft,
-              color: goal.hasTarget && goal.progress >= 1
-                  ? context.colors.primaryDark
-                  : context.colors.primary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          _TargetLine(goal: goal),
-        ],
-      ),
-    );
-  }
-}
-
-/// A subtle line: the goal's progress against its annual target.
-class _TargetLine extends StatelessWidget {
-  const _TargetLine({required this.goal});
-
-  final GoalSummary goal;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!goal.hasTarget) {
-      return Text('Sem orçamento', style: AppTextStyles.small(context.colors));
-    }
-    if (goal.missing <= 0.005) {
-      return Text(
-        'Completo · ${AppFormatters.currency(goal.target)}',
-        style: AppTextStyles.small(context.colors).copyWith(
-          color: context.colors.primaryDark,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-    }
-    return Text(
-      'Falta ${AppFormatters.currency(goal.missing)} '
-      'de ${AppFormatters.currency(goal.target)}',
-      style: AppTextStyles.small(context.colors),
-    );
   }
 }

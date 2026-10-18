@@ -4,6 +4,8 @@ import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
+import 'package:nest/ui/features/categories/views/categories_view.dart';
+import 'package:nest/ui/features/category_templates/views/category_templates_view.dart';
 import 'package:nest/ui/features/expenses/view_models/expenses_view_model.dart';
 import 'package:nest/ui/features/expenses/views/month_detail_view.dart';
 
@@ -98,6 +100,12 @@ class _ExpensesContent extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: AppSpacing.xl),
+          _ExpensesTools(
+            onOpenCategories: () => _open(context, const CategoriesView()),
+            onOpenTemplates: () =>
+                _open(context, const CategoryTemplatesView()),
+          ),
         ],
       ),
     );
@@ -106,6 +114,45 @@ class _ExpensesContent extends StatelessWidget {
   void _openMonth(BuildContext context, String month) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => MonthDetailView(month: month)),
+    );
+  }
+
+  /// Opens [view] and reloads the year afterwards, so category and template
+  /// edits are reflected when the user comes back.
+  Future<void> _open(BuildContext context, Widget view) async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => view));
+    await viewModel.load();
+  }
+}
+
+/// The expense configuration entry points: the categories and the monthly
+/// templates.
+class _ExpensesTools extends StatelessWidget {
+  const _ExpensesTools({
+    required this.onOpenCategories,
+    required this.onOpenTemplates,
+  });
+
+  final VoidCallback onOpenCategories;
+  final VoidCallback onOpenTemplates;
+
+  @override
+  Widget build(BuildContext context) {
+    return NavTileGroup(
+      tiles: [
+        NavTile(
+          icon: Icons.list_alt_outlined,
+          label: 'Catálogo',
+          onTap: onOpenCategories,
+        ),
+        NavTile(
+          icon: Icons.pie_chart_outline,
+          label: 'Distribuições',
+          onTap: onOpenTemplates,
+        ),
+      ],
     );
   }
 }

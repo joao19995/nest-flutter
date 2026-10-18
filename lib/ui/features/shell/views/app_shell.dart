@@ -4,7 +4,6 @@ import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/accounts/views/accounts_view.dart';
 import 'package:nest/ui/features/calendar/views/calendar_view.dart';
-import 'package:nest/ui/features/categories/views/categories_view.dart';
 import 'package:nest/ui/features/dashboard/views/dashboard_view.dart';
 import 'package:nest/ui/features/expenses/views/month_detail_view.dart';
 import 'package:nest/ui/features/finances/views/finances_view.dart';
@@ -43,7 +42,6 @@ class _AppShellState extends State<AppShell> {
     _NavDestination.calendario,
     _NavDestination.financas,
     _NavDestination.contas,
-    _NavDestination.categorias,
     _NavDestination.pessoas,
     _NavDestination.definicoes,
   ];
@@ -208,7 +206,6 @@ class _AppShellState extends State<AppShell> {
         initialSection: _financesSection,
       ),
       _NavDestination.contas => const AccountsView(),
-      _NavDestination.categorias => const CategoriesView(),
       _NavDestination.pessoas => const PeopleView(),
       _NavDestination.definicoes => const SettingsView(),
       _NavDestination.mais => const MoreView(),
@@ -260,11 +257,6 @@ enum _NavDestination {
     label: 'Contas',
     icon: Icons.account_balance_outlined,
     selectedIcon: Icons.account_balance,
-  ),
-  categorias(
-    label: 'Categorias',
-    icon: Icons.category_outlined,
-    selectedIcon: Icons.category,
   ),
   pessoas(
     label: 'Pessoas',
