@@ -9,7 +9,6 @@ void main() {
         'id': 'p1',
         'name': 'Ana',
         'dailySpendingPercentage': 25,
-        'emergencyFundMonths': 6,
       });
 
       final Person person = model.toDomain();
@@ -17,7 +16,6 @@ void main() {
       expect(person.id, 'p1');
       expect(person.name, 'Ana');
       expect(person.dailySpendingPercentage, 25);
-      expect(person.emergencyFundMonths, 6);
     });
   });
 }

@@ -2,7 +2,7 @@ import 'package:nest/data/models/goal_year_model.dart';
 import 'package:nest/domain/models/goal_year.dart';
 
 /// API-facing representation of the single-month goal view
-/// (`GET /api/goal-plan?month=YYYY-MM`), with JSON mapping.
+/// (`GET /api/goal-plan/{month}`), with JSON mapping.
 ///
 /// The month endpoint is self-sufficient: it carries the plan's [planId]
 /// directly, so the month screen no longer has to load the whole year.

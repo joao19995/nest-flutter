@@ -1,74 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:nest/domain/models/goal_transfer.dart';
 import 'package:nest/domain/models/goal_year.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/goals/view_models/goal_month_detail_view_model.dart';
 
 /// The detail of a single goals month: what each goal is planned and reserved
 /// for, and who transfers what to fund it.
-class GoalMonthDetailView extends StatefulWidget {
+class GoalMonthDetailView extends StatelessWidget {
   const GoalMonthDetailView({super.key, required this.month});
 
   /// The month to open, formatted `YYYY-MM`.
   final String month;
 
   @override
-  State<GoalMonthDetailView> createState() => _GoalMonthDetailViewState();
-}
-
-class _GoalMonthDetailViewState extends State<GoalMonthDetailView> {
-  /// The page whose month is [GoalMonthDetailView.month]. Pages shift from
-  /// here, so the carousel is effectively unbounded.
-  static const int _anchor = 1000;
-
-  late final PageController _controller = PageController(initialPage: _anchor);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Objetivos mensais')),
-      body: PageView.builder(
-        controller: _controller,
-        itemBuilder: (context, index) => _GoalMonthPage(
-          month: _shift(widget.month, index - _anchor),
-          onPreviousMonth: () => _animateBy(-1),
-          onNextMonth: () => _animateBy(1),
-        ),
-      ),
+    return MonthPager(
+      title: 'Objetivos mensais',
+      month: month,
+      pageBuilder: (context, month, onPreviousMonth, onNextMonth) =>
+          _GoalMonthPage(
+            month: month,
+            onPreviousMonth: onPreviousMonth,
+            onNextMonth: onNextMonth,
+          ),
     );
-  }
-
-  void _animateBy(int delta) {
-    if (!_controller.hasClients) {
-      return;
-    }
-    final current = _controller.page?.round() ?? _anchor;
-    _controller.animateToPage(
-      current + delta,
-      duration: AppMotion.dialog,
-      curve: AppMotion.easing,
-    );
-  }
-
-  /// Shifts a `YYYY-MM` month by [delta] months.
-  static String _shift(String month, int delta) {
-    final parts = month.split('-');
-    final year = int.tryParse(parts.isNotEmpty ? parts[0] : '');
-    final monthNumber = int.tryParse(parts.length > 1 ? parts[1] : '');
-    if (year == null || monthNumber == null) {
-      return month;
-    }
-    final shifted = DateTime(year, monthNumber + delta);
-    return '${shifted.year}-${shifted.month.toString().padLeft(2, '0')}';
   }
 }
 
@@ -88,35 +46,24 @@ class _GoalMonthPage extends StatefulWidget {
   State<_GoalMonthPage> createState() => _GoalMonthPageState();
 }
 
-class _GoalMonthPageState extends State<_GoalMonthPage> {
-  GoalMonthDetailViewModel? _viewModel;
-
+class _GoalMonthPageState extends State<_GoalMonthPage>
+    with ViewModelState<_GoalMonthPage, GoalMonthDetailViewModel> {
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_viewModel != null) {
-      return;
-    }
+  GoalMonthDetailViewModel createViewModel() {
     final dependencies = DependenciesScope.of(context);
-    _viewModel = GoalMonthDetailViewModel(
+    return GoalMonthDetailViewModel(
       goalsRepository: dependencies.goalsRepository,
       peopleRepository: dependencies.peopleRepository,
       month: widget.month,
-    )..load();
+    );
   }
 
   @override
-  void dispose() {
-    _viewModel?.dispose();
-    super.dispose();
-  }
+  void onViewModelCreated(GoalMonthDetailViewModel viewModel) =>
+      viewModel.load();
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = _viewModel;
-    if (viewModel == null) {
-      return const SizedBox.shrink();
-    }
     return ListenableBuilder(
       listenable: viewModel,
       builder: (context, _) => SingleChildScrollView(
@@ -126,7 +73,7 @@ class _GoalMonthPageState extends State<_GoalMonthPage> {
           children: [
             Hero(
               tag: 'goal-month-${viewModel.month}',
-              flightShuttleBuilder: _heroShuttle,
+              flightShuttleBuilder: heroSurfaceShuttle,
               child: MonthSummaryHero(
                 title: 'Objetivos do mês',
                 month: viewModel.month,
@@ -145,39 +92,6 @@ class _GoalMonthPageState extends State<_GoalMonthPage> {
       ),
     );
   }
-}
-
-/// The Hero flight shows a plain surface that fades from the list's light
-/// card into the hero's dark gradient (and back), so the motion reads well in
-/// both directions without the complex hero content having to fit the
-/// morphing rectangle mid-flight.
-Widget _heroShuttle(
-  BuildContext flightContext,
-  Animation<double> animation,
-  HeroFlightDirection flightDirection,
-  BuildContext fromHeroContext,
-  BuildContext toHeroContext,
-) {
-  return AnimatedBuilder(
-    animation: animation,
-    builder: (context, child) {
-      final surface = flightContext.colors.surface;
-      final t = AppMotion.easing.transform(animation.value);
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(surface, AppColors.ink, t)!,
-              Color.lerp(surface, AppColors.primaryDark, t)!,
-            ],
-          ),
-          borderRadius: AppRadius.lgAll,
-        ),
-      );
-    },
-  );
 }
 
 class _MonthBody extends StatelessWidget {
@@ -200,7 +114,14 @@ class _MonthBody extends StatelessWidget {
         child: const SizedBox.shrink(),
       );
     }
-    return _CreateMonthCard(viewModel: viewModel);
+    return CreateMonthCard(
+      description:
+          'Ao criar, copia-se o disponível calculado para '
+          '${AppFormatters.monthName(viewModel.month)}.',
+      isBusy: viewModel.isBusy,
+      errorMessage: viewModel.actionError,
+      onCreate: viewModel.createMonth,
+    );
   }
 }
 
@@ -232,43 +153,6 @@ class _Content extends StatelessWidget {
           reserved: viewModel.reserved,
         ),
       ],
-    );
-  }
-}
-
-/// Shown when the selected month has not been created yet.
-class _CreateMonthCard extends StatelessWidget {
-  const _CreateMonthCard({required this.viewModel});
-
-  final GoalMonthDetailViewModel viewModel;
-
-  @override
-  Widget build(BuildContext context) {
-    final actionError = viewModel.actionError;
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Mês não criado', style: AppTextStyles.sectionHeading),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Ao criar, copia-se o disponível calculado para '
-            '${AppFormatters.monthName(viewModel.month)}.',
-            style: AppTextStyles.bodyMuted(context.colors),
-          ),
-          if (actionError != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            AppErrorBanner(message: actionError),
-          ],
-          const SizedBox(height: AppSpacing.lg),
-          AppButton(
-            label: 'Criar mês',
-            icon: Icons.add,
-            isLoading: viewModel.isBusy,
-            onPressed: viewModel.createMonth,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -353,32 +237,19 @@ class _GoalsCard extends StatelessWidget {
   }
 
   Future<void> _confirmClose(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Guardar e fechar ${AppFormatters.monthName(plan.month)}?'),
-        content: const Text('O planeado e o reservado ficam imutáveis.'),
-        actions: [
-          AppButton(
-            label: 'Cancelar',
-            variant: AppButtonVariant.ghost,
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-          ),
-          AppButton(
-            label: 'Guardar e fechar',
-            variant: AppButtonVariant.destructive,
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-          ),
-        ],
-      ),
+    final confirmed = await confirmAction(
+      context,
+      title: 'Guardar e fechar ${AppFormatters.monthName(plan.month)}?',
+      message: 'O planeado e o reservado ficam imutáveis.',
+      confirmLabel: 'Guardar e fechar',
     );
-    if (confirmed == true) {
+    if (confirmed) {
       onClose();
     }
   }
 }
 
-class _GoalRow extends StatefulWidget {
+class _GoalRow extends StatelessWidget {
   const _GoalRow({required this.allocation, required this.onSaveActual});
 
   final GoalAllocation allocation;
@@ -386,84 +257,17 @@ class _GoalRow extends StatefulWidget {
   /// When provided, the reserved amount is editable and saved on focus loss.
   final void Function(String goalId, double actual)? onSaveActual;
 
-  @override
-  State<_GoalRow> createState() => _GoalRowState();
-}
-
-class _GoalRowState extends State<_GoalRow>
-    with SingleTickerProviderStateMixin {
-  late final TextEditingController _controller;
-  late final FocusNode _focusNode;
-  late final AnimationController _tick;
-
-  @override
-  void initState() {
-    super.initState();
-    _tick = AnimationController(vsync: this, duration: AppMotion.confirm);
-    _controller = TextEditingController(text: _format(_displayValue()));
-    _focusNode = FocusNode()..addListener(_handleFocusChange);
-  }
-
-  @override
-  void didUpdateWidget(covariant _GoalRow oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!_focusNode.hasFocus &&
-        widget.allocation.actual != oldWidget.allocation.actual) {
-      _controller.text = _format(_displayValue());
-    }
-  }
-
-  @override
-  void dispose() {
-    _focusNode.removeListener(_handleFocusChange);
-    _focusNode.dispose();
-    _controller.dispose();
-    _tick.dispose();
-    super.dispose();
-  }
-
   /// Untouched reserved lines default to the planned amount.
-  double _displayValue() {
-    final allocation = widget.allocation;
-    if (widget.onSaveActual != null && allocation.actual == 0) {
+  double get _displayValue {
+    if (onSaveActual != null && allocation.actual == 0) {
       return allocation.planned;
     }
     return allocation.actual;
   }
 
-  void _handleFocusChange() {
-    if (!_focusNode.hasFocus) {
-      _save();
-    }
-  }
-
-  void _save() {
-    final onSaveActual = widget.onSaveActual;
-    if (onSaveActual == null) {
-      return;
-    }
-    final parsed = double.tryParse(
-      _controller.text.trim().replaceAll(',', '.'),
-    );
-    if (parsed == null || parsed < 0) {
-      _controller.text = _format(widget.allocation.actual);
-      return;
-    }
-    if (parsed == widget.allocation.actual) {
-      return;
-    }
-    onSaveActual(widget.allocation.goalId, parsed);
-    HapticFeedback.selectionClick();
-    _tick.forward(from: 0);
-  }
-
-  static String _format(double value) =>
-      value.toStringAsFixed(2).replaceAll('.', ',');
-
   @override
   Widget build(BuildContext context) {
-    final allocation = widget.allocation;
-    final editable = widget.onSaveActual != null;
+    final onSave = onSaveActual;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Row(
@@ -488,34 +292,11 @@ class _GoalRowState extends State<_GoalRow>
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          if (editable)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppSavedTick(animation: _tick),
-                const SizedBox(width: AppSpacing.sm),
-                SizedBox(
-                  width: AppSizes.moneyFieldWidth,
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    textAlign: TextAlign.end,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _save(),
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      suffixText: '€',
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: AppSpacing.sm,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          if (onSave != null)
+            MoneyField(
+              value: _displayValue,
+              originalValue: allocation.actual,
+              onSave: (actual) => onSave(allocation.goalId, actual),
             )
           else
             Text(
@@ -570,8 +351,6 @@ class _TransferRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = transfer.name.trim();
-    final initial = name.isEmpty ? '?' : name[0].toUpperCase();
     final quota = (transfer.share * 100).round();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -580,7 +359,7 @@ class _TransferRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              _InitialAvatar(initial: initial),
+              InitialAvatar(name: transfer.name),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
@@ -620,31 +399,6 @@ class _TransferRow extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _InitialAvatar extends StatelessWidget {
-  const _InitialAvatar({required this.initial});
-
-  final String initial;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: AppSizes.buttonHeight,
-      height: AppSizes.buttonHeight,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: context.colors.terraSoft,
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        initial,
-        style: AppTextStyles.label(
-          context.colors,
-        ).copyWith(color: context.colors.terraDark),
       ),
     );
   }

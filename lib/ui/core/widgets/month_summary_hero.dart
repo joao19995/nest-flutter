@@ -4,7 +4,7 @@ import 'package:nest/ui/core/widgets/animated_amount.dart';
 import 'package:nest/ui/core/widgets/app_badge.dart';
 import 'package:nest/ui/core/widgets/app_period_stepper.dart';
 import 'package:nest/ui/core/widgets/app_progress_ring.dart';
-import 'package:nest/ui/core/widgets/hero_delta_pill.dart';
+import 'package:nest/ui/core/widgets/hero_deviation_pill.dart';
 import 'package:nest/ui/core/widgets/hero_panel.dart';
 
 /// The month summary panel used by the monthly detail screens: real vs planned
@@ -91,7 +91,14 @@ class MonthSummaryHero extends StatelessWidget {
                         ).copyWith(color: AppColors.onHeroMuted),
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      _DeviationPill(actual: actual, planned: planned),
+                      HeroDeviationPill(
+                        diff: actual - planned,
+                        diffPct: planned > 0
+                            ? ((actual - planned) / planned * 100)
+                            : 0,
+                        over: actual - planned > 0.005,
+                        alignment: Alignment.centerLeft,
+                      ),
                     ],
                   ],
                 ),
@@ -119,42 +126,6 @@ class MonthSummaryHero extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// A translucent pill: how far the real total deviates from the plan.
-class _DeviationPill extends StatelessWidget {
-  const _DeviationPill({required this.actual, required this.planned});
-
-  final double actual;
-  final double planned;
-
-  @override
-  Widget build(BuildContext context) {
-    final diff = actual - planned;
-    final over = diff > 0.005;
-    final under = diff < -0.005;
-    if (!over && !under) {
-      return const Align(
-        alignment: Alignment.centerLeft,
-        child: HeroDeltaPill(
-          label: 'No planeado',
-          color: AppColors.onHeroMuted,
-        ),
-      );
-    }
-    final pct = planned > 0 ? (diff / planned * 100) : 0.0;
-    final sign = diff > 0 ? '+' : '';
-    final direction = over ? 'acima' : 'abaixo';
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: HeroDeltaPill(
-        label:
-            'Desvio $sign${AppFormatters.currency(diff)}  ·  '
-            '${AppFormatters.percentage(pct.abs().round())} $direction',
-        color: over ? AppColors.overOnDark : AppColors.mint,
       ),
     );
   }

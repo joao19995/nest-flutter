@@ -3,6 +3,7 @@ import 'package:nest/data/repositories/people_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/person.dart';
 import 'package:nest/domain/models/person_income.dart';
+import 'package:nest/ui/core/month_key.dart';
 
 /// Read-only salary summary for one household member.
 class PersonSalarySummary {
@@ -62,7 +63,7 @@ class PeopleViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final people = await _peopleRepository.fetchPeople();
-      final month = _currentMonth();
+      final month = MonthKey.current();
       final summaries = <PersonSalarySummary>[];
       for (final person in people) {
         final incomes = await _peopleRepository.fetchIncomes(person.id);
@@ -85,12 +86,5 @@ class PeopleViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
-
-  static String _currentMonth() {
-    final now = DateTime.now();
-    final year = now.year.toString().padLeft(4, '0');
-    final month = now.month.toString().padLeft(2, '0');
-    return '$year-$month';
   }
 }

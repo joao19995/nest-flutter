@@ -5,7 +5,6 @@ class GoalTemplateModel {
   const GoalTemplateModel({
     required this.id,
     required this.validFrom,
-    required this.annualTotal,
     required this.entries,
   });
 
@@ -14,7 +13,6 @@ class GoalTemplateModel {
     return GoalTemplateModel(
       id: json['id'] as String,
       validFrom: json['validFrom'] as String,
-      annualTotal: (json['annualTotal'] as num).toDouble(),
       entries: entries is List
           ? entries
                 .whereType<Map<String, dynamic>>()
@@ -26,36 +24,28 @@ class GoalTemplateModel {
 
   final String id;
   final String validFrom;
-  final double annualTotal;
   final List<GoalTemplateEntryModel> entries;
 
   GoalTemplate toDomain() => GoalTemplate(
     id: id,
     validFrom: validFrom,
-    annualTotal: annualTotal,
     entries: entries.map((entry) => entry.toDomain()).toList(growable: false),
   );
 }
 
 /// API-facing representation of a [GoalTemplateEntry], with JSON mapping.
 class GoalTemplateEntryModel {
-  const GoalTemplateEntryModel({
-    required this.goalId,
-    required this.percentage,
-    required this.budget,
-  });
+  const GoalTemplateEntryModel({required this.goalId, required this.budget});
 
   factory GoalTemplateEntryModel.fromJson(Map<String, dynamic> json) =>
       GoalTemplateEntryModel(
         goalId: json['goalId'] as String,
-        percentage: (json['percentage'] as num).toDouble(),
         budget: (json['budget'] as num).toDouble(),
       );
 
   final String goalId;
-  final double percentage;
   final double budget;
 
   GoalTemplateEntry toDomain() =>
-      GoalTemplateEntry(goalId: goalId, percentage: percentage, budget: budget);
+      GoalTemplateEntry(goalId: goalId, budget: budget);
 }

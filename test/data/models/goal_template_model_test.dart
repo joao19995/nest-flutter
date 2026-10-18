@@ -16,11 +16,9 @@ void main() {
       }).toDomain();
 
       expect(template.validFrom, '2026-01');
-      expect(template.annualTotal, 34565.6);
       expect(template.entries, hasLength(2));
       expect(template.entries.first.goalId, 'g1');
       expect(template.entries.first.budget, 4000);
-      expect(template.entries.first.percentage, 13);
     });
   });
 }

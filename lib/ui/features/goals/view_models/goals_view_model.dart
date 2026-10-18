@@ -4,6 +4,7 @@ import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/goal.dart';
 import 'package:nest/domain/models/goal_template.dart';
 import 'package:nest/domain/models/goal_year.dart';
+import 'package:nest/ui/core/month_key.dart';
 
 /// One month in the yearly goals overview.
 class GoalMonthSummary {
@@ -128,7 +129,7 @@ class GoalsViewModel extends ChangeNotifier {
     };
     final summaries = <GoalMonthSummary>[];
     for (var index = 1; index <= 12; index++) {
-      final key = _monthKey(_selectedYear, index);
+      final key = MonthKey.of(_selectedYear, index);
       final plan = planByMonth[key];
       summaries.add(
         GoalMonthSummary(
@@ -262,7 +263,4 @@ class GoalsViewModel extends ChangeNotifier {
     _goalYear = null;
     load();
   }
-
-  static String _monthKey(int year, int month) =>
-      '$year-${month.toString().padLeft(2, '0')}';
 }

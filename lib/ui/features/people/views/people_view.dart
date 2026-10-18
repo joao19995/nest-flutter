@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/people/view_models/people_view_model.dart';
 
@@ -15,33 +16,19 @@ class PeopleView extends StatefulWidget {
   State<PeopleView> createState() => _PeopleViewState();
 }
 
-class _PeopleViewState extends State<PeopleView> {
-  PeopleViewModel? _viewModel;
-
+class _PeopleViewState extends State<PeopleView>
+    with ViewModelState<PeopleView, PeopleViewModel> {
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_viewModel != null) {
-      return;
-    }
+  PeopleViewModel createViewModel() {
     final dependencies = DependenciesScope.of(context);
-    _viewModel = PeopleViewModel(
-      peopleRepository: dependencies.peopleRepository,
-    )..load();
+    return PeopleViewModel(peopleRepository: dependencies.peopleRepository);
   }
 
   @override
-  void dispose() {
-    _viewModel?.dispose();
-    super.dispose();
-  }
+  void onViewModelCreated(PeopleViewModel viewModel) => viewModel.load();
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = _viewModel;
-    if (viewModel == null) {
-      return const SizedBox.shrink();
-    }
     return Scaffold(
       appBar: AppBar(title: const Text('Contas')),
       body: ListenableBuilder(
@@ -152,8 +139,6 @@ class _SalaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final person = summary.person;
-    final name = person.name.trim();
-    final initial = name.isEmpty ? '?' : name[0].toUpperCase();
     return AppCard(
       onTap: () => _openHistory(context),
       child: Column(
@@ -161,7 +146,7 @@ class _SalaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              _Avatar(initial: initial),
+              InitialAvatar(name: person.name),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(
@@ -212,31 +197,6 @@ class _SalaryCard extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: context.colors.surface,
       builder: (sheetContext) => _SalaryHistorySheet(summary: summary),
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.initial});
-
-  final String initial;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: AppSizes.buttonHeight,
-      height: AppSizes.buttonHeight,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: context.colors.terraSoft,
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        initial,
-        style: AppTextStyles.label(
-          context.colors,
-        ).copyWith(color: context.colors.terraDark),
-      ),
     );
   }
 }

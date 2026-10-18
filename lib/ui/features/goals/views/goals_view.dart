@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 import 'package:nest/ui/features/goals/views/goal_month_detail_view.dart';
@@ -14,32 +15,19 @@ class GoalsView extends StatefulWidget {
   State<GoalsView> createState() => _GoalsViewState();
 }
 
-class _GoalsViewState extends State<GoalsView> {
-  GoalsViewModel? _viewModel;
-
+class _GoalsViewState extends State<GoalsView>
+    with ViewModelState<GoalsView, GoalsViewModel> {
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_viewModel != null) {
-      return;
-    }
+  GoalsViewModel createViewModel() {
     final dependencies = DependenciesScope.of(context);
-    _viewModel = GoalsViewModel(goalsRepository: dependencies.goalsRepository)
-      ..load();
+    return GoalsViewModel(goalsRepository: dependencies.goalsRepository);
   }
 
   @override
-  void dispose() {
-    _viewModel?.dispose();
-    super.dispose();
-  }
+  void onViewModelCreated(GoalsViewModel viewModel) => viewModel.load();
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = _viewModel;
-    if (viewModel == null) {
-      return const SizedBox.shrink();
-    }
     return Scaffold(
       appBar: AppBar(title: const Text('Objectivos')),
       body: ListenableBuilder(
@@ -146,12 +134,10 @@ class _GoalsYearHero extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
-              _YearStepper(
-                year: year,
-                canGoBack: canGoToPreviousYear,
-                canGoForward: canGoToNextYear,
-                onPrevious: onPreviousYear,
-                onNext: onNextYear,
+              AppPeriodStepper(
+                label: '$year',
+                onPrevious: canGoToPreviousYear ? onPreviousYear : null,
+                onNext: canGoToNextYear ? onNextYear : null,
               ),
             ],
           ),
@@ -204,80 +190,6 @@ class _UnallocatedPill extends StatelessWidget {
     return HeroDeltaPill(
       label: '${AppFormatters.currency(unallocated)} por alocar',
       color: AppColors.onHeroMuted,
-    );
-  }
-}
-
-class _YearStepper extends StatelessWidget {
-  const _YearStepper({
-    required this.year,
-    required this.canGoBack,
-    required this.canGoForward,
-    required this.onPrevious,
-    required this.onNext,
-  });
-
-  final int year;
-  final bool canGoBack;
-  final bool canGoForward;
-  final VoidCallback onPrevious;
-  final VoidCallback onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: AppRadius.fullAll,
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _StepperButton(
-            icon: Icons.chevron_left,
-            enabled: canGoBack,
-            onTap: onPrevious,
-          ),
-          Text(
-            '$year',
-            style: AppTextStyles.label(
-              context.colors,
-            ).copyWith(color: AppColors.primaryDark),
-          ),
-          _StepperButton(
-            icon: Icons.chevron_right,
-            enabled: canGoForward,
-            onTap: onNext,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepperButton extends StatelessWidget {
-  const _StepperButton({
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      customBorder: const CircleBorder(),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: Icon(
-          icon,
-          size: AppSizes.iconMedium,
-          color: enabled ? AppColors.primaryDark : AppColors.faint,
-        ),
-      ),
     );
   }
 }

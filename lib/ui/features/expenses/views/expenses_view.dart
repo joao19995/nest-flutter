@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nest/domain/models/expense_year_summary.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/expenses/view_models/expenses_view_model.dart';
 import 'package:nest/ui/features/expenses/views/month_detail_view.dart';
@@ -15,33 +16,21 @@ class ExpensesView extends StatefulWidget {
   State<ExpensesView> createState() => _ExpensesViewState();
 }
 
-class _ExpensesViewState extends State<ExpensesView> {
-  ExpensesViewModel? _viewModel;
-
+class _ExpensesViewState extends State<ExpensesView>
+    with ViewModelState<ExpensesView, ExpensesViewModel> {
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_viewModel != null) {
-      return;
-    }
+  ExpensesViewModel createViewModel() {
     final dependencies = DependenciesScope.of(context);
-    _viewModel = ExpensesViewModel(
+    return ExpensesViewModel(
       expensesRepository: dependencies.expensesRepository,
-    )..load();
+    );
   }
 
   @override
-  void dispose() {
-    _viewModel?.dispose();
-    super.dispose();
-  }
+  void onViewModelCreated(ExpensesViewModel viewModel) => viewModel.load();
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = _viewModel;
-    if (viewModel == null) {
-      return const SizedBox.shrink();
-    }
     return Scaffold(
       appBar: AppBar(title: const Text('Despesas')),
       body: ListenableBuilder(
@@ -175,10 +164,11 @@ class _ExpenseYearHero extends StatelessWidget {
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.xs,
               children: [
-                _DeviationPill(
+                HeroDeviationPill(
                   diff: summary.diff,
                   diffPct: summary.diffPct,
                   over: summary.over,
+                  zeroLabel: 'Sem desvio do plano',
                 ),
                 if (summary.over && summary.remainingMonths > 0)
                   _RebalancePill(
@@ -202,37 +192,6 @@ class _ExpenseYearHero extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-/// A translucent pill: how far the year deviates from the plan.
-class _DeviationPill extends StatelessWidget {
-  const _DeviationPill({
-    required this.diff,
-    required this.diffPct,
-    required this.over,
-  });
-
-  final double diff;
-  final double diffPct;
-  final bool over;
-
-  @override
-  Widget build(BuildContext context) {
-    if (diff == 0) {
-      return const HeroDeltaPill(
-        label: 'Sem desvio do plano',
-        color: AppColors.onHeroMuted,
-      );
-    }
-    final sign = diff > 0 ? '+' : '';
-    final direction = over ? 'acima' : 'abaixo';
-    return HeroDeltaPill(
-      label:
-          'Desvio $sign${AppFormatters.currency(diff)}  ·  '
-          '${AppFormatters.percentage(diffPct.round())} $direction',
-      color: over ? AppColors.overOnDark : AppColors.mint,
     );
   }
 }

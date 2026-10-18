@@ -503,8 +503,8 @@ class _EventRow extends StatelessWidget {
       key: ValueKey(event.id),
       direction: DismissDirection.endToStart,
       onDismissed: (_) => onDelete(),
-      background: const _DismissBackground(alignment: Alignment.centerLeft),
-      secondaryBackground: const _DismissBackground(
+      background: const DismissBackground(alignment: Alignment.centerLeft),
+      secondaryBackground: const DismissBackground(
         alignment: Alignment.centerRight,
       ),
       child: Material(
@@ -538,29 +538,6 @@ class _EventRow extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DismissBackground extends StatelessWidget {
-  const _DismissBackground({required this.alignment});
-
-  final Alignment alignment;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      alignment: alignment,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: context.colors.dangerSoft,
-        borderRadius: AppRadius.smAll,
-      ),
-      child: Icon(
-        Icons.delete_outline,
-        size: AppSizes.iconLarge,
-        color: context.colors.dangerOnSoft,
       ),
     );
   }
@@ -672,26 +649,12 @@ class _EventFormSheetState extends State<_EventFormSheet> {
     if (onDelete == null) {
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Eliminar evento?'),
-        content: const Text('O evento deixa de aparecer no calendário.'),
-        actions: [
-          AppButton(
-            label: 'Cancelar',
-            variant: AppButtonVariant.ghost,
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-          ),
-          AppButton(
-            label: 'Eliminar',
-            variant: AppButtonVariant.destructive,
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-          ),
-        ],
-      ),
+    final confirmed = await confirmAction(
+      context,
+      title: 'Eliminar evento?',
+      message: 'O evento deixa de aparecer no calendário.',
     );
-    if (confirmed != true || !mounted) {
+    if (!confirmed || !mounted) {
       return;
     }
     Navigator.of(context).pop();

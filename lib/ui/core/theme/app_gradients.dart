@@ -10,4 +10,19 @@ abstract final class AppGradients {
     end: Alignment.bottomRight,
     colors: [AppColors.ink, AppColors.primaryDark],
   );
+
+  /// [hero] lerped in from [surface] as a Hero flight progresses: `t = 0` is
+  /// [surface], `t = 1` is the full hero gradient. Used by the shared hero
+  /// flight shuttle so the motion reads in both directions.
+  static LinearGradient heroFrom(Color surface, double t) {
+    final colors = hero.colors;
+    return LinearGradient(
+      begin: hero.begin,
+      end: hero.end,
+      colors: [
+        Color.lerp(surface, colors[0], t) ?? surface,
+        Color.lerp(surface, colors[1], t) ?? surface,
+      ],
+    );
+  }
 }

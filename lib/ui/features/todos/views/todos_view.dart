@@ -349,10 +349,10 @@ class _ListBody extends StatelessWidget {
                   viewModel.deleteItem(list, item);
                   _showUndoDeleteSnackBar(context, viewModel, list, item);
                 },
-                background: const _DismissBackground(
+                background: const DismissBackground(
                   alignment: Alignment.centerLeft,
                 ),
-                secondaryBackground: const _DismissBackground(
+                secondaryBackground: const DismissBackground(
                   alignment: Alignment.centerRight,
                 ),
                 child: _TaskRow(
@@ -541,7 +541,7 @@ class _ListHeader extends StatelessWidget {
   }
 
   Future<void> _delete(BuildContext context) async {
-    final confirmed = await _confirmDelete(
+    final confirmed = await confirmAction(
       context,
       title: 'Eliminar lista?',
       message: 'A lista "${list.name}" deixa de aparecer com as suas tarefas.',
@@ -814,29 +814,6 @@ class _ArchivedRow extends StatelessWidget {
   }
 }
 
-class _DismissBackground extends StatelessWidget {
-  const _DismissBackground({required this.alignment});
-
-  final Alignment alignment;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      alignment: alignment,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: context.colors.dangerSoft,
-        borderRadius: AppRadius.smAll,
-      ),
-      child: Icon(
-        Icons.delete_outline,
-        size: AppSizes.iconLarge,
-        color: context.colors.dangerOnSoft,
-      ),
-    );
-  }
-}
-
 /// Prompts for a single line of text; resolves to the trimmed value or null.
 Future<String?> _promptText(
   BuildContext context, {
@@ -919,34 +896,6 @@ class _TextPromptDialogState extends State<_TextPromptDialog> {
       ],
     );
   }
-}
-
-/// Asks for confirmation before a destructive action.
-Future<bool> _confirmDelete(
-  BuildContext context, {
-  required String title,
-  required String message,
-}) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(title),
-      content: Text(message),
-      actions: [
-        AppButton(
-          label: 'Cancelar',
-          variant: AppButtonVariant.ghost,
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-        ),
-        AppButton(
-          label: 'Eliminar',
-          variant: AppButtonVariant.destructive,
-          onPressed: () => Navigator.of(dialogContext).pop(true),
-        ),
-      ],
-    ),
-  );
-  return confirmed ?? false;
 }
 
 /// Shows the post-swipe snack bar with a "Desfazer" action that restores the

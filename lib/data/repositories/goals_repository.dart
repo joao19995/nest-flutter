@@ -50,11 +50,18 @@ class GoalsRepository {
   /// Returns the saved plan of [month] (`YYYY-MM`), or `null` when the month
   /// has not been created. Loads only the requested month.
   Future<GoalPlan?> fetchGoalMonth(String month) async {
-    final data = await _client.get('/api/goal-plan?month=$month');
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
+    try {
+      final data = await _client.get('/api/goal-plan/$month');
+      if (data is! Map<String, dynamic>) {
+        throw const ApiFailure('Resposta inesperada do servidor.');
+      }
+      return GoalMonthModel.fromJson(data).toDomain();
+    } on ApiFailure catch (failure) {
+      if (failure.statusCode == 404) {
+        return null;
+      }
+      rethrow;
     }
-    return GoalMonthModel.fromJson(data).toDomain();
   }
 
   /// Creates [month] (`YYYY-MM`) from the applicable template's snapshot.

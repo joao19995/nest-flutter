@@ -23,7 +23,7 @@ class ExpensesRepository {
   /// Returns the plan of [month] (`YYYY-MM`), or `null` when it is not created.
   Future<MonthlyPlan?> fetchMonth(String month) async {
     try {
-      final data = await _client.get('/api/months?month=$month');
+      final data = await _client.get('/api/months/$month');
       if (data is! Map<String, dynamic>) {
         throw const ApiFailure('Resposta inesperada do servidor.');
       }

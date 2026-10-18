@@ -111,11 +111,11 @@ http.Response _route(http.Request request) {
 MockClient _client({bool created = false}) {
   var hasMonth = created;
   return MockClient((request) async {
-    if (request.url.path == '/api/goal-plan') {
-      if (request.method == 'POST') {
-        hasMonth = true;
-        return _json(_plan(), status: 201);
-      }
+    if (request.url.path == '/api/goal-plan' && request.method == 'POST') {
+      hasMonth = true;
+      return _json(_plan(), status: 201);
+    }
+    if (request.url.path.startsWith('/api/goal-plan/')) {
       return hasMonth ? _json(_monthView()) : _json(_missingMonth());
     }
     return _route(request);
@@ -179,7 +179,7 @@ void main() {
     var closed = false;
     final client = MockClient((request) async {
       requests.add(request);
-      if (request.url.path == '/api/goal-plan' && request.method == 'GET') {
+      if (request.method == 'GET') {
         return _json(_monthView(closed: closed, actual1: 0, actual2: 0));
       }
       if (request.method == 'PATCH') {

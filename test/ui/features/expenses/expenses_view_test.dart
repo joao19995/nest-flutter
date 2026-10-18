@@ -112,7 +112,7 @@ void main() {
       if (request.url.path == '/api/months/summary') {
         return _json(_yearSummary());
       }
-      if (request.url.path == '/api/months') {
+      if (request.url.path == '/api/months/2026-01') {
         return _json(_closedMonth());
       }
       return _json(<Object>[], status: 404);

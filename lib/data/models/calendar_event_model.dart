@@ -9,7 +9,6 @@ class CalendarEventModel {
     required this.id,
     required this.title,
     required this.startsAt,
-    required this.active,
   });
 
   factory CalendarEventModel.fromJson(Map<String, dynamic> json) =>
@@ -17,14 +16,12 @@ class CalendarEventModel {
         id: json['id'] as String,
         title: json['title'] as String,
         startsAt: DateTime.parse(json['startsAt'] as String).toLocal(),
-        active: json['active'] as bool? ?? true,
       );
 
   final String id;
   final String title;
   final DateTime startsAt;
-  final bool active;
 
   CalendarEvent toDomain() =>
-      CalendarEvent(id: id, title: title, startsAt: startsAt, active: active);
+      CalendarEvent(id: id, title: title, startsAt: startsAt);
 }

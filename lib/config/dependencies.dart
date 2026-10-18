@@ -1,4 +1,3 @@
-import 'package:nest/data/repositories/accounts_repository.dart';
 import 'package:nest/data/repositories/events_repository.dart';
 import 'package:nest/data/repositories/expenses_repository.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
@@ -15,7 +14,6 @@ class AppDependencies {
   AppDependencies({NestApiClient? apiClient})
     : apiClient = apiClient ?? NestApiClient() {
     peopleRepository = PeopleRepository(client: this.apiClient);
-    accountsRepository = AccountsRepository(client: this.apiClient);
     eventsRepository = EventsRepository(client: this.apiClient);
     expensesRepository = ExpensesRepository(client: this.apiClient);
     goalsRepository = GoalsRepository(client: this.apiClient);
@@ -24,7 +22,6 @@ class AppDependencies {
 
   final NestApiClient apiClient;
   late final PeopleRepository peopleRepository;
-  late final AccountsRepository accountsRepository;
   late final EventsRepository eventsRepository;
   late final ExpensesRepository expensesRepository;
   late final GoalsRepository goalsRepository;
