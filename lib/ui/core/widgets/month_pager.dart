@@ -67,11 +67,22 @@ class _MonthPagerState extends State<MonthPager> {
       appBar: AppBar(title: Text(widget.title)),
       body: PageView.builder(
         controller: _controller,
-        itemBuilder: (context, index) => widget.pageBuilder(
-          context,
-          MonthKey.shift(widget.month, index - _anchor),
-          () => _animateBy(-1),
-          () => _animateBy(1),
+        itemBuilder: (context, index) => Padding(
+          padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppSizes.contentMaxWidth,
+              ),
+              child: widget.pageBuilder(
+                context,
+                MonthKey.shift(widget.month, index - _anchor),
+                () => _animateBy(-1),
+                () => _animateBy(1),
+              ),
+            ),
+          ),
         ),
       ),
     );

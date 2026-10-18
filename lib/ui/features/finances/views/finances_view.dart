@@ -29,57 +29,59 @@ class _FinancesViewState extends State<FinancesView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Finanças')),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppSizes.contentMaxWidth,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  AppBreakpoints.pagePadding(context),
-                  AppSpacing.md,
-                  AppBreakpoints.pagePadding(context),
-                  AppSpacing.xs,
-                ),
-                child: Align(
-                  child: SegmentedButton<FinancesSection>(
-                    showSelectedIcon: false,
-                    style: const ButtonStyle(
-                      padding: WidgetStatePropertyAll(
-                        EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      body: Padding(
+        padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: AppSizes.contentMaxWidth,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(
+                    top: AppSpacing.md,
+                    bottom: AppSpacing.md,
+                  ),
+                  child: Align(
+                    child: SegmentedButton<FinancesSection>(
+                      showSelectedIcon: false,
+                      style: const ButtonStyle(
+                        padding: WidgetStatePropertyAll(
+                          EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                        ),
                       ),
+                      segments: const [
+                        ButtonSegment(
+                          value: FinancesSection.expenses,
+                          label: Text('Despesas'),
+                          icon: Icon(Icons.receipt_long_outlined),
+                        ),
+                        ButtonSegment(
+                          value: FinancesSection.goals,
+                          label: Text('Objectivos'),
+                          icon: Icon(Icons.flag_outlined),
+                        ),
+                      ],
+                      selected: {_section},
+                      onSelectionChanged: (selection) =>
+                          setState(() => _section = selection.first),
                     ),
-                    segments: const [
-                      ButtonSegment(
-                        value: FinancesSection.expenses,
-                        label: Text('Despesas'),
-                        icon: Icon(Icons.receipt_long_outlined),
-                      ),
-                      ButtonSegment(
-                        value: FinancesSection.goals,
-                        label: Text('Objectivos'),
-                        icon: Icon(Icons.flag_outlined),
-                      ),
-                    ],
-                    selected: {_section},
-                    onSelectionChanged: (selection) =>
-                        setState(() => _section = selection.first),
                   ),
                 ),
-              ),
-              Expanded(
-                child: IndexedStack(
-                  index: _section.index,
-                  children: const [
-                    ExpensesView(embedded: true),
-                    GoalsView(embedded: true),
-                  ],
+                Expanded(
+                  child: IndexedStack(
+                    index: _section.index,
+                    children: const [
+                      ExpensesView(embedded: true),
+                      GoalsView(embedded: true),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

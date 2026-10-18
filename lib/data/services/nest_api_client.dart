@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:nest/config/env.dart';
 import 'package:nest/domain/failures/api_failure.dart';
@@ -39,12 +40,23 @@ class NestApiClient {
 
   void dispose() => _httpClient.close();
 
+  /// Resolves [path] against [_baseUrl]. On web an empty base URL means
+  /// "same origin", so the PWA can be served next to an `/api` proxy.
+  Uri _resolve(String path) {
+    final base = _baseUrl.isNotEmpty
+        ? _baseUrl
+        : kIsWeb
+        ? Uri.base.origin
+        : '';
+    return Uri.parse('$base$path');
+  }
+
   Future<dynamic> _send(
     String method,
     String path, {
     Map<String, dynamic>? body,
   }) async {
-    final uri = Uri.parse('$_baseUrl$path');
+    final uri = _resolve(path);
     final headers = <String, String>{
       ..._baseHeaders,
       if (_apiKey.isNotEmpty) 'Authorization': 'Bearer $_apiKey',

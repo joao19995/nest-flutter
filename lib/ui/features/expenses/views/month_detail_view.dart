@@ -64,7 +64,6 @@ class _MonthPageState extends State<_MonthPage>
     return ListenableBuilder(
       listenable: viewModel,
       builder: (context, _) => SingleChildScrollView(
-        padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

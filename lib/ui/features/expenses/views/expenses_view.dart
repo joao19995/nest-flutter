@@ -37,19 +37,27 @@ class _ExpensesViewState extends State<ExpensesView>
 
   @override
   Widget build(BuildContext context) {
-    final body = ListenableBuilder(
+    final content = ListenableBuilder(
       listenable: viewModel,
-      builder: (context, _) => Padding(
-        padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
-        child: _ExpensesContent(viewModel: viewModel),
-      ),
+      builder: (context, _) => _ExpensesContent(viewModel: viewModel),
     );
     if (widget.embedded) {
-      return body;
+      return content;
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Despesas')),
-      body: body,
+      body: Padding(
+        padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: AppSizes.contentMaxWidth,
+            ),
+            child: content,
+          ),
+        ),
+      ),
     );
   }
 }

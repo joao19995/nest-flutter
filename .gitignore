@@ -26,6 +26,7 @@ migrate_working_dir/
 # Local API config (contains NEST_API_KEY). Copy config/dev.example.json.
 /config/dev.json
 /config/android.json
+/config/pwa.json
 
 # Flutter/Dart/Pub related
 **/doc/api/

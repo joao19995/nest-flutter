@@ -35,19 +35,27 @@ class _GoalsViewState extends State<GoalsView>
 
   @override
   Widget build(BuildContext context) {
-    final body = ListenableBuilder(
+    final content = ListenableBuilder(
       listenable: viewModel,
-      builder: (context, _) => Padding(
-        padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
-        child: _GoalsContent(viewModel: viewModel),
-      ),
+      builder: (context, _) => _GoalsContent(viewModel: viewModel),
     );
     if (widget.embedded) {
-      return body;
+      return content;
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Objectivos')),
-      body: body,
+      body: Padding(
+        padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: AppSizes.contentMaxWidth,
+            ),
+            child: content,
+          ),
+        ),
+      ),
     );
   }
 }
