@@ -53,7 +53,7 @@ List<Object> _quotas() => <Object>[
   },
 ];
 
-/// A saved plan (the shape returned by POST create and PATCH / close).
+/// A saved plan (the shape returned by POST create).
 Map<String, dynamic> _plan({
   bool closed = true,
   double actual1 = 600,
@@ -69,10 +69,8 @@ Map<String, dynamic> _plan({
   ],
 };
 
-Map<String, dynamic> _openPlan() =>
-    _plan(closed: false, actual1: 0, actual2: 0);
-
-/// The self-sufficient month view returned by `GET /api/goal-plan/{month}`.
+/// The self-sufficient month view returned by `GET /api/goal-plan/{month}`
+/// and by the PATCH / close writes.
 Map<String, dynamic> _monthView({
   bool closed = true,
   double actual1 = 600,
@@ -105,8 +103,8 @@ MockClient _client({bool created = false}) {
       hasMonth = true;
       return _json(_plan(), status: 201);
     }
-    if (request.url.path.startsWith('/api/goal-plan/') &&
-        !request.url.path.endsWith('/quotas')) {
+    if (request.method == 'GET' &&
+        request.url.path.startsWith('/api/goal-plan/')) {
       return hasMonth ? _json(_monthView()) : _json(_missingMonth());
     }
     return _json(<Object>[], status: 404);
@@ -174,14 +172,11 @@ void main() {
         return _json(_monthView(closed: closed, actual1: 0, actual2: 0));
       }
       if (request.method == 'PATCH') {
-        return _json(_openPlan());
-      }
-      if (request.url.path == '/api/goal-plan/quotas') {
-        return _json({'quotas': _quotas()});
+        return _json(_monthView(closed: false, actual1: 500, actual2: 0));
       }
       if (request.method == 'POST' && request.url.path.endsWith('/close')) {
         closed = true;
-        return _json(_plan());
+        return _json(_monthView());
       }
       return _json(<Object>[], status: 404);
     });
@@ -199,10 +194,6 @@ void main() {
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
     expect(requests.any((request) => request.method == 'PATCH'), isTrue);
-    expect(
-      requests.any((request) => request.url.path == '/api/goal-plan/quotas'),
-      isTrue,
-    );
 
     await tester.tap(find.text('Fechar mês'));
     await tester.pumpAndSettle();

@@ -7,6 +7,7 @@ class PersonModel {
     required this.name,
     required this.dailySpendingPercentage,
     this.applicableIncome,
+    this.applicableIncomeId,
   });
 
   factory PersonModel.fromJson(Map<String, dynamic> json) => PersonModel(
@@ -15,17 +16,20 @@ class PersonModel {
     dailySpendingPercentage: (json['dailySpendingPercentage'] as num)
         .toDouble(),
     applicableIncome: (json['applicableIncome'] as num?)?.toDouble(),
+    applicableIncomeId: json['applicableIncomeId'] as String?,
   );
 
   final String id;
   final String name;
   final double dailySpendingPercentage;
   final double? applicableIncome;
+  final String? applicableIncomeId;
 
   Person toDomain() => Person(
     id: id,
     name: name,
     dailySpendingPercentage: dailySpendingPercentage,
     applicableIncome: applicableIncome,
+    applicableIncomeId: applicableIncomeId,
   );
 }

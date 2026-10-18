@@ -40,10 +40,6 @@ class GoalMonthQuota {
   final List<GoalMonthQuotaPart> parts;
 }
 
-/// A goal's reserved amount sent to `POST /api/goal-plan/quotas` to compute the
-/// proportions without saving.
-typedef GoalQuotaDraft = ({String goalId, String name, double amount});
-
 /// The full goals month returned by `GET /api/goal-plan/{month}`: the saved
 /// plan, the available amount and the per-person quotas, all computed by the
 /// server so the client does not reimplement the domain.

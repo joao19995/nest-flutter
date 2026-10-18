@@ -25,9 +25,11 @@ void main() {
         'name': 'Ana',
         'dailySpendingPercentage': 25,
         'applicableIncome': 2500,
+        'applicableIncomeId': 'i9',
       }).toDomain();
 
       expect(person.applicableIncome, 2500);
+      expect(person.applicableIncomeId, 'i9');
     });
   });
 }

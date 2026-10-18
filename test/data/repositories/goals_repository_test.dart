@@ -75,41 +75,6 @@ void main() {
     expect(await repository.fetchGoalMonth('2026-02'), isNull);
   });
 
-  test('computeGoalQuotas posts the drafts and maps the quotas', () async {
-    Object? body;
-    final repository = _repository(
-      MockClient((request) async {
-        body = jsonDecode(request.body);
-        return _json(const {
-          'quotas': [
-            {
-              'personId': 'p1',
-              'name': 'João',
-              'earning': 2500,
-              'share': 1,
-              'amount': 600,
-              'parts': [
-                {'goalId': 'g1', 'name': 'Viagem', 'amount': 600},
-              ],
-            },
-          ],
-        });
-      }),
-    );
-
-    final quotas = await repository.computeGoalQuotas('2026-01', const [
-      (goalId: 'g1', name: 'Viagem', amount: 600),
-    ]);
-
-    final sent = body as Map<String, dynamic>;
-    expect(sent['month'], '2026-01');
-    expect(sent['allocations'], [
-      {'goalId': 'g1', 'name': 'Viagem', 'amount': 600},
-    ]);
-    expect(quotas.single.name, 'João');
-    expect(quotas.single.parts.single.amount, 600);
-  });
-
   test('fetchGoalYear throws ApiFailure on an unexpected payload', () async {
     final repository = _repository(
       MockClient((request) async => _json(const <Object>[])),
@@ -142,7 +107,7 @@ void main() {
     expect(plan.id, 'p1');
   });
 
-  test('updateGoalAllocation patches the month allocation endpoint', () async {
+  test('updateGoalAllocation patches and maps the returned view', () async {
     String? path;
     Object? body;
     final repository = _repository(
@@ -150,38 +115,52 @@ void main() {
         path = request.url.path;
         body = jsonDecode(request.body);
         return _json(const {
-          'id': 'p1',
           'month': '2026-01',
-          'availableAmount': 1000,
+          'planId': 'p1',
           'closed': false,
-          'allocations': <Object>[],
+          'availableAmount': 1000,
+          'allocations': [
+            {
+              'goalId': 'g1',
+              'goalName': 'Viagem',
+              'planned': 600,
+              'actual': 800,
+            },
+          ],
+          'quotas': <Object>[],
         });
       }),
     );
 
-    await repository.updateGoalAllocation('2026-01', 'g1', 800);
+    final view = await repository.updateGoalAllocation('2026-01', 'g1', 800);
 
     expect(path, '/api/goal-plan/2026-01/allocations/g1');
     expect((body as Map<String, dynamic>)['actual'], 800);
+    expect(view.plan?.id, 'p1');
   });
 
-  test('closeGoalPlan posts to the month close endpoint', () async {
-    String? path;
-    final repository = _repository(
-      MockClient((request) async {
-        path = request.url.path;
-        return _json(const {
-          'id': 'p1',
-          'month': '2026-03',
-          'availableAmount': 1000,
-          'closed': true,
-          'allocations': <Object>[],
-        });
-      }),
-    );
+  test(
+    'closeGoalPlan posts to the month close endpoint and maps the view',
+    () async {
+      String? path;
+      final repository = _repository(
+        MockClient((request) async {
+          path = request.url.path;
+          return _json(const {
+            'month': '2026-03',
+            'planId': 'p1',
+            'closed': true,
+            'availableAmount': 1000,
+            'allocations': <Object>[],
+            'quotas': <Object>[],
+          });
+        }),
+      );
 
-    await repository.closeGoalPlan('2026-03');
+      final view = await repository.closeGoalPlan('2026-03');
 
-    expect(path, '/api/goal-plan/2026-03/close');
-  });
+      expect(path, '/api/goal-plan/2026-03/close');
+      expect(view.plan?.closed, isTrue);
+    },
+  );
 }

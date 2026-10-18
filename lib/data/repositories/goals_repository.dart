@@ -69,40 +69,15 @@ class GoalsRepository {
     }
   }
 
-  /// Computes the month's per-person quotas from [drafts] (the client's current
-  /// reserved values) without saving — `POST /api/goal-plan/quotas`.
-  Future<List<GoalMonthQuota>> computeGoalQuotas(
-    String month,
-    List<GoalQuotaDraft> drafts,
-  ) async {
-    final data = await _client.post('/api/goal-plan/quotas', {
-      'month': month,
-      'allocations': [
-        for (final draft in drafts)
-          {'goalId': draft.goalId, 'name': draft.name, 'amount': draft.amount},
-      ],
-    });
-    if (data is! Map<String, dynamic>) {
-      return const [];
-    }
-    final quotas = data['quotas'];
-    if (quotas is! List) {
-      return const [];
-    }
-    return quotas
-        .whereType<Map<String, dynamic>>()
-        .map((json) => GoalMonthQuotaModel.fromJson(json).toDomain())
-        .toList(growable: false);
-  }
-
   /// Creates [month] (`YYYY-MM`) from the applicable template's snapshot.
   Future<GoalPlan> createGoalPlan(String month) async {
     final data = await _client.post('/api/goal-plan', {'month': month});
     return _plan(data);
   }
 
-  /// Saves the reserved amount of [goalId] within [month] (`YYYY-MM`).
-  Future<GoalPlan> updateGoalAllocation(
+  /// Saves the reserved amount of [goalId] within [month] (`YYYY-MM`) and
+  /// returns the fresh month view (plan and quotas).
+  Future<GoalMonthView> updateGoalAllocation(
     String month,
     String goalId,
     double actual,
@@ -111,7 +86,7 @@ class GoalsRepository {
       '/api/goal-plan/$month/allocations/$goalId',
       {'actual': actual},
     );
-    return _plan(data);
+    return _view(data);
   }
 
   /// Redistributes an open month's planned amounts from the applicable
@@ -121,10 +96,10 @@ class GoalsRepository {
     {'month': month, 'fromTemplate': true},
   );
 
-  /// Closes [month] (`YYYY-MM`), making its allocation immutable.
-  Future<GoalPlan> closeGoalPlan(String month) async {
+  /// Closes [month] (`YYYY-MM`) and returns the frozen month view.
+  Future<GoalMonthView> closeGoalPlan(String month) async {
     final data = await _client.post('/api/goal-plan/$month/close', const {});
-    return _plan(data);
+    return _view(data);
   }
 
   GoalPlan _plan(dynamic data) {
@@ -132,5 +107,12 @@ class GoalsRepository {
       throw const ApiFailure('Resposta inesperada do servidor.');
     }
     return GoalPlanModel.fromJson(data).toDomain();
+  }
+
+  GoalMonthView _view(dynamic data) {
+    if (data is! Map<String, dynamic>) {
+      throw const ApiFailure('Resposta inesperada do servidor.');
+    }
+    return GoalMonthModel.fromJson(data).toDomain();
   }
 }

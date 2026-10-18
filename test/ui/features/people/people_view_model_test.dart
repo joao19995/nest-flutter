@@ -29,12 +29,14 @@ List<Object> _people() => <Object>[
     'name': 'João',
     'dailySpendingPercentage': 25,
     'applicableIncome': 2500,
+    'applicableIncomeId': 'i-new-p1',
   },
   {
     'id': 'p2',
     'name': 'Nathalia',
     'dailySpendingPercentage': 10,
     'applicableIncome': 1500,
+    'applicableIncomeId': 'i-new-p2',
   },
 ];
 
@@ -93,6 +95,7 @@ void main() {
         (s) => s.person.name == 'João',
       );
       expect(joao.monthlyIncome, 2500);
+      expect(joao.person.applicableIncomeId, 'i-new-p1');
       expect(joao.dailySpending, 625);
       expect(joao.incomes, hasLength(2));
     },

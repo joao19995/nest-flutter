@@ -7,8 +7,8 @@ import 'package:nest/domain/models/goal_year.dart';
 /// Presentation state for a single month's goal detail.
 ///
 /// The month's plan, available amount and per-person quotas all come from the
-/// server (`GET /api/goal-plan/{month}`); the client only edits the reserved
-/// values and asks the server to recompute the quotas.
+/// server (`GET /api/goal-plan/{month}` and the writes that return the same
+/// view); the client only edits the reserved values.
 class GoalMonthDetailViewModel extends ChangeNotifier {
   GoalMonthDetailViewModel({
     required GoalsRepository goalsRepository,
@@ -107,8 +107,8 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
     }
   }
 
-  /// Saves the reserved amount of [goalId] in the open month and refreshes the
-  /// quotas from the server.
+  /// Saves the reserved amount of [goalId] in the open month; the server
+  /// returns the fresh view with the recomputed quotas.
   Future<void> updateAllocationActual(String goalId, double actual) async {
     final plan = _view?.plan;
     if (plan == null || plan.closed || _isBusy) {
@@ -118,23 +118,11 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
     _actionError = null;
     notifyListeners();
     try {
-      final updated = await _goalsRepository.updateGoalAllocation(
+      _view = await _goalsRepository.updateGoalAllocation(
         _month,
         goalId,
         actual,
       );
-      final quotas = await _goalsRepository.computeGoalQuotas(
-        _month,
-        _drafts(updated),
-      );
-      final view = _view;
-      if (view != null) {
-        _view = GoalMonthView(
-          plan: updated,
-          availableAmount: view.availableAmount,
-          quotas: quotas,
-        );
-      }
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
     } finally {
@@ -146,53 +134,41 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
   /// Saves untouched reserved amounts, distributes what is missing and closes
   /// the month. The reserved defaults to the planned value per goal.
   Future<void> closeMonth() async {
-    final plan = _view?.plan;
-    if (plan == null || plan.closed || _isBusy) {
+    final initial = _view;
+    final startPlan = initial?.plan;
+    if (initial == null || startPlan == null || startPlan.closed || _isBusy) {
       return;
     }
     _isBusy = true;
     _actionError = null;
     notifyListeners();
     try {
-      var current = plan;
-      for (final allocation in plan.allocations) {
+      var view = initial;
+      for (final allocation in startPlan.allocations) {
         if (allocation.actual <= _epsilon && allocation.planned > 0) {
-          current = await _goalsRepository.updateGoalAllocation(
+          view = await _goalsRepository.updateGoalAllocation(
             _month,
             allocation.goalId,
             allocation.planned,
           );
         }
       }
-      final plannedTotal = current.allocations.fold<double>(
-        0,
-        (sum, item) => sum + item.planned,
-      );
-      if ((current.availableAmount - plannedTotal).abs() > _epsilon) {
-        await _goalsRepository.adjustGoalPlanFromTemplate(_month);
+      final current = view.plan;
+      if (current != null) {
+        final plannedTotal = current.allocations.fold<double>(
+          0,
+          (sum, item) => sum + item.planned,
+        );
+        if ((current.availableAmount - plannedTotal).abs() > _epsilon) {
+          await _goalsRepository.adjustGoalPlanFromTemplate(_month);
+        }
       }
-      await _goalsRepository.closeGoalPlan(_month);
-      _isBusy = false;
-      await load();
+      _view = await _goalsRepository.closeGoalPlan(_month);
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
+    } finally {
       _isBusy = false;
       notifyListeners();
     }
   }
-
-  /// The reserved value each allocation contributes to the quotas: the actual
-  /// when set, otherwise the planned (the pre-fill convention, server-side).
-  List<GoalQuotaDraft> _drafts(GoalPlan plan) => [
-    for (final allocation in plan.allocations)
-      (
-        goalId: allocation.goalId,
-        name: allocation.goalName,
-        amount: plan.closed
-            ? allocation.actual
-            : allocation.actual > 0
-            ? allocation.actual
-            : allocation.planned,
-      ),
-  ];
 }

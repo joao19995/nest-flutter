@@ -77,19 +77,12 @@ Map<String, dynamic> _missing() => <String, dynamic>{
   'quotas': <Object>[],
 };
 
-Map<String, dynamic> _plan({
-  bool closed = false,
-  double a1 = 600,
-  double a2 = 400,
-}) => <String, dynamic>{
+Map<String, dynamic> _plan() => <String, dynamic>{
   'id': 'p1',
-  'month': '2026-01',
+  'month': '2026-03',
   'availableAmount': 1000,
-  'closed': closed,
-  'allocations': [
-    {'goalId': 'g1', 'goalName': 'Viagem', 'planned': 600, 'actual': a1},
-    {'goalId': 'g2', 'goalName': 'Carro', 'planned': 400, 'actual': a2},
-  ],
+  'closed': false,
+  'allocations': <Object>[],
 };
 
 void main() {
@@ -146,21 +139,18 @@ void main() {
     expect(viewModel.plan, isNotNull);
   });
 
-  test('editing a reserved value patches then requests fresh quotas', () async {
+  test('editing a reserved value adopts the returned month view', () async {
     String? patchedPath;
     Object? patchBody;
-    Object? quotasBody;
+    final paths = <String>[];
     final client = MockClient((request) async {
+      paths.add(request.url.path);
       if (request.method == 'PATCH') {
         patchedPath = request.url.path;
         patchBody = jsonDecode(request.body);
-        return _json(_plan(a1: 800));
+        return _json(_view(a1: 800));
       }
-      if (request.url.path == '/api/goal-plan/quotas') {
-        quotasBody = jsonDecode(request.body);
-        return _json({'quotas': _quotaFixtures()});
-      }
-      return _json(_view(a1: 800));
+      return _json(_view());
     });
 
     final viewModel = _viewModel(client);
@@ -169,52 +159,51 @@ void main() {
 
     expect(patchedPath, '/api/goal-plan/2026-01/allocations/g1');
     expect((patchBody as Map<String, dynamic>)['actual'], 800);
-    final sent = quotasBody as Map<String, dynamic>;
-    expect(sent['month'], '2026-01');
-    expect((sent['allocations'] as List).first, {
-      'goalId': 'g1',
-      'name': 'Viagem',
-      'amount': 800,
-    });
     expect(viewModel.transfers, hasLength(2));
+    expect(
+      paths.any((path) => path.contains('/quotas')),
+      isFalse,
+      reason: 'the PATCH response already carries the quotas',
+    );
     expect(viewModel.isBusy, isFalse);
   });
 
-  test('closeMonth fills untouched goals then closes and reloads', () async {
-    var closed = false;
-    final writes = <String>[];
-    final client = MockClient((request) async {
-      if (request.method == 'GET') {
-        return _json(closed ? _view(closed: true) : _view(a1: 0, a2: 0));
-      }
-      writes.add('${request.method} ${request.url.path}');
-      if (request.url.path.endsWith('/close')) {
-        closed = true;
-        return _json(_plan(closed: true));
-      }
-      if (request.url.path.endsWith('/adjust')) {
-        return _json(const <String, dynamic>{});
-      }
-      return _json(_plan());
-    });
+  test(
+    'closeMonth fills untouched goals then closes and adopts the view',
+    () async {
+      final writes = <String>[];
+      final client = MockClient((request) async {
+        if (request.method == 'GET') {
+          return _json(_view(a1: 0, a2: 0));
+        }
+        writes.add('${request.method} ${request.url.path}');
+        if (request.url.path.endsWith('/close')) {
+          return _json(_view(closed: true));
+        }
+        if (request.url.path.endsWith('/adjust')) {
+          return _json(const <String, dynamic>{});
+        }
+        return _json(_view());
+      });
 
-    final viewModel = _viewModel(client);
-    await viewModel.load();
-    await viewModel.closeMonth();
+      final viewModel = _viewModel(client);
+      await viewModel.load();
+      await viewModel.closeMonth();
 
-    expect(
-      writes.where((call) => call.startsWith('PATCH')).length,
-      2,
-      reason: 'both untouched goals default to their planned amount',
-    );
-    expect(writes, contains('POST /api/goal-plan/2026-01/close'));
-    expect(
-      writes.any((call) => call.contains('/adjust')),
-      isFalse,
-      reason: 'the plan is already fully allocated',
-    );
-    expect(viewModel.plan?.closed, isTrue);
-  });
+      expect(
+        writes.where((call) => call.startsWith('PATCH')).length,
+        2,
+        reason: 'both untouched goals default to their planned amount',
+      );
+      expect(writes, contains('POST /api/goal-plan/2026-01/close'));
+      expect(
+        writes.any((call) => call.contains('/adjust')),
+        isFalse,
+        reason: 'the plan is already fully allocated',
+      );
+      expect(viewModel.plan?.closed, isTrue);
+    },
+  );
 
   test('a failed write records the action error', () async {
     final client = MockClient((request) async {

@@ -53,6 +53,7 @@ void main() {
               'name': 'João',
               'dailySpendingPercentage': 25,
               'applicableIncome': 2500,
+              'applicableIncomeId': 'i9',
             },
           ]);
         }),
@@ -63,6 +64,7 @@ void main() {
       expect(path, '/api/people');
       expect(query, '2026-01');
       expect(people.single.applicableIncome, 2500);
+      expect(people.single.applicableIncomeId, 'i9');
     },
   );
 
