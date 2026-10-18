@@ -5,4 +5,7 @@ class Goal {
   final String id;
   final String name;
   final bool active;
+
+  Goal copyWith({String? name, bool? active}) =>
+      Goal(id: id, name: name ?? this.name, active: active ?? this.active);
 }

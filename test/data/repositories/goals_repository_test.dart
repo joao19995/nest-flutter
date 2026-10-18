@@ -6,6 +6,7 @@ import 'package:http/testing.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/failures/api_failure.dart';
+import 'package:nest/domain/models/goal_template.dart';
 
 GoalsRepository _repository(MockClient mock) => GoalsRepository(
   client: NestApiClient(
@@ -221,5 +222,123 @@ void main() {
     expect(payload['validFrom'], '2026-04');
     expect(payload['goalId'], 'g1');
     expect(payload['extra'], 1200.5);
+  });
+
+  test(
+    'createGoal, updateGoal, deleteGoal and restoreGoal hit the routes',
+    () async {
+      final calls = <String>[];
+      final bodies = <Object?>[];
+      final repository = _repository(
+        MockClient((request) async {
+          calls.add('${request.method} ${request.url.path}');
+          bodies.add(request.body.isEmpty ? null : jsonDecode(request.body));
+          if (request.method == 'DELETE') {
+            return _json(const {'id': 'g1'});
+          }
+          return _json(const {'id': 'g1', 'name': 'Férias', 'active': true});
+        }),
+      );
+
+      await repository.createGoal(name: 'Férias');
+      await repository.updateGoal('g1', name: 'Férias 2026');
+      await repository.deleteGoal('g1');
+      await repository.restoreGoal('g1');
+
+      expect(calls, [
+        'POST /api/goals',
+        'PUT /api/goals/g1',
+        'DELETE /api/goals/g1',
+        'POST /api/goals/g1/restore',
+      ]);
+      expect((bodies[0] as Map<String, dynamic>)['name'], 'Férias');
+      expect((bodies[1] as Map<String, dynamic>)['name'], 'Férias 2026');
+    },
+  );
+
+  test('createGoalTemplate posts the API timeline and priority', () async {
+    String? path;
+    Map<String, dynamic>? body;
+    final repository = _repository(
+      MockClient((request) async {
+        path = request.url.path;
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json(const {
+          'template': {
+            'id': 't1',
+            'validFrom': '2026-01',
+            'annualTotal': 12000,
+            'entries': <Object>[],
+          },
+          'plans': <Object>[],
+        }, status: 201);
+      }),
+    );
+
+    final template = await repository.createGoalTemplate(
+      validFrom: '2026-01',
+      annualTotal: 12000,
+      entries: const [
+        GoalTemplateEntry(
+          goalId: 'g1',
+          percentage: 100,
+          budget: 12000,
+          timeline: GoalTimeline.t4,
+          priority: GoalPriority.niceToHave,
+          notes: 'nota',
+        ),
+      ],
+    );
+
+    expect(path, '/api/goal-templates');
+    expect(body?['validFrom'], '2026-01');
+    expect(body?['annualTotal'], 12000);
+    final entries = (body?['entries'] as List).cast<Map<String, dynamic>>();
+    expect(entries.single['timeline'], 'T4');
+    expect(entries.single['priority'], 'NICE_TO_HAVE');
+    expect(entries.single['notes'], 'nota');
+    expect(template.id, 't1');
+  });
+
+  test('updateGoalTemplate puts the annual total and entries', () async {
+    String? path;
+    String? method;
+    Map<String, dynamic>? body;
+    final repository = _repository(
+      MockClient((request) async {
+        path = request.url.path;
+        method = request.method;
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+        return _json(const {
+          'template': {
+            'id': 't1',
+            'validFrom': '2026-01',
+            'annualTotal': 12000,
+            'entries': <Object>[],
+          },
+          'plans': <Object>[],
+        });
+      }),
+    );
+
+    await repository.updateGoalTemplate(
+      't1',
+      annualTotal: 12000,
+      entries: const [
+        GoalTemplateEntry(
+          goalId: 'g1',
+          percentage: 100,
+          budget: 12000,
+          timeline: GoalTimeline.annual,
+          priority: GoalPriority.grande,
+          notes: '',
+        ),
+      ],
+    );
+
+    expect(method, 'PUT');
+    expect(path, '/api/goal-templates/t1');
+    expect(body?.containsKey('validFrom'), isFalse);
+    expect(body?['annualTotal'], 12000);
   });
 }
