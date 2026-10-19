@@ -35,9 +35,13 @@ class _GoalsViewState extends State<GoalsView>
 
   @override
   Widget build(BuildContext context) {
-    final content = ListenableBuilder(
-      listenable: viewModel,
-      builder: (context, _) => _GoalsContent(viewModel: viewModel),
+    final content = PeriodSwipeDetector(
+      onPrevious: viewModel.showPreviousYear,
+      onNext: viewModel.showNextYear,
+      child: ListenableBuilder(
+        listenable: viewModel,
+        builder: (context, _) => _GoalsContent(viewModel: viewModel),
+      ),
     );
     if (widget.embedded) {
       return content;

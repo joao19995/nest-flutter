@@ -121,11 +121,15 @@ class _CalendarViewState extends State<CalendarView> {
         listenable: viewModel,
         builder: (context, _) => Padding(
           padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
-          child: _CalendarContent(
-            viewModel: viewModel,
-            onCreate: () => _openForm(null),
-            onEdit: _openForm,
-            onDelete: _deleteWithUndo,
+          child: PeriodSwipeDetector(
+            onPrevious: viewModel.showPreviousMonth,
+            onNext: viewModel.showNextMonth,
+            child: _CalendarContent(
+              viewModel: viewModel,
+              onCreate: () => _openForm(null),
+              onEdit: _openForm,
+              onDelete: _deleteWithUndo,
+            ),
           ),
         ),
       ),
@@ -134,7 +138,6 @@ class _CalendarViewState extends State<CalendarView> {
 }
 
 const int _defaultHour = 9;
-const double _swipeVelocity = 200;
 
 class _CalendarContent extends StatelessWidget {
   const _CalendarContent({
@@ -255,28 +258,18 @@ class _GridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onHorizontalDragEnd: (details) {
-        final velocity = details.primaryVelocity ?? 0;
-        if (velocity > _swipeVelocity) {
-          viewModel.showPreviousMonth();
-        } else if (velocity < -_swipeVelocity) {
-          viewModel.showNextMonth();
-        }
-      },
-      child: AppCard(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppBreakpoints.cardPadding(context),
-        ),
-        child: Column(
-          children: [
-            const _WeekdayHeader(),
-            const SizedBox(height: AppSpacing.sm),
-            for (final week in _weeks(viewModel.gridDays))
-              _WeekRow(week: week, viewModel: viewModel),
-          ],
-        ),
+    return AppCard(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppBreakpoints.cardPadding(context),
+      ),
+      child: Column(
+        children: [
+          const _WeekdayHeader(),
+          const SizedBox(height: AppSpacing.sm),
+          for (final week in _weeks(viewModel.gridDays))
+            _WeekRow(week: week, viewModel: viewModel),
+        ],
       ),
     );
   }

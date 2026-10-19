@@ -37,9 +37,13 @@ class _ExpensesViewState extends State<ExpensesView>
 
   @override
   Widget build(BuildContext context) {
-    final content = ListenableBuilder(
-      listenable: viewModel,
-      builder: (context, _) => _ExpensesContent(viewModel: viewModel),
+    final content = PeriodSwipeDetector(
+      onPrevious: viewModel.showPreviousYear,
+      onNext: viewModel.showNextYear,
+      child: ListenableBuilder(
+        listenable: viewModel,
+        builder: (context, _) => _ExpensesContent(viewModel: viewModel),
+      ),
     );
     if (widget.embedded) {
       return content;

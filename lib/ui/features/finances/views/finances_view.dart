@@ -54,6 +54,11 @@ class _FinancesViewState extends State<FinancesView> {
                       return Align(
                         child: SegmentedButton<FinancesSection>(
                           showSelectedIcon: false,
+                          expandedInsets: showIcons
+                              ? null
+                              : const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xl,
+                                ),
                           style: ButtonStyle(
                             padding: WidgetStatePropertyAll(
                               EdgeInsets.symmetric(

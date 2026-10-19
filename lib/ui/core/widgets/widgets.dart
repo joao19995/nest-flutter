@@ -31,3 +31,4 @@ export 'month_field.dart';
 export 'month_pager.dart';
 export 'month_summary_hero.dart';
 export 'nav_tile.dart';
+export 'period_swipe_detector.dart';
