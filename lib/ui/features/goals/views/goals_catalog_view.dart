@@ -54,6 +54,8 @@ class _GoalsCatalogViewState extends State<GoalsCatalogView>
       ..showSnackBar(
         SnackBar(
           content: Text('"${goal.name}" desativado.'),
+          duration: AppMotion.snackBar,
+          persist: false,
           action: SnackBarAction(
             label: 'Anular',
             onPressed: () => viewModel.restoreGoal(goal),

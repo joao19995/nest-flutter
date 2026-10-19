@@ -104,10 +104,19 @@ class _TodosViewState extends State<TodosView> {
                 }
               },
               itemBuilder: (_) => [
-                CheckedPopupMenuItem(
+                PopupMenuItem(
                   value: _TodosMenu.toggleCompleted,
-                  checked: viewModel.hideCompleted,
-                  child: const Text('Ocultar concluídas'),
+                  child: Row(
+                    children: [
+                      const Expanded(child: Text('Ocultar concluídas')),
+                      if (viewModel.hideCompleted)
+                        Icon(
+                          Icons.check,
+                          size: AppSizes.iconMedium,
+                          color: context.colors.primary,
+                        ),
+                    ],
+                  ),
                 ),
                 const PopupMenuItem(
                   value: _TodosMenu.archived,
@@ -654,13 +663,6 @@ class _AddTaskFieldState extends State<_AddTaskField> {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        IconButton(
-          onPressed: _hasText && !_isSaving ? _submit : null,
-          tooltip: 'Adicionar tarefa',
-          iconSize: AppSizes.iconLarge,
-          color: context.colors.primary,
-          icon: const Icon(Icons.add),
-        ),
         Expanded(
           child: TextField(
             controller: _controller,
@@ -678,6 +680,13 @@ class _AddTaskFieldState extends State<_AddTaskField> {
             ),
             onSubmitted: (_) => _submit(),
           ),
+        ),
+        IconButton(
+          onPressed: _hasText && !_isSaving ? _submit : null,
+          tooltip: 'Adicionar tarefa',
+          iconSize: AppSizes.iconLarge,
+          color: context.colors.primary,
+          icon: const Icon(Icons.add),
         ),
       ],
     );
@@ -905,6 +914,8 @@ void _showUndoDeleteSnackBar(
     ..showSnackBar(
       SnackBar(
         content: Text('"${item.text}" apagada.'),
+        duration: AppMotion.snackBar,
+        persist: false,
         action: SnackBarAction(
           label: 'Desfazer',
           onPressed: () => viewModel.restoreItem(list, item),

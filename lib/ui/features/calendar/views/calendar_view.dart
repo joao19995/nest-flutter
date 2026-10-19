@@ -84,6 +84,8 @@ class _CalendarViewState extends State<CalendarView> {
       ..showSnackBar(
         SnackBar(
           content: Text('"${event.title}" apagado.'),
+          duration: AppMotion.snackBar,
+          persist: false,
           action: SnackBarAction(
             label: 'Anular',
             onPressed: () => viewModel.restoreEvent(event),

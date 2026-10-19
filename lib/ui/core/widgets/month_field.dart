@@ -70,6 +70,7 @@ class _MonthFieldState extends State<MonthField> {
               child: DropdownButtonFormField<int>(
                 key: ValueKey('month-field-year-$_year'),
                 initialValue: _year,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Ano'),
                 items: [
                   for (final year in years)
@@ -89,6 +90,7 @@ class _MonthFieldState extends State<MonthField> {
               child: DropdownButtonFormField<int>(
                 key: ValueKey('month-field-month-$_month'),
                 initialValue: _month,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Mês'),
                 items: [
                   for (var month = 1; month <= 12; month++)
@@ -96,6 +98,7 @@ class _MonthFieldState extends State<MonthField> {
                       value: month,
                       child: Text(
                         AppFormatters.monthName(MonthKey.of(_year, month)),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                 ],

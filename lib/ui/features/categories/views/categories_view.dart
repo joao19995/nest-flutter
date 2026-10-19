@@ -58,6 +58,8 @@ class _CategoriesViewState extends State<CategoriesView>
       ..showSnackBar(
         SnackBar(
           content: Text('"${category.name}" apagada.'),
+          duration: AppMotion.snackBar,
+          persist: false,
           action: SnackBarAction(
             label: 'Anular',
             onPressed: () => viewModel.restoreCategory(category),

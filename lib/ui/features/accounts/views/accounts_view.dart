@@ -65,6 +65,8 @@ class _AccountsViewState extends State<AccountsView>
       ..showSnackBar(
         SnackBar(
           content: Text('"${account.name}" apagada.'),
+          duration: AppMotion.snackBar,
+          persist: false,
           action: SnackBarAction(
             label: 'Anular',
             onPressed: () => viewModel.restoreAccount(account),

@@ -16,14 +16,22 @@ class BottomSheetBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        left: AppBreakpoints.pagePadding(context),
-        right: AppBreakpoints.pagePadding(context),
-        top: AppSpacing.xl,
-        bottom: media.viewInsets.bottom + media.padding.bottom + AppSpacing.xl,
+    // The keyboard inset pads the sheet itself, so the scroll viewport ends
+    // above the keyboard. Padding it inside the scroll view instead leaves the
+    // viewport behind the keyboard and `ensureVisible` can park a focused field
+    // under it — the iOS behaviour this widget exists to avoid.
+    return Padding(
+      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+      child: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.only(
+          left: AppBreakpoints.pagePadding(context),
+          right: AppBreakpoints.pagePadding(context),
+          top: AppSpacing.xl,
+          bottom: media.padding.bottom + AppSpacing.xl,
+        ),
+        child: child,
       ),
-      child: child,
     );
   }
 }

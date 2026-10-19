@@ -45,30 +45,54 @@ class _FinancesViewState extends State<FinancesView> {
                     top: AppSpacing.md,
                     bottom: AppSpacing.md,
                   ),
-                  child: Align(
-                    child: SegmentedButton<FinancesSection>(
-                      showSelectedIcon: false,
-                      style: const ButtonStyle(
-                        padding: WidgetStatePropertyAll(
-                          EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Icons make the segments too tight on phones and the
+                      // longest label wraps mid-word; drop them when narrow.
+                      final showIcons =
+                          constraints.maxWidth >= AppBreakpoints.sm;
+                      return Align(
+                        child: SegmentedButton<FinancesSection>(
+                          showSelectedIcon: false,
+                          style: ButtonStyle(
+                            padding: WidgetStatePropertyAll(
+                              EdgeInsets.symmetric(
+                                horizontal: showIcons
+                                    ? AppSpacing.lg
+                                    : AppSpacing.md,
+                              ),
+                            ),
+                          ),
+                          segments: [
+                            ButtonSegment(
+                              value: FinancesSection.expenses,
+                              label: const Text(
+                                'Despesas',
+                                maxLines: 1,
+                                softWrap: false,
+                              ),
+                              icon: showIcons
+                                  ? const Icon(Icons.receipt_long_outlined)
+                                  : null,
+                            ),
+                            ButtonSegment(
+                              value: FinancesSection.goals,
+                              label: const Text(
+                                'Objectivos',
+                                maxLines: 1,
+                                softWrap: false,
+                              ),
+                              icon: showIcons
+                                  ? const Icon(Icons.flag_outlined)
+                                  : null,
+                            ),
+                          ],
+                          selected: {_section},
+                          onSelectionChanged: (selection) =>
+                              setState(() => _section = selection.first),
                         ),
-                      ),
-                      segments: const [
-                        ButtonSegment(
-                          value: FinancesSection.expenses,
-                          label: Text('Despesas'),
-                          icon: Icon(Icons.receipt_long_outlined),
-                        ),
-                        ButtonSegment(
-                          value: FinancesSection.goals,
-                          label: Text('Objectivos'),
-                          icon: Icon(Icons.flag_outlined),
-                        ),
-                      ],
-                      selected: {_section},
-                      onSelectionChanged: (selection) =>
-                          setState(() => _section = selection.first),
-                    ),
+                      );
+                    },
                   ),
                 ),
                 Expanded(

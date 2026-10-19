@@ -26,6 +26,9 @@ abstract final class AppMotion {
   /// 1400 ms — how long the save-confirmation tick stays on screen.
   static const Duration confirm = Duration(milliseconds: 1400);
 
+  /// 3000 ms — how long a snack bar stays before dismissing itself.
+  static const Duration snackBar = Duration(milliseconds: 3000);
+
   /// The single easing curve used for all transitions.
   static const Curve easing = Curves.easeOut;
 }

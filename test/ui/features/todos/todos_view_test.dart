@@ -274,6 +274,52 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('places the add-task button after the input', (tester) async {
+    _setPhone(tester);
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/todo-lists') {
+        return _json(_lists());
+      }
+      return _json(<Object>[], status: 404);
+    });
+
+    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpAndSettle();
+
+    final input = tester.getRect(find.byType(TextField));
+    final button = tester.getRect(find.byTooltip('Adicionar tarefa'));
+    expect(button.left, greaterThanOrEqualTo(input.right));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('dismisses the delete notification automatically', (
+    tester,
+  ) async {
+    _setPhone(tester);
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
+        return _json(_lists());
+      }
+      if (request.method == 'DELETE') {
+        return _json(const {'id': 'i2'});
+      }
+      return _json(<Object>[], status: 404);
+    });
+
+    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.text('Pagar renda'), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('"Pagar renda" apagada.'), findsOneWidget);
+
+    await tester.pump(AppMotion.snackBar + const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(find.text('"Pagar renda" apagada.'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('creates a new list from the app bar action', (tester) async {
     _setPhone(tester);
     Object? createdBody;

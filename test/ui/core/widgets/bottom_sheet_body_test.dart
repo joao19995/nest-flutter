@@ -19,11 +19,21 @@ void main() {
       ),
     );
 
+    final outer = tester.widget<Padding>(
+      find
+          .ancestor(
+            of: find.byType(SingleChildScrollView),
+            matching: find.byType(Padding),
+          )
+          .first,
+    );
+    expect(outer.padding, const EdgeInsets.only(bottom: 300));
+
     final scroll = tester.widget<SingleChildScrollView>(
       find.byType(SingleChildScrollView),
     );
     final padding = scroll.padding! as EdgeInsets;
 
-    expect(padding.bottom, 300 + 48 + AppSpacing.xl);
+    expect(padding.bottom, 48 + AppSpacing.xl);
   });
 }

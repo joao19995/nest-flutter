@@ -210,11 +210,69 @@ class _GoalTemplateFormSheetState extends State<_GoalTemplateFormSheet> {
   bool get _isEditing => widget.template != null;
 
   @override
+  void initState() {
+    super.initState();
+    for (final row in _rows) {
+      row.budget.addListener(_onBudgetChanged);
+    }
+  }
+
+  @override
   void dispose() {
     for (final row in _rows) {
+      row.budget.removeListener(_onBudgetChanged);
       row.dispose();
     }
     super.dispose();
+  }
+
+  void _onBudgetChanged() {
+    _recalculatePercentages();
+    setState(() {});
+  }
+
+  /// Derives every percentage from the entered budgets, so the table still
+  /// totals 100% when the user fills only the values.
+  void _recalculatePercentages() {
+    final budgets = [
+      for (final row in _rows) _parseDecimal(row.budget.text) ?? 0,
+    ];
+    final total = budgets.fold<double>(0, (sum, value) => sum + value);
+    final percentages = _percentagesForBudgets(budgets, total);
+    for (var index = 0; index < _rows.length; index++) {
+      final text = _formatNumber(percentages[index]);
+      if (_rows[index].percentage.text != text) {
+        _rows[index].percentage.text = text;
+      }
+    }
+  }
+
+  /// Percentages rounded to two decimals whose sum is exactly 100. The
+  /// rounding residual goes to the largest budget so the table stays valid.
+  static List<double> _percentagesForBudgets(
+    List<double> budgets,
+    double total,
+  ) {
+    if (total <= 0) {
+      return List<double>.filled(budgets.length, 0);
+    }
+    final percentages = [
+      for (final budget in budgets) (budget / total * 100 * 100).round() / 100,
+    ];
+    final sum = percentages.fold<double>(0, (value, item) => value + item);
+    final missing = 100 - sum;
+    if (missing == 0) {
+      return percentages;
+    }
+    var largest = 0;
+    for (var index = 1; index < budgets.length; index++) {
+      if (budgets[index] > budgets[largest]) {
+        largest = index;
+      }
+    }
+    percentages[largest] =
+        ((percentages[largest] + missing) * 100).round() / 100;
+    return percentages;
   }
 
   List<Goal> get _availableGoals {
@@ -240,22 +298,23 @@ class _GoalTemplateFormSheetState extends State<_GoalTemplateFormSheet> {
   }
 
   void _addRow(Goal goal) {
-    setState(() {
-      _rows.add(
-        _EntryDraft(
-          goalId: goal.id,
-          percentage: TextEditingController(text: '0'),
-          budget: TextEditingController(text: '0'),
-          timeline: GoalTimeline.annual,
-          priority: GoalPriority.niceToHave,
-          notes: TextEditingController(),
-        ),
-      );
-    });
+    final row = _EntryDraft(
+      goalId: goal.id,
+      percentage: TextEditingController(text: '0'),
+      budget: TextEditingController(text: '0'),
+      timeline: GoalTimeline.annual,
+      priority: GoalPriority.niceToHave,
+      notes: TextEditingController(),
+    );
+    row.budget.addListener(_onBudgetChanged);
+    setState(() => _rows.add(row));
   }
 
   void _removeRow(int index) {
-    setState(() => _rows.removeAt(index).dispose());
+    setState(() {
+      _rows.removeAt(index).dispose();
+      _recalculatePercentages();
+    });
   }
 
   Future<void> _save() async {
@@ -552,12 +611,16 @@ class _EntryRow extends StatelessWidget {
               child: DropdownButtonFormField<GoalTimeline>(
                 key: ValueKey('timeline-$goalName-$timeline'),
                 initialValue: timeline,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Timeline'),
                 items: [
                   for (final value in GoalTimeline.values)
                     DropdownMenuItem(
                       value: value,
-                      child: Text(_timelineLabel(value)),
+                      child: Text(
+                        _timelineLabel(value),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                 ],
                 onChanged: (value) {
@@ -572,12 +635,16 @@ class _EntryRow extends StatelessWidget {
               child: DropdownButtonFormField<GoalPriority>(
                 key: ValueKey('priority-$goalName-$priority'),
                 initialValue: priority,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Importância'),
                 items: [
                   for (final value in GoalPriority.values)
                     DropdownMenuItem(
                       value: value,
-                      child: Text(_priorityLabel(value)),
+                      child: Text(
+                        _priorityLabel(value),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                 ],
                 onChanged: (value) {
