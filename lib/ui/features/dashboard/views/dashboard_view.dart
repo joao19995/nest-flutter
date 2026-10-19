@@ -169,14 +169,17 @@ class _DashboardContent extends StatelessWidget {
         PeriodSwipeDetector(
           onPrevious: viewModel.showPreviousMonth,
           onNext: viewModel.showNextMonth,
-          child: _MonthPanel(
-            month: viewModel.month,
-            summary: viewModel.monthSummary,
-            canGoToPrevious: viewModel.canGoToPreviousMonth,
-            canGoToNext: viewModel.canGoToNextMonth,
-            onPrevious: viewModel.showPreviousMonth,
-            onNext: viewModel.showNextMonth,
-            onOpenMonth: onOpenMonth,
+          child: AnimatedPeriodSwitcher(
+            period: viewModel.month,
+            child: _MonthPanel(
+              month: viewModel.month,
+              summary: viewModel.monthSummary,
+              canGoToPrevious: viewModel.canGoToPreviousMonth,
+              canGoToNext: viewModel.canGoToNextMonth,
+              onPrevious: viewModel.showPreviousMonth,
+              onNext: viewModel.showNextMonth,
+              onOpenMonth: onOpenMonth,
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -187,21 +190,24 @@ class _DashboardContent extends StatelessWidget {
           onNext: viewModel.canGoToNextGoalsYear
               ? viewModel.showNextGoalsYear
               : null,
-          child: _DashboardSection(
-            title: 'Objetivos do ano',
-            onTap: onOpenGoals,
-            trailing: _PeriodStepper(
-              label: '${viewModel.goalsYear}',
-              onPrevious: viewModel.canGoToPreviousGoalsYear
-                  ? viewModel.showPreviousGoalsYear
-                  : null,
-              onNext: viewModel.canGoToNextGoalsYear
-                  ? viewModel.showNextGoalsYear
-                  : null,
-              previousTooltip: 'Ano anterior',
-              nextTooltip: 'Ano seguinte',
+          child: AnimatedPeriodSwitcher(
+            period: '${viewModel.goalsYear}',
+            child: _DashboardSection(
+              title: 'Objetivos do ano',
+              onTap: onOpenGoals,
+              trailing: _PeriodStepper(
+                label: '${viewModel.goalsYear}',
+                onPrevious: viewModel.canGoToPreviousGoalsYear
+                    ? viewModel.showPreviousGoalsYear
+                    : null,
+                onNext: viewModel.canGoToNextGoalsYear
+                    ? viewModel.showNextGoalsYear
+                    : null,
+                previousTooltip: 'Ano anterior',
+                nextTooltip: 'Ano seguinte',
+              ),
+              child: _GoalsList(goals: viewModel.goals),
             ),
-            child: _GoalsList(goals: viewModel.goals),
           ),
         ),
         const SizedBox(height: AppSpacing.xl),

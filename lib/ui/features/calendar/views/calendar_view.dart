@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nest/domain/models/calendar_event.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
+import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/calendar/view_models/calendar_view_model.dart';
@@ -124,11 +125,17 @@ class _CalendarViewState extends State<CalendarView> {
           child: PeriodSwipeDetector(
             onPrevious: viewModel.showPreviousMonth,
             onNext: viewModel.showNextMonth,
-            child: _CalendarContent(
-              viewModel: viewModel,
-              onCreate: () => _openForm(null),
-              onEdit: _openForm,
-              onDelete: _deleteWithUndo,
+            child: AnimatedPeriodSwitcher(
+              period: MonthKey.of(
+                viewModel.visibleMonth.year,
+                viewModel.visibleMonth.month,
+              ),
+              child: _CalendarContent(
+                viewModel: viewModel,
+                onCreate: () => _openForm(null),
+                onEdit: _openForm,
+                onDelete: _deleteWithUndo,
+              ),
             ),
           ),
         ),

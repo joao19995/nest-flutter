@@ -42,7 +42,10 @@ class _ExpensesViewState extends State<ExpensesView>
       onNext: viewModel.showNextYear,
       child: ListenableBuilder(
         listenable: viewModel,
-        builder: (context, _) => _ExpensesContent(viewModel: viewModel),
+        builder: (context, _) => AnimatedPeriodSwitcher(
+          period: '${viewModel.selectedYear}',
+          child: _ExpensesContent(viewModel: viewModel),
+        ),
       ),
     );
     if (widget.embedded) {

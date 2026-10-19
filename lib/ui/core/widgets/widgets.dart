@@ -5,6 +5,7 @@
 library;
 
 export 'animated_amount.dart';
+export 'animated_period_switcher.dart';
 export 'app_badge.dart';
 export 'app_bar_chart.dart';
 export 'app_button.dart';

@@ -40,7 +40,10 @@ class _GoalsViewState extends State<GoalsView>
       onNext: viewModel.showNextYear,
       child: ListenableBuilder(
         listenable: viewModel,
-        builder: (context, _) => _GoalsContent(viewModel: viewModel),
+        builder: (context, _) => AnimatedPeriodSwitcher(
+          period: '${viewModel.selectedYear}',
+          child: _GoalsContent(viewModel: viewModel),
+        ),
       ),
     );
     if (widget.embedded) {
