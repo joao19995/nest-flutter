@@ -9,4 +9,7 @@ abstract final class AppOpacity {
   /// Content that is still interactive but visually de-emphasised, such as a
   /// completed to-do list.
   static const double dimmed = 0.6;
+
+  /// Faint fill behind a full-strength accent (e.g. a category icon chip).
+  static const double tint = 0.12;
 }

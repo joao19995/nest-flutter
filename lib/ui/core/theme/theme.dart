@@ -17,4 +17,5 @@ export 'app_sizes.dart';
 export 'app_spacing.dart';
 export 'app_text_styles.dart';
 export 'app_theme.dart';
+export 'category_colors.dart';
 export 'nest_colors.dart';

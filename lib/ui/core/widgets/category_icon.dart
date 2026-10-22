@@ -85,18 +85,19 @@ class CategoryIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = context.colors.colorForCategory(category);
     return Container(
       width: AppSizes.categoryIcon,
       height: AppSizes.categoryIcon,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: context.colors.mintSoft,
+        color: color.withValues(alpha: AppOpacity.tint),
         shape: BoxShape.circle,
       ),
       child: Icon(
         CategoryIcons.forName(category),
         size: AppSizes.iconLarge,
-        color: context.colors.primaryDark,
+        color: color,
       ),
     );
   }

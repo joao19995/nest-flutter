@@ -35,6 +35,7 @@ class NestColors extends ThemeExtension<NestColors> {
     required this.terraSoft,
     required this.terraDark,
     required this.shadow,
+    required this.categoryPalette,
   });
 
   /// Primary text.
@@ -97,6 +98,13 @@ class NestColors extends ThemeExtension<NestColors> {
   /// Base colour for card/panel shadows.
   final Color shadow;
 
+  /// Accent colours for category icons and the expenses donut.
+  ///
+  /// Always an immutable, fixed-length list so every category has a stable
+  /// colour in both brightnesses. Pick one with
+  /// `context.colors.colorForCategory(name)`.
+  final List<Color> categoryPalette;
+
   /// The light palette — identical to the web `@theme` defaults.
   static const NestColors light = NestColors(
     ink: Color(0xFF17372D),
@@ -119,6 +127,16 @@ class NestColors extends ThemeExtension<NestColors> {
     terraSoft: Color(0xFFF7E9D8),
     terraDark: Color(0xFFA86F3C),
     shadow: Color(0xFF17372D),
+    categoryPalette: <Color>[
+      Color(0xFF2F8F6E),
+      Color(0xFF6E8F2E),
+      Color(0xFFB58A1F),
+      Color(0xFF2C8796),
+      Color(0xFF3E6FB0),
+      Color(0xFF6A58B5),
+      Color(0xFF9C4A94),
+      Color(0xFFB04C68),
+    ],
   );
 
   /// The dark palette — deeper greens, brighter accents, same identity.
@@ -143,16 +161,55 @@ class NestColors extends ThemeExtension<NestColors> {
     terraSoft: Color(0xFF33281C),
     terraDark: Color(0xFFD8A469),
     shadow: Color(0xFF000000),
+    categoryPalette: <Color>[
+      Color(0xFF6EC5A2),
+      Color(0xFFA8C56E),
+      Color(0xFFD9B85F),
+      Color(0xFF6FBBC9),
+      Color(0xFF86ACDE),
+      Color(0xFFA99BE6),
+      Color(0xFFCE8FC6),
+      Color(0xFFDE8CA2),
+    ],
   );
 
   @override
-  NestColors copyWith() => this;
+  NestColors copyWith({List<Color>? categoryPalette}) {
+    if (categoryPalette == null) {
+      return this;
+    }
+    return NestColors(
+      ink: ink,
+      inkSoft: inkSoft,
+      muted: muted,
+      faint: faint,
+      line: line,
+      lineSoft: lineSoft,
+      paper: paper,
+      inputBg: inputBg,
+      surface: surface,
+      primary: primary,
+      primaryDark: primaryDark,
+      mint: mint,
+      mintSoft: mintSoft,
+      over: over,
+      dangerSoft: dangerSoft,
+      dangerOnSoft: dangerOnSoft,
+      scrim: scrim,
+      terraSoft: terraSoft,
+      terraDark: terraDark,
+      shadow: shadow,
+      categoryPalette: categoryPalette,
+    );
+  }
 
   @override
   NestColors lerp(covariant ThemeExtension<NestColors>? other, double t) {
     if (other is! NestColors) {
       return this;
     }
+    // The palette switches as a whole at the midpoint, so a category keeps a
+    // single, stable colour instead of blending into a muddy in-between.
     return t < 0.5 ? this : other;
   }
 }
