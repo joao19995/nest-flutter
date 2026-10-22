@@ -148,6 +148,25 @@ class _DashboardContent extends StatelessWidget {
       children: [
         _GreetingHeader(greeting: viewModel.greeting, date: viewModel.today),
         const SizedBox(height: AppSpacing.lg),
+        PeriodSwipeDetector(
+          onPrevious: viewModel.canGoToPreviousMonth
+              ? viewModel.showPreviousMonth
+              : null,
+          onNext: viewModel.canGoToNextMonth ? viewModel.showNextMonth : null,
+          child: AnimatedPeriodSwitcher(
+            period: viewModel.month,
+            child: _DashboardMonthHero(
+              month: viewModel.month,
+              summary: viewModel.monthSummary,
+              canGoToPrevious: viewModel.canGoToPreviousMonth,
+              canGoToNext: viewModel.canGoToNextMonth,
+              onPrevious: viewModel.showPreviousMonth,
+              onNext: viewModel.showNextMonth,
+              onOpenMonth: onOpenMonth,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
         if (viewModel.alerts.isNotEmpty) ...[
           _AttentionCard(alerts: viewModel.alerts),
           const SizedBox(height: AppSpacing.lg),
@@ -165,23 +184,6 @@ class _DashboardContent extends StatelessWidget {
           title: 'Tarefas pendentes ($pendingTaskCount)',
           onTap: onOpenTodos,
           child: _TaskLists(lists: pendingTaskLists),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        PeriodSwipeDetector(
-          onPrevious: viewModel.showPreviousMonth,
-          onNext: viewModel.showNextMonth,
-          child: AnimatedPeriodSwitcher(
-            period: viewModel.month,
-            child: _MonthPanel(
-              month: viewModel.month,
-              summary: viewModel.monthSummary,
-              canGoToPrevious: viewModel.canGoToPreviousMonth,
-              canGoToNext: viewModel.canGoToNextMonth,
-              onPrevious: viewModel.showPreviousMonth,
-              onNext: viewModel.showNextMonth,
-              onOpenMonth: onOpenMonth,
-            ),
-          ),
         ),
         const SizedBox(height: AppSpacing.lg),
         PeriodSwipeDetector(
@@ -493,10 +495,9 @@ class _GoalRow extends StatelessWidget {
   }
 }
 
-/// This month's spending against the plan, as a regular card with a month
-/// stepper.
-class _MonthPanel extends StatelessWidget {
-  const _MonthPanel({
+/// This month's spending against the plan, as the dashboard's dark hero.
+class _DashboardMonthHero extends StatelessWidget {
+  const _DashboardMonthHero({
     required this.month,
     required this.summary,
     required this.canGoToPrevious,
@@ -524,90 +525,81 @@ class _MonthPanel extends StatelessWidget {
     final diffPct = summary == null || summary.planned <= 0
         ? 0.0
         : diff / summary.planned * 100;
-    return _DashboardSection(
-      title: 'Despesa do mês',
-      onTap: onOpenMonth == null ? null : () => onOpenMonth(month),
-      trailing: AppPeriodStepper(
-        variant: AppPeriodStepperVariant.inline,
-        label: AppFormatters.monthShort(month),
-        onPrevious: canGoToPrevious ? onPrevious : null,
-        onNext: canGoToNext ? onNext : null,
-        previousTooltip: 'Mês anterior',
-        nextTooltip: 'Mês seguinte',
-      ),
+    final progress = hasPlan
+        ? (summary.progressPct / 100).clamp(0.0, 1.0)
+        : 0.0;
+    final hero = HeroPanel(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
             children: [
-              AnimatedAmount(
-                value: summary?.actual ?? 0,
-                style: AppTextStyles.statDisplay.copyWith(
-                  color: context.colors.ink,
+              Expanded(
+                child: Text(
+                  'Despesa do mês',
+                  style: AppTextStyles.navSection(
+                    context.colors,
+                  ).copyWith(color: AppColors.onHeroMuted),
                 ),
               ),
-              if (hasPlan) ...[
-                const SizedBox(width: AppSpacing.md),
-                Text(
-                  '(${AppFormatters.percentage(summary.progressPct)})',
-                  style: AppTextStyles.small(context.colors),
+              const SizedBox(width: AppSpacing.md),
+              AppPeriodStepper(
+                label: AppFormatters.monthShort(month),
+                onPrevious: canGoToPrevious ? onPrevious : null,
+                onNext: canGoToNext ? onNext : null,
+                previousTooltip: 'Mês anterior',
+                nextTooltip: 'Mês seguinte',
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: AnimatedAmount(
+                    value: summary?.actual ?? 0,
+                    style: AppTextStyles.statDisplay.copyWith(
+                      color: AppColors.onHero,
+                    ),
+                  ),
                 ),
-              ],
+              ),
+              const SizedBox(width: AppSpacing.md),
+              AppProgressRing(
+                progress: progress,
+                color: summary?.over == true
+                    ? AppColors.overOnDark
+                    : AppColors.mint,
+                label: hasPlan
+                    ? AppFormatters.percentage(summary.progressPct.round())
+                    : null,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
           if (hasPlan)
-            Row(
-              children: [
-                Text(
-                  'Planeado ${AppFormatters.currency(summary.planned)}',
-                  style: AppTextStyles.small(context.colors),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Flexible(
-                  child: _DeviationLabel(
-                    diff: diff,
-                    diffPct: diffPct,
-                    over: summary.over,
-                  ),
-                ),
-              ],
-            )
+            HeroDeviationPill(diff: diff, diffPct: diffPct, over: summary.over)
           else
-            const _EmptyHint('Sem plano para este mês.'),
+            const HeroDeltaPill(
+              label: 'Sem plano',
+              color: AppColors.onHeroMuted,
+            ),
         ],
       ),
     );
-  }
-}
-
-/// The deviation against the plan, as a small coloured label.
-class _DeviationLabel extends StatelessWidget {
-  const _DeviationLabel({
-    required this.diff,
-    required this.diffPct,
-    required this.over,
-  });
-
-  final double diff;
-  final double diffPct;
-  final bool over;
-
-  @override
-  Widget build(BuildContext context) {
-    if (diff.abs() < 0.005) {
-      return Text('Sem desvio', style: AppTextStyles.small(context.colors));
+    if (onOpenMonth == null) {
+      return hero;
     }
-    final sign = diff > 0 ? '+' : '';
-    final direction = over ? 'acima' : 'abaixo';
-    return Text(
-      'Desvio $sign${AppFormatters.currency(diff)} · '
-      '${AppFormatters.percentage(diffPct.abs().round())} $direction',
-      style: AppTextStyles.small(context.colors).copyWith(
-        color: over ? context.colors.over : context.colors.primaryDark,
-        fontWeight: FontWeight.w700,
+    return Semantics(
+      button: true,
+      label: 'Abrir despesas de ${AppFormatters.monthName(month)}',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onOpenMonth(month),
+        child: hero,
       ),
     );
   }
