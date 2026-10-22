@@ -25,8 +25,8 @@ class MonthField extends StatefulWidget {
 }
 
 class _MonthFieldState extends State<MonthField> {
-  late int _year;
-  late int _month;
+  int _year = 0;
+  int _month = 0;
 
   @override
   void initState() {

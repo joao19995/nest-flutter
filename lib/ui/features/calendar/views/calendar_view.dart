@@ -80,19 +80,11 @@ class _CalendarViewState extends State<CalendarView> {
     if (!deleted || !mounted) {
       return;
     }
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('"${event.title}" apagado.'),
-          duration: AppMotion.snackBar,
-          persist: false,
-          action: SnackBarAction(
-            label: 'Anular',
-            onPressed: () => viewModel.restoreEvent(event),
-          ),
-        ),
-      );
+    showAppSnackBar(
+      ScaffoldMessenger.of(context),
+      message: '"${event.title}" apagado.',
+      onAction: () => viewModel.restoreEvent(event),
+    );
   }
 
   @override

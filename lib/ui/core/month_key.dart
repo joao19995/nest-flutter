@@ -10,6 +10,23 @@ abstract final class MonthKey {
     return of(now.year, now.month);
   }
 
+  /// Whole months from [from] to [to]. Positive when [to] is later.
+  static int monthsBetween(String from, String to) {
+    final fromParts = from.split('-');
+    final toParts = to.split('-');
+    final fromYear = int.tryParse(fromParts.isNotEmpty ? fromParts[0] : '');
+    final fromMonth = int.tryParse(fromParts.length > 1 ? fromParts[1] : '');
+    final toYear = int.tryParse(toParts.isNotEmpty ? toParts[0] : '');
+    final toMonth = int.tryParse(toParts.length > 1 ? toParts[1] : '');
+    if (fromYear == null ||
+        fromMonth == null ||
+        toYear == null ||
+        toMonth == null) {
+      return 0;
+    }
+    return (toYear - fromYear) * 12 + (toMonth - fromMonth);
+  }
+
   /// [month] shifted by [delta] months, forward or back. Returns [month]
   /// unchanged when it cannot be parsed.
   static String shift(String month, int delta) {

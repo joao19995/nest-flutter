@@ -74,6 +74,40 @@ abstract final class AppFormatters {
   /// Example: `25` → `"25%"`, `12.5` → `"12,5%"`.
   static String percentage(num value) => '${_percentage.format(value)}%';
 
+  /// Parses a user-entered decimal that may use a comma or a dot.
+  static double? parseDecimal(String text) =>
+      double.tryParse(text.trim().replaceAll(',', '.'));
+
+  /// Formats an editable number: whole numbers without decimals, otherwise
+  /// two decimals with a comma.
+  static String inputNumber(double value) => value == value.roundToDouble()
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(2).replaceAll('.', ',');
+
+  /// Formats an editable amount with exactly two decimals.
+  static String inputAmount(double value) =>
+      value.toStringAsFixed(2).replaceAll('.', ',');
+
+  /// Formats a `YYYY-MM` key as a full month and year.
+  static String monthKeyTitle(String month) {
+    final parts = month.split('-');
+    final year = int.tryParse(parts.isNotEmpty ? parts[0] : '');
+    final number = int.tryParse(parts.length > 1 ? parts[1] : '');
+    if (year == null || number == null) {
+      return month;
+    }
+    return monthTitle(DateTime(year, number));
+  }
+
+  /// Formats a date as the API's `YYYY-MM-DD` key.
+  static String apiDate(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
+  /// Parses an API `YYYY-MM-DD` date, falling back to today for invalid input.
+  static DateTime parseApiDate(String value) =>
+      DateTime.tryParse(value) ?? DateTime.now();
+
   /// Formats a calendar date (`YYYY-MM-DD`) as short month and year.
   /// Example: `"2025-01-01"` → `"jan 2025"`.
   static String monthYear(String isoDate) {

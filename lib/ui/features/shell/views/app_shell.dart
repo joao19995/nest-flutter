@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nest/domain/models/todo_list.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/accounts/views/accounts_view.dart';
 import 'package:nest/ui/features/calendar/views/calendar_view.dart';
 import 'package:nest/ui/features/dashboard/views/dashboard_view.dart';
@@ -112,7 +113,7 @@ class _AppShellState extends State<AppShell> {
     final destinations = isTablet ? _tabletDestinations : _mobileDestinations;
     final selectedIndex = _indexOf(destinations);
 
-    final body = IndexedStack(
+    final body = LazyIndexedStack(
       index: selectedIndex,
       children: [for (final destination in destinations) _pageFor(destination)],
     );

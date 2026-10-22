@@ -1,6 +1,6 @@
 import 'package:nest/data/models/category_model.dart';
+import 'package:nest/data/models/json_mapper.dart';
 import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/category.dart';
 
 /// Reads and writes the expense categories.
@@ -16,13 +16,7 @@ class CategoriesRepository {
         ? '/api/categories?includeInactive=true'
         : '/api/categories';
     final data = await _client.get(path);
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => CategoryModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(data, (json) => CategoryModel.fromJson(json).toDomain());
   }
 
   /// Creates a category; the server always marks it active.
@@ -34,7 +28,7 @@ class CategoriesRepository {
       'name': name,
       'type': _apiType(type),
     });
-    return _category(data);
+    return mapJson(data, (json) => CategoryModel.fromJson(json).toDomain());
   }
 
   /// Updates the category [id]. The category update body needs all three
@@ -50,7 +44,7 @@ class CategoriesRepository {
       'type': _apiType(type),
       'active': active,
     });
-    return _category(data);
+    return mapJson(data, (json) => CategoryModel.fromJson(json).toDomain());
   }
 
   /// Soft-deletes the category [id] (sets `active = false`).
@@ -60,14 +54,7 @@ class CategoriesRepository {
   /// Restores a soft-deleted category [id].
   Future<Category> restoreCategory(String id) async {
     final data = await _client.post('/api/categories/$id/restore', const {});
-    return _category(data);
-  }
-
-  Category _category(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return CategoryModel.fromJson(data).toDomain();
+    return mapJson(data, (json) => CategoryModel.fromJson(json).toDomain());
   }
 
   static String _apiType(CategoryType type) => switch (type) {

@@ -1,33 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:nest/config/dependencies.dart';
-import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/ui/core/dependencies_scope.dart';
-import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/goals/views/goal_month_detail_view.dart';
 
-AppDependencies _dependencies(MockClient client) => AppDependencies(
-  apiClient: NestApiClient(
-    httpClient: client,
-    baseUrl: 'http://test.local',
-    apiKey: '',
-  ),
-);
-
-Widget _wrap(AppDependencies dependencies, Widget child) => DependenciesScope(
-  dependencies: dependencies,
-  child: MaterialApp(theme: AppTheme.light, home: child),
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
+import '../../../support/test_helpers.dart';
 
 List<Object> _quotas() => <Object>[
   {
@@ -101,29 +78,24 @@ MockClient _client({bool created = false}) {
   return MockClient((request) async {
     if (request.url.path == '/api/goal-plan' && request.method == 'POST') {
       hasMonth = true;
-      return _json(_plan(), status: 201);
+      return jsonResponse(_plan(), status: 201);
     }
     if (request.method == 'GET' &&
         request.url.path.startsWith('/api/goal-plan/')) {
-      return hasMonth ? _json(_monthView()) : _json(_missingMonth());
+      return hasMonth
+          ? jsonResponse(_monthView())
+          : jsonResponse(_missingMonth());
     }
-    return _json(<Object>[], status: 404);
+    return jsonResponse(<Object>[], status: 404);
   });
-}
-
-void _setPhone(WidgetTester tester) {
-  tester.view.physicalSize = const Size(390, 844);
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.resetPhysicalSize);
-  addTearDown(tester.view.resetDevicePixelRatio);
 }
 
 void main() {
   testWidgets('renders the month hero, goals and transfers', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     await tester.pumpWidget(
-      _wrap(
-        _dependencies(_client(created: true)),
+      wrapWithDependencies(
+        testDependencies(_client(created: true)),
         const GoalMonthDetailView(month: '2026-01'),
       ),
     );
@@ -143,10 +115,10 @@ void main() {
   });
 
   testWidgets('creates a missing month', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     await tester.pumpWidget(
-      _wrap(
-        _dependencies(_client()),
+      wrapWithDependencies(
+        testDependencies(_client()),
         const GoalMonthDetailView(month: '2026-01'),
       ),
     );
@@ -163,26 +135,31 @@ void main() {
   });
 
   testWidgets('edits the reserved value and closes the month', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final requests = <http.Request>[];
     var closed = false;
     final client = MockClient((request) async {
       requests.add(request);
       if (request.method == 'GET') {
-        return _json(_monthView(closed: closed, actual1: 0, actual2: 0));
+        return jsonResponse(_monthView(closed: closed, actual1: 0, actual2: 0));
       }
       if (request.method == 'PATCH') {
-        return _json(_monthView(closed: false, actual1: 500, actual2: 0));
+        return jsonResponse(
+          _monthView(closed: false, actual1: 500, actual2: 0),
+        );
       }
       if (request.method == 'POST' && request.url.path.endsWith('/close')) {
         closed = true;
-        return _json(_monthView());
+        return jsonResponse(_monthView());
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
     await tester.pumpWidget(
-      _wrap(_dependencies(client), const GoalMonthDetailView(month: '2026-01')),
+      wrapWithDependencies(
+        testDependencies(client),
+        const GoalMonthDetailView(month: '2026-01'),
+      ),
     );
     await tester.pumpAndSettle();
 

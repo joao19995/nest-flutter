@@ -1,12 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/goal_template.dart';
+
+import '../../support/test_helpers.dart';
 
 GoalsRepository _repository(MockClient mock) => GoalsRepository(
   client: NestApiClient(
@@ -16,27 +17,36 @@ GoalsRepository _repository(MockClient mock) => GoalsRepository(
   ),
 );
 
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
-
 void main() {
-  test('fetchGoals maps the list and tolerates a non-list', () async {
+  test('converts mapping errors into ApiFailure', () async {
+    await expectLater(
+      _repository(
+        MockClient(
+          (request) async => jsonResponse([
+            {'id': 'g1'},
+          ]),
+        ),
+      ).fetchGoals(),
+      throwsA(isA<ApiFailure>()),
+    );
+  });
+
+  test('fetchGoals maps the list and fails on a non-list', () async {
     final goals = await _repository(
       MockClient(
-        (request) async => _json(const [
+        (request) async => jsonResponse(const [
           {'id': 'g1', 'name': 'Viagem', 'active': true},
         ]),
       ),
     ).fetchGoals();
     expect(goals.single.name, 'Viagem');
 
-    final empty = await _repository(
-      MockClient((request) async => _json(const {'not': 'a list'})),
-    ).fetchGoals();
-    expect(empty, isEmpty);
+    await expectLater(
+      _repository(
+        MockClient((request) async => jsonResponse(const {'not': 'a list'})),
+      ).fetchGoals(),
+      throwsA(isA<ApiFailure>()),
+    );
   });
 
   test(
@@ -46,7 +56,7 @@ void main() {
       final repository = _repository(
         MockClient((request) async {
           paths.add(request.url.path);
-          return _json(const {
+          return jsonResponse(const {
             'month': '2026-02',
             'planId': null,
             'closed': false,
@@ -69,7 +79,8 @@ void main() {
   test('fetchGoalMonth treats a 404 as a missing month', () async {
     final repository = _repository(
       MockClient(
-        (request) async => _json(const {'error': 'Não existe.'}, status: 404),
+        (request) async =>
+            jsonResponse(const {'error': 'Não existe.'}, status: 404),
       ),
     );
 
@@ -78,7 +89,7 @@ void main() {
 
   test('fetchGoalYear throws ApiFailure on an unexpected payload', () async {
     final repository = _repository(
-      MockClient((request) async => _json(const <Object>[])),
+      MockClient((request) async => jsonResponse(const <Object>[])),
     );
 
     await expectLater(
@@ -92,7 +103,7 @@ void main() {
     final repository = _repository(
       MockClient((request) async {
         body = jsonDecode(request.body);
-        return _json(const {
+        return jsonResponse(const {
           'id': 'p1',
           'month': '2026-03',
           'availableAmount': 1000,
@@ -115,7 +126,7 @@ void main() {
       MockClient((request) async {
         path = request.url.path;
         body = jsonDecode(request.body);
-        return _json(const {
+        return jsonResponse(const {
           'month': '2026-01',
           'planId': 'p1',
           'closed': false,
@@ -147,7 +158,7 @@ void main() {
       final repository = _repository(
         MockClient((request) async {
           path = request.url.path;
-          return _json(const {
+          return jsonResponse(const {
             'month': '2026-03',
             'planId': 'p1',
             'closed': true,
@@ -166,11 +177,11 @@ void main() {
   );
 
   test(
-    'fetchGoalTemplates maps the versions and tolerates a non-list',
+    'fetchGoalTemplates maps the versions and fails on a non-list',
     () async {
       final templates = await _repository(
         MockClient(
-          (request) async => _json(const [
+          (request) async => jsonResponse(const [
             {
               'id': 't1',
               'validFrom': '2026-01',
@@ -186,10 +197,12 @@ void main() {
       expect(templates.single.validFrom, '2026-01');
       expect(templates.single.entries.single.goalId, 'g1');
 
-      final empty = await _repository(
-        MockClient((request) async => _json(const {'not': 'a list'})),
-      ).fetchGoalTemplates();
-      expect(empty, isEmpty);
+      await expectLater(
+        _repository(
+          MockClient((request) async => jsonResponse(const {'not': 'a list'})),
+        ).fetchGoalTemplates(),
+        throwsA(isA<ApiFailure>()),
+      );
     },
   );
 
@@ -200,7 +213,7 @@ void main() {
       MockClient((request) async {
         path = request.url.path;
         body = jsonDecode(request.body);
-        return _json(const {
+        return jsonResponse(const {
           'template': {
             'id': 't2',
             'validFrom': '2026-04',
@@ -234,9 +247,13 @@ void main() {
           calls.add('${request.method} ${request.url.path}');
           bodies.add(request.body.isEmpty ? null : jsonDecode(request.body));
           if (request.method == 'DELETE') {
-            return _json(const {'id': 'g1'});
+            return jsonResponse(const {'id': 'g1'});
           }
-          return _json(const {'id': 'g1', 'name': 'Férias', 'active': true});
+          return jsonResponse(const {
+            'id': 'g1',
+            'name': 'Férias',
+            'active': true,
+          });
         }),
       );
 
@@ -263,7 +280,7 @@ void main() {
       MockClient((request) async {
         path = request.url.path;
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json(const {
+        return jsonResponse(const {
           'template': {
             'id': 't1',
             'validFrom': '2026-01',
@@ -309,7 +326,7 @@ void main() {
         path = request.url.path;
         method = request.method;
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json(const {
+        return jsonResponse(const {
           'template': {
             'id': 't1',
             'validFrom': '2026-01',

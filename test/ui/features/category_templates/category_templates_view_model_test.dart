@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/accounts_repository.dart';
 import 'package:nest/data/repositories/categories_repository.dart';
@@ -9,6 +8,8 @@ import 'package:nest/data/repositories/category_templates_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/models/category_template.dart';
 import 'package:nest/ui/features/category_templates/view_models/category_templates_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 CategoryTemplatesViewModel _viewModel(MockClient client) {
   final api = NestApiClient(
@@ -23,28 +24,22 @@ CategoryTemplatesViewModel _viewModel(MockClient client) {
   );
 }
 
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
-
 MockClient _loadClient() => MockClient((request) async {
   switch (request.url.path) {
     case '/api/category-templates':
-      return _json(const [
+      return jsonResponse(const [
         {'id': 't1', 'validFrom': '2026-01', 'entries': <Object>[]},
       ]);
     case '/api/categories':
-      return _json(const [
+      return jsonResponse(const [
         {'id': 'c1', 'name': 'Renda', 'type': 'FIXED', 'active': true},
       ]);
     case '/api/accounts':
-      return _json(const [
+      return jsonResponse(const [
         {'id': 'a1', 'name': 'Conjunta', 'ownerPersonId': null, 'active': true},
       ]);
     default:
-      return _json(const <Object>[], status: 404);
+      return jsonResponse(const <Object>[], status: 404);
   }
 });
 
@@ -60,7 +55,7 @@ void main() {
 
   test('applicableFor reads the month pair', () async {
     final client = MockClient((request) async {
-      return _json(const {
+      return jsonResponse(const {
         'template': {'id': 't1', 'validFrom': '2026-01', 'entries': <Object>[]},
         'defaultAccountId': 'a1',
       });
@@ -76,7 +71,7 @@ void main() {
     Map<String, dynamic>? body;
     final client = MockClient((request) async {
       body = jsonDecode(request.body) as Map<String, dynamic>;
-      return _json({
+      return jsonResponse({
         'id': 't2',
         'validFrom': '2026-11',
         'entries': <Object>[],

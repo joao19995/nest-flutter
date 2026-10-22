@@ -1,12 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/models/goal_template.dart';
 import 'package:nest/ui/features/goals/view_models/goal_templates_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 GoalTemplatesViewModel _viewModel(MockClient client) => GoalTemplatesViewModel(
   goalsRepository: GoalsRepository(
@@ -18,17 +19,11 @@ GoalTemplatesViewModel _viewModel(MockClient client) => GoalTemplatesViewModel(
   ),
 );
 
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
-
 void main() {
   test('load maps the versions and keeps only the active goals', () async {
     final client = MockClient((request) async {
       if (request.url.path == '/api/goal-templates') {
-        return _json(const [
+        return jsonResponse(const [
           {
             'id': 't1',
             'validFrom': '2026-01',
@@ -47,12 +42,12 @@ void main() {
         ]);
       }
       if (request.url.path == '/api/goals') {
-        return _json(const [
+        return jsonResponse(const [
           {'id': 'g1', 'name': 'Viagem', 'active': true},
           {'id': 'g2', 'name': 'Carro', 'active': false},
         ]);
       }
-      return _json(const <Object>[], status: 404);
+      return jsonResponse(const <Object>[], status: 404);
     });
 
     final viewModel = _viewModel(client);
@@ -69,7 +64,7 @@ void main() {
       Map<String, dynamic>? body;
       final client = MockClient((request) async {
         if (request.url.path == '/api/goal-plan') {
-          return _json(const {
+          return jsonResponse(const {
             'plans': <Object>[],
             'funding': {
               'year': 2026,
@@ -80,7 +75,7 @@ void main() {
         }
         path = request.url.path;
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json(const {
+        return jsonResponse(const {
           'template': {
             'id': 't2',
             'validFrom': '2026-06',

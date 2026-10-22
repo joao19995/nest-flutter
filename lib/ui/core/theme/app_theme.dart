@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:nest/ui/core/theme/app_radius.dart';
 import 'package:nest/ui/core/theme/app_sizes.dart';
 import 'package:nest/ui/core/theme/app_spacing.dart';
@@ -42,7 +41,7 @@ abstract final class AppTheme {
       brightness: brightness,
       colorScheme: colorScheme,
       extensions: [colors],
-      fontFamily: GoogleFonts.dmSans().fontFamily,
+      fontFamily: AppTextStyles.bodyFamily,
       scaffoldBackgroundColor: colors.paper,
       dividerColor: colors.line,
       splashFactory: InkSparkle.splashFactory,
@@ -137,7 +136,10 @@ abstract final class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: AppRadius.smAll,
-          borderSide: BorderSide(color: colors.primary, width: 2),
+          borderSide: BorderSide(
+            color: colors.primary,
+            width: AppSizes.inputFocusBorderWidth,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: AppRadius.smAll,
@@ -145,7 +147,10 @@ abstract final class AppTheme {
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: AppRadius.smAll,
-          borderSide: BorderSide(color: colors.over, width: 1.5),
+          borderSide: BorderSide(
+            color: colors.over,
+            width: AppSizes.inputFocusErrorBorderWidth,
+          ),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: AppRadius.smAll,

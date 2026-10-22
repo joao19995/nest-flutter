@@ -1,6 +1,6 @@
 import 'package:nest/data/models/calendar_event_model.dart';
+import 'package:nest/data/models/json_mapper.dart';
 import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/calendar_event.dart';
 
 /// Reads and writes the household calendar events.
@@ -24,13 +24,10 @@ class EventsRepository {
       buffer.write('&includeInactive=true');
     }
     final data = await _client.get(buffer.toString());
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => CalendarEventModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(
+      data,
+      (json) => CalendarEventModel.fromJson(json).toDomain(),
+    );
   }
 
   /// Creates an event with [title] starting at the local [startsAt].
@@ -42,7 +39,10 @@ class EventsRepository {
       'title': title,
       'startsAt': _instant(startsAt),
     });
-    return _event(data);
+    return mapJson(
+      data,
+      (json) => CalendarEventModel.fromJson(json).toDomain(),
+    );
   }
 
   /// Updates the event [id] with a new [title] and [startsAt].
@@ -56,7 +56,10 @@ class EventsRepository {
       'startsAt': _instant(startsAt),
       'active': true,
     });
-    return _event(data);
+    return mapJson(
+      data,
+      (json) => CalendarEventModel.fromJson(json).toDomain(),
+    );
   }
 
   /// Soft-deletes the event [id] (sets `active = false`).
@@ -73,11 +76,4 @@ class EventsRepository {
 
   /// Formats a local instant as a UTC ISO-8601 string for the request body.
   static String _instant(DateTime instant) => instant.toUtc().toIso8601String();
-
-  CalendarEvent _event(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return CalendarEventModel.fromJson(data).toDomain();
-  }
 }

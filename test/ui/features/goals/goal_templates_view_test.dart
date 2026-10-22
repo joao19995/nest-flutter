@@ -1,28 +1,11 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:nest/config/dependencies.dart';
-import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/goals/views/goal_templates_view.dart';
 
-AppDependencies _dependencies(MockClient client) => AppDependencies(
-  apiClient: NestApiClient(
-    httpClient: client,
-    baseUrl: 'http://test.local',
-    apiKey: '',
-  ),
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
+import '../../../support/test_helpers.dart';
 
 Finder _field(String label, int index) => find
     .byWidgetPredicate(
@@ -51,20 +34,20 @@ void main() {
 
     final client = MockClient((request) async {
       if (request.url.path == '/api/goal-templates') {
-        return _json(<Object>[]);
+        return jsonResponse(<Object>[]);
       }
       if (request.url.path == '/api/goals') {
-        return _json(const [
+        return jsonResponse(const [
           {'id': 'g1', 'name': 'Viagem', 'active': true},
           {'id': 'g2', 'name': 'Carro', 'active': true},
         ]);
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
     await tester.pumpWidget(
       DependenciesScope(
-        dependencies: _dependencies(client),
+        dependencies: testDependencies(client),
         child: MaterialApp(
           theme: AppTheme.light,
           home: const GoalTemplatesView(),

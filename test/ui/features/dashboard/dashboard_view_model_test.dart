@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/events_repository.dart';
 import 'package:nest/data/repositories/expenses_repository.dart';
@@ -9,11 +6,7 @@ import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/features/dashboard/view_models/dashboard_view_model.dart';
 
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
+import '../../../support/test_helpers.dart';
 
 Map<String, dynamic> _yearSummary() => const {
   'year': 2026,
@@ -138,19 +131,19 @@ DashboardViewModel _viewModel(MockClient client) {
 MockClient _client() => MockClient((request) async {
   switch (request.url.path) {
     case '/api/months/summary':
-      return _json(_yearSummary());
+      return jsonResponse(_yearSummary());
     case '/api/events':
-      return _json(_events());
+      return jsonResponse(_events());
     case '/api/goal-plan':
-      return _json(_goalYear());
+      return jsonResponse(_goalYear());
     case '/api/goals':
-      return _json(_goals());
+      return jsonResponse(_goals());
     case '/api/goal-templates/applicable':
-      return _json({'template': _template()});
+      return jsonResponse({'template': _template()});
     case '/api/months/2026-10':
-      return _json(_month());
+      return jsonResponse(_month());
     default:
-      return _json(const <Object>[], status: 404);
+      return jsonResponse(const <Object>[], status: 404);
   }
 });
 
@@ -163,7 +156,10 @@ void main() {
     expect(viewModel.isLoading, isFalse);
     expect(viewModel.errorMessage, isNull);
     expect(viewModel.greeting, 'Boa tarde');
-    expect(viewModel.alerts, ['Outubro por fechar', 'Novembro ainda não criado']);
+    expect(viewModel.alerts, [
+      'Outubro por fechar',
+      'Novembro ainda não criado',
+    ]);
     expect(viewModel.upcomingEvents, hasLength(2));
     expect(viewModel.upcomingEvents.first.title, 'Consulta');
 

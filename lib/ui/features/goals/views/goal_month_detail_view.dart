@@ -65,28 +65,17 @@ class _GoalMonthPageState extends State<_GoalMonthPage>
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: viewModel,
-      builder: (context, _) => SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Hero(
-              tag: 'goal-month-${viewModel.month}',
-              flightShuttleBuilder: heroSurfaceShuttle,
-              child: MonthSummaryHero(
-                title: 'Objetivos do mês',
-                month: viewModel.month,
-                actual: viewModel.reserved,
-                planned: viewModel.planned,
-                closed: viewModel.plan?.closed ?? false,
-                hasPlan: viewModel.plan != null,
-                onPreviousMonth: widget.onPreviousMonth,
-                onNextMonth: widget.onNextMonth,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _MonthBody(viewModel: viewModel),
-          ],
-        ),
+      builder: (context, _) => MonthDetailPage(
+        heroTag: 'goal-month-${viewModel.month}',
+        title: 'Objetivos do mês',
+        month: viewModel.month,
+        actual: viewModel.reserved,
+        planned: viewModel.planned,
+        closed: viewModel.plan?.closed ?? false,
+        hasPlan: viewModel.plan != null,
+        onPreviousMonth: widget.onPreviousMonth,
+        onNextMonth: widget.onNextMonth,
+        child: _MonthBody(viewModel: viewModel),
       ),
     );
   }
@@ -180,7 +169,7 @@ class _GoalsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Objetivos', style: AppTextStyles.sectionHeading),
+          const Text('Objetivos', style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.lg),
           if (allocations.isEmpty)
             Text(
@@ -321,7 +310,7 @@ class _TransfersCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Transferências', style: AppTextStyles.sectionHeading),
+          const Text('Transferências', style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.lg),
           if (transfers.isEmpty)
             Text(

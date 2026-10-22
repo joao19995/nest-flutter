@@ -24,48 +24,56 @@ class AppBarChart extends StatelessWidget {
       0,
       (current, bar) => bar.value > current ? bar.value : current,
     );
-    return Column(
-      children: [
-        SizedBox(
-          height: AppSizes.barChartHeight,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (final bar in bars)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xs / 2,
-                    ),
-                    child: _Bar(
-                      datum: bar,
-                      fraction: maxValue > 0 ? bar.value / maxValue : 0,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Row(
+    return Semantics(
+      label: 'Gráfico de barras',
+      value: [
+        for (final bar in bars) '${bar.label}: ${bar.value.toStringAsFixed(2)}',
+      ].join(', '),
+      child: ExcludeSemantics(
+        child: Column(
           children: [
-            for (final bar in bars)
-              Expanded(
-                child: Text(
-                  bar.label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.badge.copyWith(
-                    color: bar.highlighted
-                        ? AppColors.onHero
-                        : AppColors.onHeroMuted,
-                  ),
-                ),
+            SizedBox(
+              height: AppSizes.barChartHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (final bar in bars)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xs / 2,
+                        ),
+                        child: _Bar(
+                          datum: bar,
+                          fraction: maxValue > 0 ? bar.value / maxValue : 0,
+                        ),
+                      ),
+                    ),
+                ],
               ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                for (final bar in bars)
+                  Expanded(
+                    child: Text(
+                      bar.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.badge.copyWith(
+                        color: bar.highlighted
+                            ? AppColors.onHero
+                            : AppColors.onHeroMuted,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
-      ],
+      ),
     );
   }
 }

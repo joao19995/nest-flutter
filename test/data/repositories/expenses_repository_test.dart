@@ -1,11 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/expenses_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/failures/api_failure.dart';
+
+import '../../support/test_helpers.dart';
 
 ExpensesRepository _repository(MockClient mock) => ExpensesRepository(
   client: NestApiClient(
@@ -15,19 +16,13 @@ ExpensesRepository _repository(MockClient mock) => ExpensesRepository(
   ),
 );
 
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
-
 void main() {
   test('fetchMonth reads the month path and returns null on a 404', () async {
     String? path;
     final present = _repository(
       MockClient((request) async {
         path = request.url.path;
-        return _json(const {
+        return jsonResponse(const {
           'id': 'm1',
           'month': '2026-01',
           'closed': false,
@@ -41,7 +36,8 @@ void main() {
 
     final missing = _repository(
       MockClient(
-        (request) async => _json(const {'error': 'Não existe.'}, status: 404),
+        (request) async =>
+            jsonResponse(const {'error': 'Não existe.'}, status: 404),
       ),
     );
     expect(await missing.fetchMonth('2026-02'), isNull);
@@ -50,7 +46,8 @@ void main() {
   test('fetchMonth rethrows non-404 failures', () async {
     final repository = _repository(
       MockClient(
-        (request) async => _json(const {'error': 'Falhou.'}, status: 500),
+        (request) async =>
+            jsonResponse(const {'error': 'Falhou.'}, status: 500),
       ),
     );
 
@@ -62,7 +59,7 @@ void main() {
 
   test('fetchYearSummary throws ApiFailure on an unexpected payload', () async {
     final repository = _repository(
-      MockClient((request) async => _json(const <Object>[])),
+      MockClient((request) async => jsonResponse(const <Object>[])),
     );
 
     await expectLater(
@@ -78,7 +75,7 @@ void main() {
       MockClient((request) async {
         path = request.url.path;
         body = jsonDecode(request.body);
-        return _json(const {
+        return jsonResponse(const {
           'id': 'm1',
           'month': '2026-01',
           'closed': false,
@@ -99,7 +96,7 @@ void main() {
     final repository = _repository(
       MockClient((request) async {
         path = request.url.path;
-        return _json(const {
+        return jsonResponse(const {
           'id': 'm1',
           'month': '2026-01',
           'closed': true,

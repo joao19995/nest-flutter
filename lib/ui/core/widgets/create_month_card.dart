@@ -35,7 +35,7 @@ class CreateMonthCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Mês não criado', style: AppTextStyles.sectionHeading),
+          const Text('Mês não criado', style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.md),
           Text(description, style: AppTextStyles.bodyMuted(context.colors)),
           if (error != null) ...[

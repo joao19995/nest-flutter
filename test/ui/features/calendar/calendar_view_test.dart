@@ -1,8 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/events_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
@@ -10,11 +7,7 @@ import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/calendar/view_models/calendar_view_model.dart';
 import 'package:nest/ui/features/calendar/views/calendar_view.dart';
 
-http.Response _json(Object body) => http.Response(
-  jsonEncode(body),
-  200,
-  headers: {'content-type': 'application/json'},
-);
+import '../../../support/test_helpers.dart';
 
 void _setPhone(WidgetTester tester) {
   tester.view.physicalSize = const Size(390, 844);
@@ -26,7 +19,7 @@ void _setPhone(WidgetTester tester) {
 Future<CalendarViewModel> _pumpCalendar(WidgetTester tester) async {
   final client = MockClient((request) async {
     if (request.url.path == '/api/events') {
-      return _json(const [
+      return jsonResponse(const [
         {
           'id': 'e1',
           'title': 'Consulta',
@@ -35,7 +28,7 @@ Future<CalendarViewModel> _pumpCalendar(WidgetTester tester) async {
         },
       ]);
     }
-    return _json(const <Object>[]);
+    return jsonResponse(const <Object>[]);
   });
   final viewModel = CalendarViewModel(
     eventsRepository: EventsRepository(

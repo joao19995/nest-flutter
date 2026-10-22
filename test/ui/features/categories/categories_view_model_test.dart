@@ -1,12 +1,11 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/categories_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/models/category.dart';
 import 'package:nest/ui/features/categories/view_models/categories_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 CategoriesViewModel _viewModel(MockClient client) => CategoriesViewModel(
   categoriesRepository: CategoriesRepository(
@@ -18,16 +17,10 @@ CategoriesViewModel _viewModel(MockClient client) => CategoriesViewModel(
   ),
 );
 
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
-
 void main() {
   test('load maps the categories', () async {
     final client = MockClient(
-      (request) async => _json(const [
+      (request) async => jsonResponse(const [
         {'id': 'c1', 'name': 'Renda', 'type': 'FIXED', 'active': true},
         {
           'id': 'c2',
@@ -48,17 +41,17 @@ void main() {
   test('delete is optimistic and restore brings the category back', () async {
     final client = MockClient((request) async {
       if (request.method == 'DELETE') {
-        return _json(const {'id': 'c1'});
+        return jsonResponse(const {'id': 'c1'});
       }
       if (request.url.path == '/api/categories/c1/restore') {
-        return _json(const {
+        return jsonResponse(const {
           'id': 'c1',
           'name': 'Renda',
           'type': 'FIXED',
           'active': true,
         });
       }
-      return _json(const [
+      return jsonResponse(const [
         {'id': 'c1', 'name': 'Renda', 'type': 'FIXED', 'active': true},
       ]);
     });
@@ -76,7 +69,7 @@ void main() {
 
   test('reports a load failure without throwing', () async {
     final client = MockClient(
-      (request) async => _json(const {'error': 'Falhou.'}, status: 500),
+      (request) async => jsonResponse(const {'error': 'Falhou.'}, status: 500),
     );
 
     final viewModel = _viewModel(client);

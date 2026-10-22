@@ -1,33 +1,8 @@
-import 'dart:convert';
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:nest/config/dependencies.dart';
-import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/ui/core/dependencies_scope.dart';
-import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/goals/views/goals_view.dart';
 
-AppDependencies _dependencies(MockClient client) => AppDependencies(
-  apiClient: NestApiClient(
-    httpClient: client,
-    baseUrl: 'http://test.local',
-    apiKey: '',
-  ),
-);
-
-Widget _wrap(AppDependencies dependencies, Widget child) => DependenciesScope(
-  dependencies: dependencies,
-  child: MaterialApp(theme: AppTheme.light, home: child),
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
+import '../../../support/test_helpers.dart';
 
 Map<String, dynamic> _goalYear() => <String, dynamic>{
   'plans': [
@@ -67,32 +42,27 @@ Map<String, dynamic> _applicableTemplate() => <String, dynamic>{
   ],
 };
 
-void _setPhone(WidgetTester tester) {
-  tester.view.physicalSize = const Size(390, 844);
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.resetPhysicalSize);
-  addTearDown(tester.view.resetDevicePixelRatio);
-}
-
 void main() {
   testWidgets('renders the year hero and opens the per-goal accumulation', (
     tester,
   ) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final client = MockClient((request) async {
       if (request.url.path == '/api/goal-plan') {
-        return _json(_goalYear());
+        return jsonResponse(_goalYear());
       }
       if (request.url.path == '/api/goals') {
-        return _json(_goals());
+        return jsonResponse(_goals());
       }
       if (request.url.path == '/api/goal-templates/applicable') {
-        return _json({'template': _applicableTemplate()});
+        return jsonResponse({'template': _applicableTemplate()});
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const GoalsView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const GoalsView()),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('2026'), findsOneWidget);
@@ -118,15 +88,23 @@ void main() {
   testWidgets('shows the empty state when the year has no plans', (
     tester,
   ) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final client = MockClient((request) async {
       if (request.url.path == '/api/goal-plan') {
-        return _json(<String, dynamic>{'plans': <Object>[], 'funding': null});
+        return jsonResponse(<String, dynamic>{
+          'plans': <Object>[],
+          'funding': null,
+        });
       }
-      return _json(<Object>[]);
+      if (request.url.path == '/api/goal-templates/applicable') {
+        return jsonResponse(const <String, Object?>{'template': null});
+      }
+      return jsonResponse(<Object>[]);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const GoalsView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const GoalsView()),
+    );
     await tester.pumpAndSettle();
 
     expect(

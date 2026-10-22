@@ -278,7 +278,13 @@ class _ListCard extends StatefulWidget {
 }
 
 class _ListCardState extends State<_ListCard> {
-  late bool _isExpanded = widget.list.remaining > 0;
+  bool _isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.list.remaining > 0;
+  }
 
   void _toggle() => setState(() => _isExpanded = !_isExpanded);
 
@@ -356,7 +362,12 @@ class _ListBody extends StatelessWidget {
                 direction: DismissDirection.endToStart,
                 onDismissed: (_) {
                   viewModel.deleteItem(list, item);
-                  _showUndoDeleteSnackBar(context, viewModel, list, item);
+                  showAppSnackBar(
+                    ScaffoldMessenger.of(context),
+                    message: '"${item.text}" apagada.',
+                    actionLabel: 'Desfazer',
+                    onAction: () => viewModel.restoreItem(list, item),
+                  );
                 },
                 background: const DismissBackground(
                   alignment: Alignment.centerLeft,
@@ -749,7 +760,7 @@ class _ArchivedListsSheetState extends State<_ArchivedListsSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Listas arquivadas', style: AppTextStyles.pageTitle),
+          const Text('Listas arquivadas', style: AppTextStyles.pageTitle),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'As listas eliminadas ficam aqui e podem ser recuperadas.',
@@ -899,29 +910,6 @@ class _TextPromptDialogState extends State<_TextPromptDialog> {
       ],
     );
   }
-}
-
-/// Shows the post-swipe snack bar with a "Desfazer" action that restores the
-/// just-removed task.
-void _showUndoDeleteSnackBar(
-  BuildContext context,
-  TodosViewModel viewModel,
-  TodoList list,
-  TodoItem item,
-) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        content: Text('"${item.text}" apagada.'),
-        duration: AppMotion.snackBar,
-        persist: false,
-        action: SnackBarAction(
-          label: 'Desfazer',
-          onPressed: () => viewModel.restoreItem(list, item),
-        ),
-      ),
-    );
 }
 
 /// The secondary actions in the app bar's overflow menu.

@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/category_templates_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
+import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/category_template.dart';
+
+import '../../support/test_helpers.dart';
 
 CategoryTemplatesRepository _repository(MockClient mock) =>
     CategoryTemplatesRepository(
@@ -15,12 +17,6 @@ CategoryTemplatesRepository _repository(MockClient mock) =>
         apiKey: '',
       ),
     );
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
 
 Map<String, Object?> _entry() => {
   'categoryId': 'c1',
@@ -36,11 +32,11 @@ Map<String, Object?> _entry() => {
 
 void main() {
   test(
-    'fetchCategoryTemplates maps the list and tolerates a non-list',
+    'fetchCategoryTemplates maps the list and fails on a non-list',
     () async {
       final templates = await _repository(
         MockClient(
-          (request) async => _json([
+          (request) async => jsonResponse([
             {
               'id': 't1',
               'validFrom': '2026-01',
@@ -53,10 +49,12 @@ void main() {
       expect(templates.single.validFrom, '2026-01');
       expect(templates.single.entries.single.expectedAmount, 800);
 
-      final empty = await _repository(
-        MockClient((request) async => _json(const {'not': 'a list'})),
-      ).fetchCategoryTemplates();
-      expect(empty, isEmpty);
+      await expectLater(
+        _repository(
+          MockClient((request) async => jsonResponse(const {'not': 'a list'})),
+        ).fetchCategoryTemplates(),
+        throwsA(isA<ApiFailure>()),
+      );
     },
   );
 
@@ -67,7 +65,7 @@ void main() {
       final repository = _repository(
         MockClient((request) async {
           month = request.url.queryParameters['month'];
-          return _json({
+          return jsonResponse({
             'template': {
               'id': 't1',
               'validFrom': '2026-01',
@@ -95,7 +93,7 @@ void main() {
       MockClient((request) async {
         path = request.url.path;
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json({
+        return jsonResponse({
           'id': 't1',
           'validFrom': '2026-11',
           'entries': [_entry()],
@@ -133,7 +131,7 @@ void main() {
         path = request.url.path;
         method = request.method;
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json({
+        return jsonResponse({
           'id': 't1',
           'validFrom': '2026-01',
           'entries': [_entry()],

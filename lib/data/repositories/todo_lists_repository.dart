@@ -1,6 +1,6 @@
+import 'package:nest/data/models/json_mapper.dart';
 import 'package:nest/data/models/todo_list_model.dart';
 import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/todo_list.dart';
 
 /// Reads and writes the shared to-do lists and their items.
@@ -17,19 +17,13 @@ class TodoListsRepository {
         ? '/api/todo-lists?includeInactive=true'
         : '/api/todo-lists';
     final data = await _client.get(path);
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => TodoListModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(data, (json) => TodoListModel.fromJson(json).toDomain());
   }
 
   /// Creates a list named [name] and returns it (without items).
   Future<TodoList> createList({required String name}) async {
     final data = await _client.post('/api/todo-lists', {'name': name});
-    return _list(data);
+    return mapJson(data, (json) => TodoListModel.fromJson(json).toDomain());
   }
 
   /// Renames the active list [id].
@@ -38,25 +32,19 @@ class TodoListsRepository {
       'name': name,
       'active': true,
     });
-    return _list(data);
+    return mapJson(data, (json) => TodoListModel.fromJson(json).toDomain());
   }
 
   /// Restores a soft-deleted list [id].
   Future<TodoList> restoreList(String id) async {
     final data = await _client.post('/api/todo-lists/$id/restore', const {});
-    return _list(data);
+    return mapJson(data, (json) => TodoListModel.fromJson(json).toDomain());
   }
 
   /// Persists the given [ids] as the new list order, renumbered by the server.
   Future<List<TodoList>> reorderLists(List<String> ids) async {
     final data = await _client.post('/api/todo-lists/reorder', {'ids': ids});
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => TodoListModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(data, (json) => TodoListModel.fromJson(json).toDomain());
   }
 
   /// Soft-deletes the list [id] (sets `active = false`).
@@ -67,7 +55,7 @@ class TodoListsRepository {
     final data = await _client.post('/api/todo-lists/$listId/items', {
       'text': text,
     });
-    return _item(data);
+    return mapJson(data, (json) => TodoItemModel.fromJson(json).toDomain());
   }
 
   /// Updates a task. At least one of [text], [done] or [position] is required.
@@ -83,7 +71,7 @@ class TodoListsRepository {
       'done': ?done,
       'position': ?position,
     });
-    return _item(data);
+    return mapJson(data, (json) => TodoItemModel.fromJson(json).toDomain());
   }
 
   /// Persists the given [ids] as the new item order of [listId], renumbered by
@@ -92,13 +80,7 @@ class TodoListsRepository {
     final data = await _client.post('/api/todo-lists/$listId/items/reorder', {
       'ids': ids,
     });
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => TodoItemModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(data, (json) => TodoItemModel.fromJson(json).toDomain());
   }
 
   /// Soft-deletes the task [itemId] (the swipe gesture).
@@ -111,7 +93,7 @@ class TodoListsRepository {
       '/api/todo-lists/$listId/items/$itemId/restore',
       const {},
     );
-    return _item(data);
+    return mapJson(data, (json) => TodoItemModel.fromJson(json).toDomain());
   }
 
   /// Deletes every done task of [listId] in one request; returns how many.
@@ -120,23 +102,6 @@ class TodoListsRepository {
       '/api/todo-lists/$listId/clear-completed',
       const {},
     );
-    if (data is Map<String, dynamic>) {
-      return (data['deleted'] as num?)?.toInt() ?? 0;
-    }
-    return 0;
-  }
-
-  TodoList _list(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return TodoListModel.fromJson(data).toDomain();
-  }
-
-  TodoItem _item(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return TodoItemModel.fromJson(data).toDomain();
+    return mapJson(data, (json) => (json['deleted'] as num?)?.toInt() ?? 0);
   }
 }

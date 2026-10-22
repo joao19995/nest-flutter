@@ -1,11 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 GoalsViewModel _viewModel(MockClient client, {int year = 2026}) =>
     GoalsViewModel(
@@ -18,12 +17,6 @@ GoalsViewModel _viewModel(MockClient client, {int year = 2026}) =>
       ),
       year: year,
     );
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
 
 Map<String, dynamic> _year() => <String, dynamic>{
   'plans': [
@@ -64,13 +57,13 @@ Map<String, dynamic> _applicableTemplate() => <String, dynamic>{
 MockClient _client() => MockClient((request) async {
   switch (request.url.path) {
     case '/api/goal-plan':
-      return _json(_year());
+      return jsonResponse(_year());
     case '/api/goals':
-      return _json(_goals());
+      return jsonResponse(_goals());
     case '/api/goal-templates/applicable':
-      return _json({'template': _applicableTemplate()});
+      return jsonResponse({'template': _applicableTemplate()});
     default:
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
   }
 });
 
@@ -114,7 +107,8 @@ void main() {
 
   test('reports a failure without throwing', () async {
     final client = MockClient(
-      (request) async => _json(const {'error': 'Sem ligação.'}, status: 500),
+      (request) async =>
+          jsonResponse(const {'error': 'Sem ligação.'}, status: 500),
     );
 
     final viewModel = _viewModel(client);

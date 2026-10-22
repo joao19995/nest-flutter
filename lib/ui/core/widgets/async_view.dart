@@ -58,13 +58,16 @@ class _LoadingSkeleton extends StatelessWidget {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppSkeleton(height: 20, width: 180),
+        AppSkeleton(
+          height: AppSizes.skeletonHeadingHeight,
+          width: AppSizes.skeletonHeadingWidth,
+        ),
         SizedBox(height: AppSpacing.md),
         AppSkeleton(),
         SizedBox(height: AppSpacing.sm),
         AppSkeleton(),
         SizedBox(height: AppSpacing.sm),
-        AppSkeleton(width: 220),
+        AppSkeleton(width: AppSizes.skeletonShortWidth),
       ],
     );
   }

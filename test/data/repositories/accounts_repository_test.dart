@@ -1,10 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/accounts_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
+
+import '../../support/test_helpers.dart';
 
 AccountsRepository _repository(MockClient mock) => AccountsRepository(
   client: NestApiClient(
@@ -12,12 +13,6 @@ AccountsRepository _repository(MockClient mock) => AccountsRepository(
     baseUrl: 'http://test.local',
     apiKey: '',
   ),
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
 );
 
 void main() {
@@ -28,7 +23,7 @@ void main() {
       MockClient((request) async {
         path = request.url.path;
         include = request.url.queryParameters['includeInactive'];
-        return _json(const [
+        return jsonResponse(const [
           {'id': 'a1', 'name': 'Conta', 'ownerPersonId': null, 'active': true},
         ]);
       }),
@@ -50,7 +45,7 @@ void main() {
         MockClient((request) async {
           method = request.method;
           body = jsonDecode(request.body) as Map<String, dynamic>;
-          return _json(const {
+          return jsonResponse(const {
             'id': 'a1',
             'name': 'Casa',
             'ownerPersonId': null,
@@ -76,7 +71,7 @@ void main() {
       MockClient((request) async {
         path = request.url.path;
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json(const {
+        return jsonResponse(const {
           'id': 'a1',
           'name': 'Casa',
           'ownerPersonId': 'p1',
@@ -97,9 +92,9 @@ void main() {
       MockClient((request) async {
         calls.add('${request.method} ${request.url.path}');
         if (request.method == 'DELETE') {
-          return _json(const {'id': 'a1'});
+          return jsonResponse(const {'id': 'a1'});
         }
-        return _json(const {
+        return jsonResponse(const {
           'id': 'a1',
           'name': 'Casa',
           'ownerPersonId': null,

@@ -1,11 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/expenses_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/features/expenses/view_models/expenses_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 ExpensesViewModel _viewModel(MockClient client, {int year = 2026}) =>
     ExpensesViewModel(
@@ -18,12 +17,6 @@ ExpensesViewModel _viewModel(MockClient client, {int year = 2026}) =>
       ),
       year: year,
     );
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
 
 Map<String, dynamic> _summary() => <String, dynamic>{
   'year': 2026,
@@ -49,8 +42,8 @@ Map<String, dynamic> _summary() => <String, dynamic>{
 
 MockClient _client() => MockClient(
   (request) async => request.url.path == '/api/months/summary'
-      ? _json(_summary())
-      : _json(<Object>[], status: 404),
+      ? jsonResponse(_summary())
+      : jsonResponse(<Object>[], status: 404),
 );
 
 void main() {
@@ -82,7 +75,7 @@ void main() {
 
   test('empty summary reports isEmpty', () async {
     final client = MockClient(
-      (request) async => _json(<String, dynamic>{
+      (request) async => jsonResponse(<String, dynamic>{
         'year': 2026,
         'planned': 0,
         'actual': 0,
@@ -105,7 +98,7 @@ void main() {
 
   test('reports a failure without throwing', () async {
     final client = MockClient(
-      (request) async => _json(const {'error': 'Falhou.'}, status: 500),
+      (request) async => jsonResponse(const {'error': 'Falhou.'}, status: 500),
     );
 
     final viewModel = _viewModel(client);

@@ -1,11 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/categories_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/models/category.dart';
+
+import '../../support/test_helpers.dart';
 
 CategoriesRepository _repository(MockClient mock) => CategoriesRepository(
   client: NestApiClient(
@@ -15,19 +16,13 @@ CategoriesRepository _repository(MockClient mock) => CategoriesRepository(
   ),
 );
 
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
-
 void main() {
   test('fetchCategories maps the list and can request inactive ones', () async {
     String? include;
     final repository = _repository(
       MockClient((request) async {
         include = request.url.queryParameters['includeInactive'];
-        return _json(const [
+        return jsonResponse(const [
           {'id': 'c1', 'name': 'Renda', 'type': 'FIXED', 'active': true},
         ]);
       }),
@@ -44,7 +39,7 @@ void main() {
     final repository = _repository(
       MockClient((request) async {
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json(const {
+        return jsonResponse(const {
           'id': 'c1',
           'name': 'Renda',
           'type': 'FIXED',
@@ -67,7 +62,7 @@ void main() {
       MockClient((request) async {
         path = request.url.path;
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json(const {
+        return jsonResponse(const {
           'id': 'c1',
           'name': 'Renda',
           'type': 'VARIABLE',
@@ -94,9 +89,9 @@ void main() {
       MockClient((request) async {
         calls.add('${request.method} ${request.url.path}');
         if (request.method == 'DELETE') {
-          return _json(const {'id': 'c1'});
+          return jsonResponse(const {'id': 'c1'});
         }
-        return _json(const {
+        return jsonResponse(const {
           'id': 'c1',
           'name': 'Renda',
           'type': 'FIXED',

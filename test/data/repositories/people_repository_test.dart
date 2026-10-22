@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/people_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
+import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/person_income.dart';
+
+import '../../support/test_helpers.dart';
 
 PeopleRepository _repository(MockClient mock) => PeopleRepository(
   client: NestApiClient(
@@ -15,17 +17,11 @@ PeopleRepository _repository(MockClient mock) => PeopleRepository(
   ),
 );
 
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
-
 void main() {
-  test('fetchPeople maps the list and tolerates a non-list', () async {
+  test('fetchPeople maps the list and fails on a non-list', () async {
     final people = await _repository(
       MockClient(
-        (request) async => _json(const [
+        (request) async => jsonResponse(const [
           {'id': 'p1', 'name': 'João', 'dailySpendingPercentage': 25},
         ]),
       ),
@@ -33,10 +29,12 @@ void main() {
     expect(people.single.name, 'João');
     expect(people.single.dailySpendingPercentage, 25);
 
-    final empty = await _repository(
-      MockClient((request) async => _json(const {'not': 'a list'})),
-    ).fetchPeople();
-    expect(empty, isEmpty);
+    await expectLater(
+      _repository(
+        MockClient((request) async => jsonResponse(const {'not': 'a list'})),
+      ).fetchPeople(),
+      throwsA(isA<ApiFailure>()),
+    );
   });
 
   test(
@@ -48,7 +46,7 @@ void main() {
         MockClient((request) async {
           path = request.url.path;
           query = request.url.queryParameters['incomeMonth'];
-          return _json(const [
+          return jsonResponse(const [
             {
               'id': 'p1',
               'name': 'João',
@@ -74,7 +72,7 @@ void main() {
     final repository = _repository(
       MockClient((request) async {
         path = request.url.path;
-        return _json(const [
+        return jsonResponse(const [
           {
             'id': 'i1',
             'personId': 'p1',
@@ -105,7 +103,7 @@ void main() {
       MockClient((request) async {
         method = request.method;
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json(const {
+        return jsonResponse(const {
           'id': 'p1',
           'name': 'João',
           'dailySpendingPercentage': 25,
@@ -133,7 +131,7 @@ void main() {
       MockClient((request) async {
         path = request.url.path;
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json(const {
+        return jsonResponse(const {
           'id': 'p1',
           'name': 'Ana',
           'dailySpendingPercentage': 10,
@@ -161,7 +159,7 @@ void main() {
       MockClient((request) async {
         path = request.url.path;
         body = jsonDecode(request.body) as Map<String, dynamic>;
-        return _json(const {
+        return jsonResponse(const {
           'incomes': [
             {
               'id': 'i1',
@@ -202,7 +200,10 @@ void main() {
       final repository = _repository(
         MockClient((request) async {
           body = jsonDecode(request.body) as Map<String, dynamic>;
-          return _json(const {'incomes': <Object>[], 'raises': <Object>[]});
+          return jsonResponse(const {
+            'incomes': <Object>[],
+            'raises': <Object>[],
+          });
         }),
       );
 

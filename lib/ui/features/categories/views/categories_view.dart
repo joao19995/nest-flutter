@@ -53,19 +53,11 @@ class _CategoriesViewState extends State<CategoriesView>
     if (!deleted || !mounted) {
       return;
     }
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('"${category.name}" apagada.'),
-          duration: AppMotion.snackBar,
-          persist: false,
-          action: SnackBarAction(
-            label: 'Anular',
-            onPressed: () => viewModel.restoreCategory(category),
-          ),
-        ),
-      );
+    showAppSnackBar(
+      ScaffoldMessenger.of(context),
+      message: '"${category.name}" apagada.',
+      onAction: () => viewModel.restoreCategory(category),
+    );
   }
 
   @override
@@ -276,9 +268,15 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
   late final TextEditingController _name = TextEditingController(
     text: widget.initialName,
   );
-  late CategoryType _type = widget.initialType;
+  CategoryType _type = CategoryType.variable;
   bool _isSaving = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _type = widget.initialType;
+  }
 
   @override
   void dispose() {

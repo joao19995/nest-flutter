@@ -1,11 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/events_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/features/calendar/view_models/calendar_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 CalendarViewModel _viewModel(MockClient client) => CalendarViewModel(
   eventsRepository: EventsRepository(
@@ -16,12 +17,6 @@ CalendarViewModel _viewModel(MockClient client) => CalendarViewModel(
     ),
   ),
   today: DateTime(2026, 10, 20),
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
 );
 
 const _octoberEvent = {
@@ -55,9 +50,9 @@ void main() {
     final client = MockClient((request) async {
       if (request.url.path == '/api/events' && request.method == 'GET') {
         requestUri = request.url;
-        return _json(const [_octoberEvent]);
+        return jsonResponse(const [_octoberEvent]);
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
     final viewModel = _viewModel(client);
@@ -77,18 +72,18 @@ void main() {
     Object? body;
     final client = MockClient((request) async {
       if (request.url.path == '/api/events' && request.method == 'GET') {
-        return _json(const <Object>[]);
+        return jsonResponse(const <Object>[]);
       }
       if (request.url.path == '/api/events' && request.method == 'POST') {
         body = jsonDecode(request.body);
-        return _json(const {
+        return jsonResponse(const {
           'id': 'e2',
           'title': 'Jantar',
           'startsAt': '2026-10-22T18:00:00.000Z',
           'active': true,
         }, status: 201);
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
     final viewModel = _viewModel(client);
@@ -112,10 +107,10 @@ void main() {
     final paths = <String>[];
     final client = MockClient((request) async {
       if (request.url.path == '/api/events' && request.method == 'GET') {
-        return _json(const [_octoberEvent]);
+        return jsonResponse(const [_octoberEvent]);
       }
       paths.add('${request.method} ${request.url.path}');
-      return _json(const {'id': 'e1'});
+      return jsonResponse(const {'id': 'e1'});
     });
 
     final viewModel = _viewModel(client);
@@ -135,9 +130,9 @@ void main() {
   test('selectDay in another month switches the visible month', () async {
     final client = MockClient((request) async {
       if (request.url.path == '/api/events') {
-        return _json(const <Object>[]);
+        return jsonResponse(const <Object>[]);
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
     final viewModel = _viewModel(client);

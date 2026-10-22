@@ -1,11 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/todo_lists_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/features/todos/view_models/todos_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 TodosViewModel _viewModel(MockClient client) => TodosViewModel(
   todoListsRepository: TodoListsRepository(
@@ -15,12 +16,6 @@ TodosViewModel _viewModel(MockClient client) => TodosViewModel(
       apiKey: '',
     ),
   ),
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
 );
 
 List<Object> _lists() => <Object>[
@@ -70,12 +65,12 @@ void main() {
     Object? reorderBody;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.url.path == '/api/todo-lists/l1/items/reorder' &&
           request.method == 'POST') {
         reorderBody = jsonDecode(request.body);
-        return _json(const [
+        return jsonResponse(const [
           {
             'id': 'i2',
             'listId': 'l1',
@@ -92,7 +87,7 @@ void main() {
           },
         ]);
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
     final viewModel = _viewModel(client);
@@ -107,12 +102,12 @@ void main() {
     Object? reorderBody;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_twoLists());
+        return jsonResponse(_twoLists());
       }
       if (request.url.path == '/api/todo-lists/reorder' &&
           request.method == 'POST') {
         reorderBody = jsonDecode(request.body);
-        return _json(const [
+        return jsonResponse(const [
           {
             'id': 'l2',
             'name': 'Mercado',
@@ -129,7 +124,7 @@ void main() {
           },
         ]);
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
     final viewModel = _viewModel(client);
@@ -144,14 +139,14 @@ void main() {
     String? clearedPath;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.url.path == '/api/todo-lists/l1/clear-completed' &&
           request.method == 'POST') {
         clearedPath = request.url.path;
-        return _json(const {'deleted': 1});
+        return jsonResponse(const {'deleted': 1});
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
     final viewModel = _viewModel(client);
@@ -166,14 +161,14 @@ void main() {
   test('restores a swiped task through the restore endpoint', () async {
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.method == 'DELETE') {
-        return _json(const {'id': 'i2'});
+        return jsonResponse(const {'id': 'i2'});
       }
       if (request.url.path == '/api/todo-lists/l1/items/i2/restore' &&
           request.method == 'POST') {
-        return _json(const {
+        return jsonResponse(const {
           'id': 'i2',
           'listId': 'l1',
           'text': 'Pagar renda',
@@ -181,7 +176,7 @@ void main() {
           'position': 2000,
         });
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
     final viewModel = _viewModel(client);
@@ -204,9 +199,9 @@ void main() {
   test('itemsFor hides done tasks when the filter is on', () async {
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
     final viewModel = _viewModel(client);

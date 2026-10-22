@@ -1,11 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/features/goals/view_models/goal_month_detail_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 GoalMonthDetailViewModel _viewModel(
   MockClient client, {
@@ -19,12 +20,6 @@ GoalMonthDetailViewModel _viewModel(
     ),
   ),
   month: month,
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
 );
 
 List<Object> _quotaFixtures() => <Object>[
@@ -87,7 +82,9 @@ Map<String, dynamic> _plan() => <String, dynamic>{
 
 void main() {
   test('load exposes the plan, totals and server-computed quotas', () async {
-    final viewModel = _viewModel(MockClient((request) async => _json(_view())));
+    final viewModel = _viewModel(
+      MockClient((request) async => jsonResponse(_view())),
+    );
 
     await viewModel.load();
 
@@ -107,7 +104,7 @@ void main() {
 
   test('an uncreated month is an empty plan with no quotas', () async {
     final viewModel = _viewModel(
-      MockClient((request) async => _json(_missing())),
+      MockClient((request) async => jsonResponse(_missing())),
       month: '2026-03',
     );
 
@@ -124,11 +121,11 @@ void main() {
     final writes = <String>[];
     final client = MockClient((request) async {
       if (request.method == 'GET') {
-        return _json(created ? _view() : _missing());
+        return jsonResponse(created ? _view() : _missing());
       }
       writes.add('${request.method} ${request.url.path}');
       created = true;
-      return _json(_plan(), status: 201);
+      return jsonResponse(_plan(), status: 201);
     });
 
     final viewModel = _viewModel(client, month: '2026-03');
@@ -148,9 +145,9 @@ void main() {
       if (request.method == 'PATCH') {
         patchedPath = request.url.path;
         patchBody = jsonDecode(request.body);
-        return _json(_view(a1: 800));
+        return jsonResponse(_view(a1: 800));
       }
-      return _json(_view());
+      return jsonResponse(_view());
     });
 
     final viewModel = _viewModel(client);
@@ -174,16 +171,16 @@ void main() {
       final writes = <String>[];
       final client = MockClient((request) async {
         if (request.method == 'GET') {
-          return _json(_view(a1: 0, a2: 0));
+          return jsonResponse(_view(a1: 0, a2: 0));
         }
         writes.add('${request.method} ${request.url.path}');
         if (request.url.path.endsWith('/close')) {
-          return _json(_view(closed: true));
+          return jsonResponse(_view(closed: true));
         }
         if (request.url.path.endsWith('/adjust')) {
-          return _json(const <String, dynamic>{});
+          return jsonResponse(const <String, dynamic>{});
         }
-        return _json(_view());
+        return jsonResponse(_view());
       });
 
       final viewModel = _viewModel(client);
@@ -208,9 +205,9 @@ void main() {
   test('a failed write records the action error', () async {
     final client = MockClient((request) async {
       if (request.method == 'PATCH') {
-        return _json(const {'error': 'Não guardou.'}, status: 500);
+        return jsonResponse(const {'error': 'Não guardou.'}, status: 500);
       }
-      return _json(_view());
+      return jsonResponse(_view());
     });
 
     final viewModel = _viewModel(client);

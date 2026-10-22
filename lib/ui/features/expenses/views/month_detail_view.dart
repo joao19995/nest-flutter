@@ -63,30 +63,19 @@ class _MonthPageState extends State<_MonthPage>
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: viewModel,
-      builder: (context, _) => SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Hero(
-              tag: 'expense-month-${viewModel.month}',
-              flightShuttleBuilder: heroSurfaceShuttle,
-              child: MonthSummaryHero(
-                title: 'Despesa do mês',
-                month: viewModel.month,
-                actual: viewModel.plan?.actual ?? 0,
-                planned: viewModel.plan?.planned ?? 0,
-                closed: viewModel.plan?.closed ?? false,
-                hasPlan: viewModel.plan != null,
-                over: viewModel.plan?.summary.over,
-                progressPct: viewModel.plan?.summary.progressPct,
-                onPreviousMonth: widget.onPreviousMonth,
-                onNextMonth: widget.onNextMonth,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _MonthBody(viewModel: viewModel),
-          ],
-        ),
+      builder: (context, _) => MonthDetailPage(
+        heroTag: 'expense-month-${viewModel.month}',
+        title: 'Despesa do mês',
+        month: viewModel.month,
+        actual: viewModel.plan?.actual ?? 0,
+        planned: viewModel.plan?.planned ?? 0,
+        closed: viewModel.plan?.closed ?? false,
+        hasPlan: viewModel.plan != null,
+        over: viewModel.plan?.summary.over,
+        progressPct: viewModel.plan?.summary.progressPct,
+        onPreviousMonth: widget.onPreviousMonth,
+        onNextMonth: widget.onNextMonth,
+        child: _MonthBody(viewModel: viewModel),
       ),
     );
   }
@@ -177,7 +166,7 @@ class _EntriesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Despesas', style: AppTextStyles.sectionHeading),
+          const Text('Despesas', style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.lg),
           if (entries.isEmpty)
             Text(
@@ -287,7 +276,7 @@ class _ContributionsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Contribuições', style: AppTextStyles.sectionHeading),
+          const Text('Contribuições', style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.lg),
           if (!isOk)
             Text(

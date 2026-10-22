@@ -75,103 +75,21 @@ class _GoalTemplatesViewState extends State<GoalTemplatesView>
                 onRetry: viewModel.load,
                 emptyMessage: 'Ainda não há versões.',
                 emptyIcon: Icons.pie_chart_outline,
-                child: _TemplatesContent(
-                  viewModel: viewModel,
-                  onEdit: _openForm,
+                child: TemplateVersionsList<GoalTemplate>(
+                  templates: viewModel.templates,
+                  errorMessage: viewModel.actionError,
+                  onDismissError: viewModel.clearActionError,
+                  monthLabel: (template) =>
+                      AppFormatters.monthKeyTitle(template.validFrom),
+                  subtitle: (template) {
+                    final count = template.entries.length;
+                    return '$count ${count == 1 ? 'objetivo' : 'objetivos'} · '
+                        '${AppFormatters.currency(template.annualTotal)}';
+                  },
+                  onTap: _openForm,
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TemplatesContent extends StatelessWidget {
-  const _TemplatesContent({required this.viewModel, required this.onEdit});
-
-  final GoalTemplatesViewModel viewModel;
-  final ValueChanged<GoalTemplate> onEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    final templates = viewModel.templates;
-    final actionError = viewModel.actionError;
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (actionError != null) ...[
-            AppErrorBanner(
-              message: actionError,
-              onDismiss: viewModel.clearActionError,
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
-          AppCard(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppBreakpoints.cardPadding(context),
-              vertical: AppSpacing.sm,
-            ),
-            child: Column(
-              children: [
-                for (var index = 0; index < templates.length; index++) ...[
-                  if (index > 0) const Divider(height: 1),
-                  _TemplateRow(
-                    template: templates[index],
-                    onTap: () => onEdit(templates[index]),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TemplateRow extends StatelessWidget {
-  const _TemplateRow({required this.template, required this.onTap});
-
-  final GoalTemplate template;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final count = template.entries.length;
-    return Material(
-      color: context.colors.surface,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _monthLabel(template.validFrom),
-                      style: AppTextStyles.sectionHeading,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      '$count ${count == 1 ? 'objetivo' : 'objetivos'} · '
-                      '${AppFormatters.currency(template.annualTotal)}',
-                      style: AppTextStyles.bodyMuted(context.colors),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                size: AppSizes.iconMedium,
-                color: context.colors.faint,
-              ),
-            ],
           ),
         ),
       ),
@@ -199,7 +117,7 @@ class _GoalTemplateFormSheet extends StatefulWidget {
 }
 
 class _GoalTemplateFormSheetState extends State<_GoalTemplateFormSheet> {
-  late String _validFrom = widget.template?.validFrom ?? MonthKey.current();
+  String _validFrom = MonthKey.current();
   late final List<_EntryDraft> _rows = [
     for (final entry in widget.template?.entries ?? const <GoalTemplateEntry>[])
       _EntryDraft.fromEntry(entry),
@@ -212,6 +130,7 @@ class _GoalTemplateFormSheetState extends State<_GoalTemplateFormSheet> {
   @override
   void initState() {
     super.initState();
+    _validFrom = widget.template?.validFrom ?? MonthKey.current();
     for (final row in _rows) {
       row.budget.addListener(_onBudgetChanged);
     }
@@ -235,12 +154,12 @@ class _GoalTemplateFormSheetState extends State<_GoalTemplateFormSheet> {
   /// totals 100% when the user fills only the values.
   void _recalculatePercentages() {
     final budgets = [
-      for (final row in _rows) _parseDecimal(row.budget.text) ?? 0,
+      for (final row in _rows) AppFormatters.parseDecimal(row.budget.text) ?? 0,
     ];
     final total = budgets.fold<double>(0, (sum, value) => sum + value);
     final percentages = _percentagesForBudgets(budgets, total);
     for (var index = 0; index < _rows.length; index++) {
-      final text = _formatNumber(percentages[index]);
+      final text = AppFormatters.inputNumber(percentages[index]);
       if (_rows[index].percentage.text != text) {
         _rows[index].percentage.text = text;
       }
@@ -285,7 +204,8 @@ class _GoalTemplateFormSheetState extends State<_GoalTemplateFormSheet> {
 
   double get _totalPercentage => _rows.fold<double>(
     0,
-    (total, row) => total + (_parseDecimal(row.percentage.text) ?? 0),
+    (total, row) =>
+        total + (AppFormatters.parseDecimal(row.percentage.text) ?? 0),
   );
 
   String _goalName(String goalId) {
@@ -324,8 +244,8 @@ class _GoalTemplateFormSheetState extends State<_GoalTemplateFormSheet> {
     }
     final entries = <GoalTemplateEntry>[];
     for (final row in _rows) {
-      final percentage = _parseDecimal(row.percentage.text);
-      final budget = _parseDecimal(row.budget.text);
+      final percentage = AppFormatters.parseDecimal(row.percentage.text);
+      final budget = AppFormatters.parseDecimal(row.budget.text);
       if (percentage == null ||
           percentage < 0 ||
           percentage > 100 ||
@@ -403,7 +323,7 @@ class _GoalTemplateFormSheetState extends State<_GoalTemplateFormSheet> {
           const SizedBox(height: AppSpacing.lg),
           if (_isEditing)
             Text(
-              'Aplicável a partir de ${_monthLabel(_validFrom)}',
+              'Aplicável a partir de ${AppFormatters.monthKeyTitle(_validFrom)}',
               style: AppTextStyles.bodyMuted(context.colors),
             )
           else
@@ -414,7 +334,7 @@ class _GoalTemplateFormSheetState extends State<_GoalTemplateFormSheet> {
           const SizedBox(height: AppSpacing.lg),
           Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: Text('Total', style: AppTextStyles.sectionHeading),
               ),
               Text(
@@ -507,8 +427,12 @@ class _EntryDraft {
 
   factory _EntryDraft.fromEntry(GoalTemplateEntry entry) => _EntryDraft(
     goalId: entry.goalId,
-    percentage: TextEditingController(text: _formatNumber(entry.percentage)),
-    budget: TextEditingController(text: _formatNumber(entry.budget)),
+    percentage: TextEditingController(
+      text: AppFormatters.inputNumber(entry.percentage),
+    ),
+    budget: TextEditingController(
+      text: AppFormatters.inputNumber(entry.budget),
+    ),
     timeline: entry.timeline,
     priority: entry.priority,
     notes: TextEditingController(text: entry.notes),
@@ -671,16 +595,6 @@ class _EntryRow extends StatelessWidget {
   }
 }
 
-String _monthLabel(String month) {
-  final parts = month.split('-');
-  final year = int.tryParse(parts.isNotEmpty ? parts[0] : '');
-  final number = int.tryParse(parts.length > 1 ? parts[1] : '');
-  if (year == null || number == null) {
-    return month;
-  }
-  return AppFormatters.monthTitle(DateTime(year, number));
-}
-
 String _timelineLabel(GoalTimeline timeline) => switch (timeline) {
   GoalTimeline.t1 => 'T1',
   GoalTimeline.t2 => 'T2',
@@ -694,12 +608,5 @@ String _priorityLabel(GoalPriority priority) => switch (priority) {
   GoalPriority.pequeno => 'Pequeno',
   GoalPriority.niceToHave => 'Nice to have',
 };
-
-String _formatNumber(double value) => value == value.roundToDouble()
-    ? value.toStringAsFixed(0)
-    : value.toStringAsFixed(2).replaceAll('.', ',');
-
-double? _parseDecimal(String text) =>
-    double.tryParse(text.trim().replaceAll(',', '.'));
 
 const int _notesMaxLength = 2000;

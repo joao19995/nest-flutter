@@ -1,13 +1,12 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/repositories/people_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/models/person_income.dart';
 import 'package:nest/ui/features/people/view_models/people_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 PeopleViewModel _viewModel(MockClient client) {
   final api = NestApiClient(
@@ -20,12 +19,6 @@ PeopleViewModel _viewModel(MockClient client) {
     goalsRepository: GoalsRepository(client: api),
   );
 }
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
 
 List<Object> _people() => <Object>[
   {
@@ -73,12 +66,12 @@ List<Object> _allIncomes() => <Object>[
 
 MockClient _client() => MockClient((request) async {
   if (request.url.path == '/api/people') {
-    return _json(_people());
+    return jsonResponse(_people());
   }
   if (request.url.path == '/api/people/incomes') {
-    return _json(_allIncomes());
+    return jsonResponse(_allIncomes());
   }
-  return _json(<Object>[], status: 404);
+  return jsonResponse(<Object>[], status: 404);
 });
 
 void main() {
@@ -110,9 +103,9 @@ void main() {
     final client = MockClient((request) async {
       paths.add(request.url.path);
       if (request.url.path == '/api/people') {
-        return _json(_people());
+        return jsonResponse(_people());
       }
-      return _json(_allIncomes());
+      return jsonResponse(_allIncomes());
     });
 
     final viewModel = _viewModel(client);
@@ -124,11 +117,11 @@ void main() {
   test('a person without applicable income reports zero', () async {
     final client = MockClient((request) async {
       if (request.url.path == '/api/people') {
-        return _json(const [
+        return jsonResponse(const [
           {'id': 'p1', 'name': 'João', 'dailySpendingPercentage': 25},
         ]);
       }
-      return _json(<Object>[]); // empty income history
+      return jsonResponse(<Object>[]); // empty income history
     });
 
     final viewModel = _viewModel(client);
@@ -140,7 +133,7 @@ void main() {
 
   test('reports a failure without throwing', () async {
     final client = MockClient(
-      (request) async => _json(const {'error': 'Falhou.'}, status: 500),
+      (request) async => jsonResponse(const {'error': 'Falhou.'}, status: 500),
     );
 
     final viewModel = _viewModel(client);
@@ -159,7 +152,7 @@ void main() {
         final path = request.url.path;
         calls.add('${request.method} $path');
         if (path == '/api/people') {
-          return _json(const {
+          return jsonResponse(const {
             'id': 'p1',
             'name': 'João',
             'dailySpendingPercentage': 25,
@@ -167,7 +160,7 @@ void main() {
           }, status: 201);
         }
         if (path == '/api/people/p1/incomes') {
-          return _json(const {
+          return jsonResponse(const {
             'incomes': [
               {
                 'id': 'i1',
@@ -187,7 +180,7 @@ void main() {
           });
         }
         if (path == '/api/goal-templates') {
-          return _json(const [
+          return jsonResponse(const [
             {
               'id': 't1',
               'validFrom': '2026-01',
@@ -199,12 +192,12 @@ void main() {
           ]);
         }
         if (path == '/api/goals') {
-          return _json(const [
+          return jsonResponse(const [
             {'id': 'g1', 'name': 'Viagem', 'active': true},
           ]);
         }
         if (path == '/api/goal-templates/raise') {
-          return _json(const {
+          return jsonResponse(const {
             'template': {
               'id': 't2',
               'validFrom': '2026-04',
@@ -213,7 +206,7 @@ void main() {
             'plans': <Object>[],
           }, status: 201);
         }
-        return _json(const <Object>[], status: 404);
+        return jsonResponse(const <Object>[], status: 404);
       });
 
       final viewModel = _viewModel(client);

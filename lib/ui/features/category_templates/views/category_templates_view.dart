@@ -123,102 +123,23 @@ class _CategoryTemplatesViewState extends State<CategoryTemplatesView>
                 onRetry: viewModel.load,
                 emptyMessage: 'Ainda não há distribuições.',
                 emptyIcon: Icons.pie_chart_outline,
-                child: _TemplatesContent(
-                  viewModel: viewModel,
-                  onEdit: _openForm,
+                child: TemplateVersionsList<CategoryTemplate>(
+                  templates: viewModel.templates,
+                  errorMessage: viewModel.actionError,
+                  onDismissError: viewModel.clearActionError,
+                  monthLabel: (template) =>
+                      AppFormatters.monthKeyTitle(template.validFrom),
+                  subtitle: (template) {
+                    final count = template.entries
+                        .where((entry) => entry.active)
+                        .length;
+                    return '$count '
+                        '${count == 1 ? 'categoria' : 'categorias'}';
+                  },
+                  onTap: _openForm,
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TemplatesContent extends StatelessWidget {
-  const _TemplatesContent({required this.viewModel, required this.onEdit});
-
-  final CategoryTemplatesViewModel viewModel;
-  final ValueChanged<CategoryTemplate> onEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    final templates = viewModel.templates;
-    final actionError = viewModel.actionError;
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (actionError != null) ...[
-            AppErrorBanner(
-              message: actionError,
-              onDismiss: viewModel.clearActionError,
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
-          AppCard(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppBreakpoints.cardPadding(context),
-              vertical: AppSpacing.sm,
-            ),
-            child: Column(
-              children: [
-                for (var index = 0; index < templates.length; index++) ...[
-                  if (index > 0) const Divider(height: 1),
-                  _TemplateRow(
-                    template: templates[index],
-                    onTap: () => onEdit(templates[index]),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TemplateRow extends StatelessWidget {
-  const _TemplateRow({required this.template, required this.onTap});
-
-  final CategoryTemplate template;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final count = template.entries.where((entry) => entry.active).length;
-    return Material(
-      color: context.colors.surface,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _monthLabel(template.validFrom),
-                      style: AppTextStyles.sectionHeading,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      '$count ${count == 1 ? 'categoria' : 'categorias'}',
-                      style: AppTextStyles.bodyMuted(context.colors),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                size: AppSizes.iconMedium,
-                color: context.colors.faint,
-              ),
-            ],
           ),
         ),
       ),
@@ -259,14 +180,14 @@ class _CategoryTemplateFormSheet extends StatefulWidget {
 
 class _CategoryTemplateFormSheetState
     extends State<_CategoryTemplateFormSheet> {
-  late String _validFrom = widget.validFrom;
+  String _validFrom = MonthKey.current();
   late final List<_RowDraft> _rows = [
     for (final draft in widget.initialDrafts)
       _RowDraft(
         categoryId: draft.categoryId,
         accountId: draft.accountId,
         amount: TextEditingController(
-          text: _formatAmount(draft.expectedAmount),
+          text: AppFormatters.inputAmount(draft.expectedAmount),
         ),
       ),
   ];
@@ -274,6 +195,12 @@ class _CategoryTemplateFormSheetState
   String? _error;
 
   bool get _isEditing => widget.template != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _validFrom = widget.validFrom;
+  }
 
   @override
   void dispose() {
@@ -328,7 +255,7 @@ class _CategoryTemplateFormSheetState
     }
     final entries = <CategoryTemplateEntryDraft>[];
     for (final row in _rows) {
-      final amount = _parseDecimal(row.amount.text);
+      final amount = AppFormatters.parseDecimal(row.amount.text);
       if (amount == null || amount < 0) {
         setState(() => _error = 'Indica um valor válido em cada linha.');
         return;
@@ -386,7 +313,7 @@ class _CategoryTemplateFormSheetState
           const SizedBox(height: AppSpacing.lg),
           if (_isEditing)
             Text(
-              'Aplicável a partir de ${_monthLabel(_validFrom)}',
+              'Aplicável a partir de ${AppFormatters.monthKeyTitle(_validFrom)}',
               style: AppTextStyles.bodyMuted(context.colors),
             )
           else
@@ -570,19 +497,3 @@ String _categoryLabel(Category category) =>
 
 String _accountLabel(Account account) =>
     account.active ? account.name : '${account.name} (inativa)';
-
-String _monthLabel(String month) {
-  final parts = month.split('-');
-  final year = int.tryParse(parts.isNotEmpty ? parts[0] : '');
-  final number = int.tryParse(parts.length > 1 ? parts[1] : '');
-  if (year == null || number == null) {
-    return month;
-  }
-  return AppFormatters.monthTitle(DateTime(year, number));
-}
-
-String _formatAmount(double value) =>
-    value.toStringAsFixed(2).replaceAll('.', ',');
-
-double? _parseDecimal(String text) =>
-    double.tryParse(text.trim().replaceAll(',', '.'));

@@ -1,5 +1,5 @@
 name: nest
-description: "A new Flutter project."
+description: "Nest — the household finance companion for the Nest web app."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -28,15 +28,15 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  cupertino_icons: ^1.0.9
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
   http: ^1.6.0
-  intl: ^0.20.3
-  google_fonts: ^8.2.1
+  intl: ^0.20.2
+  shared_preferences: ^2.5.6
 
 dev_dependencies:
   flutter_test:
@@ -95,6 +95,15 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Bundled so the PWA keeps the same typography offline.
+  fonts:
+    - family: DMSans
+      fonts:
+        - asset: assets/fonts/DMSans-VariableFont_opsz,wght.ttf
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-VariableFont_wght.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

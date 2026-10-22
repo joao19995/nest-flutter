@@ -1,7 +1,7 @@
+import 'package:nest/data/models/json_mapper.dart';
 import 'package:nest/data/models/person_income_model.dart';
 import 'package:nest/data/models/person_model.dart';
 import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/person.dart';
 import 'package:nest/domain/models/person_income.dart';
 
@@ -20,26 +20,17 @@ class PeopleRepository {
         ? '/api/people'
         : '/api/people?incomeMonth=$incomeMonth';
     final data = await _client.get(path);
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => PersonModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(data, (json) => PersonModel.fromJson(json).toDomain());
   }
 
   /// Returns every income record for every person in one request, ordered by
   /// `validFrom`. Replaces the per-person reads (the N+1).
   Future<List<PersonIncome>> fetchAllIncomes() async {
     final data = await _client.get('/api/people/incomes');
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => PersonIncomeModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(
+      data,
+      (json) => PersonIncomeModel.fromJson(json).toDomain(),
+    );
   }
 
   /// Creates a household member.
@@ -53,7 +44,7 @@ class PeopleRepository {
       'dailySpendingPercentage': dailySpendingPercentage,
       'emergencyFundMonths': emergencyFundMonths,
     });
-    return _person(data);
+    return mapJson(data, (json) => PersonModel.fromJson(json).toDomain());
   }
 
   /// Updates the person [id].
@@ -68,7 +59,7 @@ class PeopleRepository {
       'dailySpendingPercentage': dailySpendingPercentage,
       'emergencyFundMonths': emergencyFundMonths,
     });
-    return _person(data);
+    return mapJson(data, (json) => PersonModel.fromJson(json).toDomain());
   }
 
   /// Saves all of [personId]'s incomes in one transaction: each draft with an
@@ -91,31 +82,18 @@ class PeopleRepository {
           },
       ],
     });
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    final savedIncomes = data['incomes'];
-    final raises = data['raises'];
-    return SavedPersonIncomes(
-      incomes: savedIncomes is List
-          ? savedIncomes
-                .whereType<Map<String, dynamic>>()
-                .map((json) => PersonIncomeModel.fromJson(json).toDomain())
-                .toList(growable: false)
-          : const [],
-      raises: raises is List
-          ? raises
-                .whereType<Map<String, dynamic>>()
-                .map((json) => PersonIncomeRaiseModel.fromJson(json).toDomain())
-                .toList(growable: false)
-          : const [],
+    return mapJson(
+      data,
+      (json) => SavedPersonIncomes(
+        incomes: mapJsonList(
+          json['incomes'] ?? const <Object?>[],
+          (item) => PersonIncomeModel.fromJson(item).toDomain(),
+        ),
+        raises: mapJsonList(
+          json['raises'] ?? const <Object?>[],
+          (item) => PersonIncomeRaiseModel.fromJson(item).toDomain(),
+        ),
+      ),
     );
-  }
-
-  Person _person(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return PersonModel.fromJson(data).toDomain();
   }
 }

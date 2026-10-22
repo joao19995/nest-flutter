@@ -21,6 +21,27 @@ abstract final class AppSizes {
   /// Diameter of a category icon chip in an expense row.
   static const double categoryIcon = 40;
 
+  /// Diameter of the small state dot in a badge.
+  static const double badgeDot = 6;
+
+  /// Stroke width of an inline button spinner.
+  static const double spinnerStroke = 2;
+
+  /// Height of a loading-skeleton heading line.
+  static const double skeletonHeadingHeight = 20;
+
+  /// Width of a loading-skeleton heading line.
+  static const double skeletonHeadingWidth = 180;
+
+  /// Width of a short loading-skeleton line.
+  static const double skeletonShortWidth = 220;
+
+  /// Width of a focused input border.
+  static const double inputFocusBorderWidth = 2;
+
+  /// Width of a focused invalid input border.
+  static const double inputFocusErrorBorderWidth = 1.5;
+
   /// Empty-state and placeholder icons.
   static const double iconDisplay = 32;
 

@@ -1,6 +1,6 @@
 import 'package:nest/data/models/category_template_model.dart';
+import 'package:nest/data/models/json_mapper.dart';
 import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/category_template.dart';
 
 /// Reads and writes the monthly expense templates.
@@ -13,13 +13,10 @@ class CategoryTemplatesRepository {
   /// Returns the template versions, oldest first.
   Future<List<CategoryTemplate>> fetchCategoryTemplates() async {
     final data = await _client.get('/api/category-templates');
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => CategoryTemplateModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(
+      data,
+      (json) => CategoryTemplateModel.fromJson(json).toDomain(),
+    );
   }
 
   /// Returns the version in force for [month] (`YYYY-MM`) and the account
@@ -30,16 +27,15 @@ class CategoryTemplatesRepository {
     final data = await _client.get(
       '/api/category-templates/applicable?month=$month',
     );
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    final template = data['template'];
-    return ApplicableCategoryTemplate(
-      template: template is Map<String, dynamic>
-          ? CategoryTemplateModel.fromJson(template).toDomain()
-          : null,
-      defaultAccountId: data['defaultAccountId'] as String?,
-    );
+    return mapJson(data, (json) {
+      final template = json['template'];
+      return ApplicableCategoryTemplate(
+        template: template is Map<String, dynamic>
+            ? CategoryTemplateModel.fromJson(template).toDomain()
+            : null,
+        defaultAccountId: json['defaultAccountId'] as String?,
+      );
+    });
   }
 
   /// Creates a version starting at [validFrom] (`YYYY-MM`).
@@ -51,7 +47,10 @@ class CategoryTemplatesRepository {
       'validFrom': validFrom,
       'entries': [for (final entry in entries) _entryJson(entry)],
     });
-    return _template(data);
+    return mapJson(
+      data,
+      (json) => CategoryTemplateModel.fromJson(json).toDomain(),
+    );
   }
 
   /// Replaces the entries of the version [id]. The `validFrom` does not change
@@ -63,7 +62,10 @@ class CategoryTemplatesRepository {
     final data = await _client.put('/api/category-templates/$id', {
       'entries': [for (final entry in entries) _entryJson(entry)],
     });
-    return _template(data);
+    return mapJson(
+      data,
+      (json) => CategoryTemplateModel.fromJson(json).toDomain(),
+    );
   }
 
   static Map<String, dynamic> _entryJson(CategoryTemplateEntryDraft entry) => {
@@ -72,11 +74,4 @@ class CategoryTemplatesRepository {
     'expectedAmount': entry.expectedAmount,
     'active': entry.active,
   };
-
-  CategoryTemplate _template(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return CategoryTemplateModel.fromJson(data).toDomain();
-  }
 }

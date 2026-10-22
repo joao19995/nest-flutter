@@ -1,6 +1,6 @@
 import 'package:nest/data/models/account_model.dart';
+import 'package:nest/data/models/json_mapper.dart';
 import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/account.dart';
 
 /// Reads and writes the household bank accounts.
@@ -16,13 +16,7 @@ class AccountsRepository {
         ? '/api/accounts?includeInactive=true'
         : '/api/accounts';
     final data = await _client.get(path);
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => AccountModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(data, (json) => AccountModel.fromJson(json).toDomain());
   }
 
   /// Creates an account. [ownerPersonId] must be present in the body, so it is
@@ -35,7 +29,7 @@ class AccountsRepository {
       'name': name,
       'ownerPersonId': ownerPersonId,
     });
-    return _account(data);
+    return mapJson(data, (json) => AccountModel.fromJson(json).toDomain());
   }
 
   /// Updates the account [id]. Unlike categories, the account input has no
@@ -49,7 +43,7 @@ class AccountsRepository {
       'name': name,
       'ownerPersonId': ownerPersonId,
     });
-    return _account(data);
+    return mapJson(data, (json) => AccountModel.fromJson(json).toDomain());
   }
 
   /// Soft-deletes the account [id] (sets `active = false`).
@@ -58,13 +52,6 @@ class AccountsRepository {
   /// Restores a soft-deleted account [id].
   Future<Account> restoreAccount(String id) async {
     final data = await _client.post('/api/accounts/$id/restore', const {});
-    return _account(data);
-  }
-
-  Account _account(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return AccountModel.fromJson(data).toDomain();
+    return mapJson(data, (json) => AccountModel.fromJson(json).toDomain());
   }
 }

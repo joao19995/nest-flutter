@@ -9,33 +9,6 @@ import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/app_formatters.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 
-/// One goal's progress for the dashboard.
-class DashboardGoal {
-  const DashboardGoal({
-    required this.name,
-    required this.reserved,
-    required this.target,
-  });
-
-  final String name;
-
-  /// The amount reserved for the goal, in euros.
-  final double reserved;
-
-  /// The goal's annual target, in euros. Zero when none is defined.
-  final double target;
-
-  /// True when the goal has a target to measure progress against.
-  bool get hasTarget => target > 0;
-
-  /// How much of the target was reserved, clamped to a 0..1 fraction.
-  double get progress =>
-      target <= 0 ? 0 : (reserved / target).clamp(0.0, 1.0).toDouble();
-
-  /// What is still missing to reach the target, in euros.
-  double get missing => target - reserved;
-}
-
 /// Presentation state for the dashboard: the household's at-a-glance summary.
 ///
 /// Reads run sequentially — the API shares a single database connection, so
@@ -49,11 +22,13 @@ class DashboardViewModel extends ChangeNotifier {
   }) : _expensesRepository = expensesRepository,
        _goalsRepository = goalsRepository,
        _eventsRepository = eventsRepository,
-       _now = now ?? DateTime.now() {
-    _month = MonthKey.current();
-    _goalsYear = _now.year;
-    _goals = GoalsViewModel(goalsRepository: _goalsRepository, year: _goalsYear);
-  }
+       _now = now ?? DateTime.now(),
+       _month = MonthKey.current(),
+       _goalsYear = (now ?? DateTime.now()).year,
+       _goals = GoalsViewModel(
+         goalsRepository: goalsRepository,
+         year: (now ?? DateTime.now()).year,
+       );
 
   /// How many days ahead the "Hoje e próximos" list looks.
   static const int _upcomingDays = 6;
@@ -69,9 +44,9 @@ class DashboardViewModel extends ChangeNotifier {
   final EventsRepository _eventsRepository;
   final DateTime _now;
 
-  late GoalsViewModel _goals;
-  late String _month;
-  late int _goalsYear;
+  GoalsViewModel _goals;
+  String _month;
+  int _goalsYear;
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
@@ -81,7 +56,7 @@ class DashboardViewModel extends ChangeNotifier {
 
   List<String> _alerts = const [];
   List<CalendarEvent> _upcomingEvents = const [];
-  List<DashboardGoal> _goalsList = const [];
+  List<GoalSummary> _goalsList = const [];
   ExpenseMonthSummary? _monthSummary;
 
   /// Warnings worth surfacing at the top of the dashboard.
@@ -91,7 +66,7 @@ class DashboardViewModel extends ChangeNotifier {
   List<CalendarEvent> get upcomingEvents => _upcomingEvents;
 
   /// The goals ordered by reserved amount, most funded first.
-  List<DashboardGoal> get goals => _goalsList;
+  List<GoalSummary> get goals => _goalsList;
 
   /// The month shown in the header hero, formatted `YYYY-MM`.
   String get month => _month;
@@ -214,22 +189,16 @@ class DashboardViewModel extends ChangeNotifier {
 
   Future<void> _reloadGoals() async {
     _goals.dispose();
-    _goals = GoalsViewModel(goalsRepository: _goalsRepository, year: _goalsYear);
+    _goals = GoalsViewModel(
+      goalsRepository: _goalsRepository,
+      year: _goalsYear,
+    );
     await _goals.load();
     _readGoals();
     notifyListeners();
   }
 
-  void _readGoals() {
-    _goalsList = [
-      for (final goal in _goals.goals)
-        DashboardGoal(
-          name: goal.name,
-          reserved: goal.reserved,
-          target: goal.target,
-        ),
-    ];
-  }
+  void _readGoals() => _goalsList = _goals.goals;
 
   /// The alerts implied by the year's month statuses: the current month left
   /// open or uncreated, and the next month not created yet.

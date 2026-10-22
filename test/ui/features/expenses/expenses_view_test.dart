@@ -1,33 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:nest/config/dependencies.dart';
-import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/ui/core/dependencies_scope.dart';
-import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/expenses/views/expenses_view.dart';
 
-AppDependencies _dependencies(MockClient client) => AppDependencies(
-  apiClient: NestApiClient(
-    httpClient: client,
-    baseUrl: 'http://test.local',
-    apiKey: '',
-  ),
-);
-
-Widget _wrap(AppDependencies dependencies, Widget child) => DependenciesScope(
-  dependencies: dependencies,
-  child: MaterialApp(theme: AppTheme.light, home: child),
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
+import '../../../support/test_helpers.dart';
 
 Map<String, dynamic> _yearSummary() => <String, dynamic>{
   'year': 2026,
@@ -84,24 +60,19 @@ Map<String, dynamic> _closedMonth() => <String, dynamic>{
   'settlement': null,
 };
 
-void _setPhone(WidgetTester tester) {
-  tester.view.physicalSize = const Size(390, 844);
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.resetPhysicalSize);
-  addTearDown(tester.view.resetDevicePixelRatio);
-}
-
 void main() {
   testWidgets('renders the year hero and the month list', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final client = MockClient((request) async {
       if (request.url.path == '/api/months/summary') {
-        return _json(_yearSummary());
+        return jsonResponse(_yearSummary());
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const ExpensesView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const ExpensesView()),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Despesa do ano'), findsOneWidget);
@@ -115,18 +86,20 @@ void main() {
   testWidgets('opens the month detail through the hero transition', (
     tester,
   ) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final client = MockClient((request) async {
       if (request.url.path == '/api/months/summary') {
-        return _json(_yearSummary());
+        return jsonResponse(_yearSummary());
       }
       if (request.url.path == '/api/months/2026-01') {
-        return _json(_closedMonth());
+        return jsonResponse(_closedMonth());
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const ExpensesView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const ExpensesView()),
+    );
     await tester.pumpAndSettle();
 
     // The last 'Jan' is the month list row (the first is the chart label).

@@ -34,8 +34,8 @@ class AppBadge extends StatelessWidget {
         children: [
           if (showDot) ...[
             Container(
-              width: 6,
-              height: 6,
+              width: AppSizes.badgeDot,
+              height: AppSizes.badgeDot,
               decoration: BoxDecoration(
                 color: style.foreground,
                 shape: BoxShape.circle,

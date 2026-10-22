@@ -1,11 +1,12 @@
 {
-    "name": "nest",
-    "short_name": "nest",
+    "name": "Nest",
+    "short_name": "Nest",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#23302B",
     "theme_color": "#17372D",
-    "description": "A new Flutter project.",
+    "description": "The Nest household finance companion.",
+    "lang": "pt-PT",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

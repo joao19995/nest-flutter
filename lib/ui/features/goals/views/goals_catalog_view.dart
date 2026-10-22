@@ -49,19 +49,11 @@ class _GoalsCatalogViewState extends State<GoalsCatalogView>
     if (!mounted || failure != null || active) {
       return;
     }
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('"${goal.name}" desativado.'),
-          duration: AppMotion.snackBar,
-          persist: false,
-          action: SnackBarAction(
-            label: 'Anular',
-            onPressed: () => viewModel.restoreGoal(goal),
-          ),
-        ),
-      );
+    showAppSnackBar(
+      ScaffoldMessenger.of(context),
+      message: '"${goal.name}" desativado.',
+      onAction: () => viewModel.restoreGoal(goal),
+    );
   }
 
   @override

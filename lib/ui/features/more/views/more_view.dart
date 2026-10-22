@@ -22,22 +22,19 @@ class MoreView extends StatelessWidget {
             constraints: const BoxConstraints(
               maxWidth: AppSizes.contentMaxWidth,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _MoreTile(
+            child: NavTileGroup(
+              tiles: [
+                NavTile(
                   icon: Icons.people_outline,
                   label: 'Pessoas',
                   onTap: () => _push(context, const PeopleView()),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                _MoreTile(
+                NavTile(
                   icon: Icons.account_balance_outlined,
                   label: 'Contas',
                   onTap: () => _push(context, const AccountsView()),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                _MoreTile(
+                NavTile(
                   icon: Icons.settings_outlined,
                   label: 'Definições',
                   onTap: () => _push(context, const SettingsView()),
@@ -52,37 +49,5 @@ class MoreView extends StatelessWidget {
 
   void _push(BuildContext context, Widget view) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => view));
-  }
-}
-
-/// A single tappable entry in the "Mais" hub.
-class _MoreTile extends StatelessWidget {
-  const _MoreTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, size: AppSizes.iconLarge, color: context.colors.primary),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(child: Text(label, style: AppTextStyles.sectionHeading)),
-          Icon(
-            Icons.chevron_right,
-            size: AppSizes.iconLarge,
-            color: context.colors.faint,
-          ),
-        ],
-      ),
-    );
   }
 }

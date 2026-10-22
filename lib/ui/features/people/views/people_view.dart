@@ -307,7 +307,7 @@ class _PersonFormSheetState extends State<_PersonFormSheet> {
     text: widget.person?.name ?? '',
   );
   late final TextEditingController _percentage = TextEditingController(
-    text: _formatPercentage(
+    text: AppFormatters.inputNumber(
       widget.person?.dailySpendingPercentage ?? _defaultDailySpendingPercentage,
     ),
   );
@@ -319,8 +319,10 @@ class _PersonFormSheetState extends State<_PersonFormSheet> {
     for (final income in widget.initialIncomes)
       _IncomeDraft(
         id: income.id,
-        amount: TextEditingController(text: _formatAmount(income.amount)),
-        validFrom: _parseDate(income.validFrom),
+        amount: TextEditingController(
+          text: AppFormatters.inputAmount(income.amount),
+        ),
+        validFrom: AppFormatters.parseApiDate(income.validFrom),
       ),
   ];
   bool _isSaving = false;
@@ -370,7 +372,7 @@ class _PersonFormSheetState extends State<_PersonFormSheet> {
 
   Future<void> _save() async {
     final name = _name.text.trim();
-    final percentage = _parseDecimal(_percentage.text);
+    final percentage = AppFormatters.parseDecimal(_percentage.text);
     final months = int.tryParse(_emergencyMonths.text.trim());
     if (name.isEmpty || percentage == null || months == null || months < 0) {
       setState(
@@ -381,7 +383,7 @@ class _PersonFormSheetState extends State<_PersonFormSheet> {
     }
     final drafts = <PersonIncomeDraft>[];
     for (final income in _incomes) {
-      final amount = _parseDecimal(income.amount.text);
+      final amount = AppFormatters.parseDecimal(income.amount.text);
       if (amount == null || amount < 0) {
         setState(() => _error = 'Indica um vencimento válido em cada linha.');
         return;
@@ -390,7 +392,7 @@ class _PersonFormSheetState extends State<_PersonFormSheet> {
         PersonIncomeDraft(
           id: income.id,
           amount: amount,
-          validFrom: _formatDate(income.validFrom),
+          validFrom: AppFormatters.apiDate(income.validFrom),
         ),
       );
     }
@@ -468,7 +470,7 @@ class _PersonFormSheetState extends State<_PersonFormSheet> {
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
-          Text('Vencimentos', style: AppTextStyles.sectionHeading),
+          const Text('Vencimentos', style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Subsídios fixos para todos: junho e dezembro, no valor do '
@@ -640,17 +642,13 @@ class _RaiseDialogState extends State<_RaiseDialog> {
     }
     final messenger = ScaffoldMessenger.of(context);
     Navigator.of(context).pop();
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            'Nova versão a partir de ${raise.validFromMonth}: '
-            '+${AppFormatters.currency(raise.extra)} no '
-            '${goalName ?? 'objetivo'}.',
-          ),
-        ),
-      );
+    showAppSnackBar(
+      messenger,
+      message:
+          'Nova versão a partir de ${raise.validFromMonth}: '
+          '+${AppFormatters.currency(raise.extra)} no '
+          '${goalName ?? 'objetivo'}.',
+    );
   }
 
   @override
@@ -749,22 +747,6 @@ class _RaiseDialogState extends State<_RaiseDialog> {
     );
   }
 }
-
-String _formatAmount(double value) =>
-    value.toStringAsFixed(2).replaceAll('.', ',');
-
-String _formatPercentage(double value) => value == value.roundToDouble()
-    ? value.toStringAsFixed(0)
-    : value.toStringAsFixed(2).replaceAll('.', ',');
-
-double? _parseDecimal(String text) =>
-    double.tryParse(text.trim().replaceAll(',', '.'));
-
-String _formatDate(DateTime date) =>
-    '${date.year}-${date.month.toString().padLeft(2, '0')}-'
-    '${date.day.toString().padLeft(2, '0')}';
-
-DateTime _parseDate(String value) => DateTime.tryParse(value) ?? DateTime.now();
 
 const int _nameMaxLength = 100;
 const int _minDateYear = 2000;

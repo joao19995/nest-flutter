@@ -1,33 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:nest/config/dependencies.dart';
-import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/ui/core/dependencies_scope.dart';
-import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/expenses/views/month_detail_view.dart';
 
-AppDependencies _dependencies(MockClient client) => AppDependencies(
-  apiClient: NestApiClient(
-    httpClient: client,
-    baseUrl: 'http://test.local',
-    apiKey: '',
-  ),
-);
-
-Widget _wrap(AppDependencies dependencies, Widget child) => DependenciesScope(
-  dependencies: dependencies,
-  child: MaterialApp(theme: AppTheme.light, home: child),
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
+import '../../../support/test_helpers.dart';
 
 Map<String, dynamic> _closedMonth() => <String, dynamic>{
   'id': 'm1',
@@ -108,22 +85,18 @@ Map<String, dynamic> _openMonth({double actual = 0}) => <String, dynamic>{
   'settlement': null,
 };
 
-void _setPhone(WidgetTester tester) {
-  tester.view.physicalSize = const Size(390, 844);
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.resetPhysicalSize);
-  addTearDown(tester.view.resetDevicePixelRatio);
-}
-
 void main() {
   testWidgets('renders a closed month with entries and contributions', (
     tester,
   ) async {
-    _setPhone(tester);
-    final client = MockClient((request) async => _json(_closedMonth()));
+    setPhoneSize(tester);
+    final client = MockClient((request) async => jsonResponse(_closedMonth()));
 
     await tester.pumpWidget(
-      _wrap(_dependencies(client), const MonthDetailView(month: '2026-01')),
+      wrapWithDependencies(
+        testDependencies(client),
+        const MonthDetailView(month: '2026-01'),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -142,11 +115,14 @@ void main() {
   testWidgets('renders an open month with editable fields and a close button', (
     tester,
   ) async {
-    _setPhone(tester);
-    final client = MockClient((request) async => _json(_openMonth()));
+    setPhoneSize(tester);
+    final client = MockClient((request) async => jsonResponse(_openMonth()));
 
     await tester.pumpWidget(
-      _wrap(_dependencies(client), const MonthDetailView(month: '2026-02')),
+      wrapWithDependencies(
+        testDependencies(client),
+        const MonthDetailView(month: '2026-02'),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -158,19 +134,22 @@ void main() {
   });
 
   testWidgets('creates the month from the missing state', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final client = MockClient((request) async {
       if (request.method == 'GET') {
-        return _json({'error': 'Não existe.'}, status: 404);
+        return jsonResponse({'error': 'Não existe.'}, status: 404);
       }
       if (request.method == 'POST' && request.url.path == '/api/months') {
-        return _json(_openMonth(), status: 201);
+        return jsonResponse(_openMonth(), status: 201);
       }
-      return _json({'error': 'Unexpected.'}, status: 400);
+      return jsonResponse({'error': 'Unexpected.'}, status: 400);
     });
 
     await tester.pumpWidget(
-      _wrap(_dependencies(client), const MonthDetailView(month: '2026-10')),
+      wrapWithDependencies(
+        testDependencies(client),
+        const MonthDetailView(month: '2026-10'),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -185,18 +164,21 @@ void main() {
   });
 
   testWidgets('saves an edited amount on focus loss', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final requests = <http.Request>[];
     final client = MockClient((request) async {
       requests.add(request);
       if (request.method == 'PATCH') {
-        return _json(_openMonth(actual: 500));
+        return jsonResponse(_openMonth(actual: 500));
       }
-      return _json(_openMonth());
+      return jsonResponse(_openMonth());
     });
 
     await tester.pumpWidget(
-      _wrap(_dependencies(client), const MonthDetailView(month: '2026-02')),
+      wrapWithDependencies(
+        testDependencies(client),
+        const MonthDetailView(month: '2026-02'),
+      ),
     );
     await tester.pumpAndSettle();
 

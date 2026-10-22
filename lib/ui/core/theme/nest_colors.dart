@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nest/ui/core/theme/app_colors.dart';
 
 /// The Nest colour palette, resolved per theme brightness.
 ///
@@ -107,26 +108,26 @@ class NestColors extends ThemeExtension<NestColors> {
 
   /// The light palette — identical to the web `@theme` defaults.
   static const NestColors light = NestColors(
-    ink: Color(0xFF17372D),
-    inkSoft: Color(0xFF2A4A3F),
-    muted: Color(0xFF5D6B64),
-    faint: Color(0xFF7D8A83),
-    line: Color(0xFFE2E8E2),
-    lineSoft: Color(0xFFEEF1EC),
-    paper: Color(0xFFF7F8F5),
-    inputBg: Color(0xFFFCFDFC),
-    surface: Color(0xFFFFFFFF),
-    primary: Color(0xFF278763),
-    primaryDark: Color(0xFF1E6B4F),
-    mint: Color(0xFFDCEBE0),
-    mintSoft: Color(0xFFE6EFE8),
-    over: Color(0xFFC4492F),
-    dangerSoft: Color(0xFFFFF0EF),
-    dangerOnSoft: Color(0xFFA33A32),
-    scrim: Color(0x6617372D),
-    terraSoft: Color(0xFFF7E9D8),
-    terraDark: Color(0xFFA86F3C),
-    shadow: Color(0xFF17372D),
+    ink: AppColors.ink,
+    inkSoft: AppColors.inkSoft,
+    muted: AppColors.muted,
+    faint: AppColors.faint,
+    line: AppColors.line,
+    lineSoft: AppColors.lineSoft,
+    paper: AppColors.paper,
+    inputBg: AppColors.inputBg,
+    surface: AppColors.surface,
+    primary: AppColors.primary,
+    primaryDark: AppColors.primaryDark,
+    mint: AppColors.mint,
+    mintSoft: AppColors.mintSoft,
+    over: AppColors.over,
+    dangerSoft: AppColors.dangerSoft,
+    dangerOnSoft: AppColors.dangerOnSoft,
+    scrim: AppColors.scrim,
+    terraSoft: AppColors.terraSoft,
+    terraDark: AppColors.terraDark,
+    shadow: AppColors.ink,
     categoryPalette: <Color>[
       Color(0xFF2F8F6E),
       Color(0xFF6E8F2E),
@@ -174,44 +175,93 @@ class NestColors extends ThemeExtension<NestColors> {
   );
 
   @override
-  NestColors copyWith({List<Color>? categoryPalette}) {
-    if (categoryPalette == null) {
-      return this;
-    }
-    return NestColors(
-      ink: ink,
-      inkSoft: inkSoft,
-      muted: muted,
-      faint: faint,
-      line: line,
-      lineSoft: lineSoft,
-      paper: paper,
-      inputBg: inputBg,
-      surface: surface,
-      primary: primary,
-      primaryDark: primaryDark,
-      mint: mint,
-      mintSoft: mintSoft,
-      over: over,
-      dangerSoft: dangerSoft,
-      dangerOnSoft: dangerOnSoft,
-      scrim: scrim,
-      terraSoft: terraSoft,
-      terraDark: terraDark,
-      shadow: shadow,
-      categoryPalette: categoryPalette,
-    );
-  }
+  NestColors copyWith({
+    Color? ink,
+    Color? inkSoft,
+    Color? muted,
+    Color? faint,
+    Color? line,
+    Color? lineSoft,
+    Color? paper,
+    Color? inputBg,
+    Color? surface,
+    Color? primary,
+    Color? primaryDark,
+    Color? mint,
+    Color? mintSoft,
+    Color? over,
+    Color? dangerSoft,
+    Color? dangerOnSoft,
+    Color? scrim,
+    Color? terraSoft,
+    Color? terraDark,
+    Color? shadow,
+    List<Color>? categoryPalette,
+  }) => NestColors(
+    ink: ink ?? this.ink,
+    inkSoft: inkSoft ?? this.inkSoft,
+    muted: muted ?? this.muted,
+    faint: faint ?? this.faint,
+    line: line ?? this.line,
+    lineSoft: lineSoft ?? this.lineSoft,
+    paper: paper ?? this.paper,
+    inputBg: inputBg ?? this.inputBg,
+    surface: surface ?? this.surface,
+    primary: primary ?? this.primary,
+    primaryDark: primaryDark ?? this.primaryDark,
+    mint: mint ?? this.mint,
+    mintSoft: mintSoft ?? this.mintSoft,
+    over: over ?? this.over,
+    dangerSoft: dangerSoft ?? this.dangerSoft,
+    dangerOnSoft: dangerOnSoft ?? this.dangerOnSoft,
+    scrim: scrim ?? this.scrim,
+    terraSoft: terraSoft ?? this.terraSoft,
+    terraDark: terraDark ?? this.terraDark,
+    shadow: shadow ?? this.shadow,
+    categoryPalette: categoryPalette ?? this.categoryPalette,
+  );
 
   @override
   NestColors lerp(covariant ThemeExtension<NestColors>? other, double t) {
     if (other is! NestColors) {
       return this;
     }
-    // The palette switches as a whole at the midpoint, so a category keeps a
-    // single, stable colour instead of blending into a muddy in-between.
-    return t < 0.5 ? this : other;
+    return NestColors(
+      ink: _lerp(ink, other.ink, t),
+      inkSoft: _lerp(inkSoft, other.inkSoft, t),
+      muted: _lerp(muted, other.muted, t),
+      faint: _lerp(faint, other.faint, t),
+      line: _lerp(line, other.line, t),
+      lineSoft: _lerp(lineSoft, other.lineSoft, t),
+      paper: _lerp(paper, other.paper, t),
+      inputBg: _lerp(inputBg, other.inputBg, t),
+      surface: _lerp(surface, other.surface, t),
+      primary: _lerp(primary, other.primary, t),
+      primaryDark: _lerp(primaryDark, other.primaryDark, t),
+      mint: _lerp(mint, other.mint, t),
+      mintSoft: _lerp(mintSoft, other.mintSoft, t),
+      over: _lerp(over, other.over, t),
+      dangerSoft: _lerp(dangerSoft, other.dangerSoft, t),
+      dangerOnSoft: _lerp(dangerOnSoft, other.dangerOnSoft, t),
+      scrim: _lerp(scrim, other.scrim, t),
+      terraSoft: _lerp(terraSoft, other.terraSoft, t),
+      terraDark: _lerp(terraDark, other.terraDark, t),
+      shadow: _lerp(shadow, other.shadow, t),
+      categoryPalette: [
+        for (var index = 0; index < categoryPalette.length; index++)
+          _lerp(
+            categoryPalette[index],
+            other.categoryPalette.length > index
+                ? other.categoryPalette[index]
+                : categoryPalette[index],
+            t,
+          ),
+      ],
+    );
   }
+
+  static Color _lerp(Color from, Color to, double t) =>
+      Color.lerp(from, to, t) ?? from;
 }
 
 /// Reads the active [NestColors] from the theme.

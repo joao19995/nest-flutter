@@ -30,32 +30,39 @@ class AppProgressRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: AppSizes.progressRing,
-      height: AppSizes.progressRing,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: 0, end: progress.clamp(0.0, 1.0)),
-        duration: AppMotion.large,
-        curve: AppMotion.easing,
-        builder: (context, value, _) => Stack(
-          alignment: Alignment.center,
-          children: [
-            CustomPaint(
-              size: const Size.square(AppSizes.progressRing),
-              painter: _RingPainter(
-                value: value,
-                color: color,
-                trackColor: trackColor,
-              ),
+    final label = this.label;
+    return Semantics(
+      label: label,
+      value: '${(progress.clamp(0.0, 1.0) * 100).round()}%',
+      child: ExcludeSemantics(
+        child: SizedBox(
+          width: AppSizes.progressRing,
+          height: AppSizes.progressRing,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: progress.clamp(0.0, 1.0)),
+            duration: AppMotion.large,
+            curve: AppMotion.easing,
+            builder: (context, value, _) => Stack(
+              alignment: Alignment.center,
+              children: [
+                CustomPaint(
+                  size: const Size.square(AppSizes.progressRing),
+                  painter: _RingPainter(
+                    value: value,
+                    color: color,
+                    trackColor: trackColor,
+                  ),
+                ),
+                if (label != null)
+                  Text(
+                    label,
+                    style: AppTextStyles.label(
+                      context.colors,
+                    ).copyWith(color: AppColors.onHero),
+                  ),
+              ],
             ),
-            if (label != null)
-              Text(
-                label!,
-                style: AppTextStyles.label(
-                  context.colors,
-                ).copyWith(color: AppColors.onHero),
-              ),
-          ],
+          ),
         ),
       ),
     );

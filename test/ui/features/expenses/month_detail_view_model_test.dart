@@ -1,11 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/expenses_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/features/expenses/view_models/month_detail_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 MonthDetailViewModel _viewModel(
   MockClient client, {
@@ -19,12 +20,6 @@ MonthDetailViewModel _viewModel(
     ),
   ),
   month: month,
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
 );
 
 Map<String, dynamic> _month({
@@ -60,8 +55,8 @@ void main() {
   test('load exposes the plan', () async {
     final client = MockClient(
       (request) async => request.url.path == '/api/months/2026-02'
-          ? _json(_month())
-          : _json(<Object>[], status: 404),
+          ? jsonResponse(_month())
+          : jsonResponse(<Object>[], status: 404),
     );
 
     final viewModel = _viewModel(client);
@@ -77,10 +72,10 @@ void main() {
     var createsCalled = false;
     final client = MockClient((request) async {
       if (request.method == 'GET') {
-        return _json(const {'error': 'Não existe.'}, status: 404);
+        return jsonResponse(const {'error': 'Não existe.'}, status: 404);
       }
       createsCalled = true;
-      return _json(_month(id: 'm9'), status: 201);
+      return jsonResponse(_month(id: 'm9'), status: 201);
     });
 
     final viewModel = _viewModel(client, month: '2026-10');
@@ -99,9 +94,9 @@ void main() {
     final client = MockClient((request) async {
       if (request.method == 'POST' && request.url.path == '/api/months') {
         body = jsonDecode(request.body);
-        return _json(_month(id: 'm9'), status: 201);
+        return jsonResponse(_month(id: 'm9'), status: 201);
       }
-      return _json(const {'error': 'Não existe.'}, status: 404);
+      return jsonResponse(const {'error': 'Não existe.'}, status: 404);
     });
 
     final viewModel = _viewModel(client, month: '2026-10');
@@ -121,9 +116,9 @@ void main() {
       if (request.method == 'PATCH') {
         patchedPath = request.url.path;
         body = jsonDecode(request.body);
-        return _json(_month(actual: 500));
+        return jsonResponse(_month(actual: 500));
       }
-      return _json(_month());
+      return jsonResponse(_month());
     });
 
     final viewModel = _viewModel(client);
@@ -139,9 +134,9 @@ void main() {
   test('a failed write records the action error', () async {
     final client = MockClient((request) async {
       if (request.method == 'PATCH') {
-        return _json(const {'error': 'Não guardou.'}, status: 500);
+        return jsonResponse(const {'error': 'Não guardou.'}, status: 500);
       }
-      return _json(_month());
+      return jsonResponse(_month());
     });
 
     final viewModel = _viewModel(client);

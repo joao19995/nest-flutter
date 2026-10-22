@@ -6,14 +6,24 @@ import 'package:nest/domain/models/calendar_event.dart';
 /// Presentation state for the event calendar: the visible month, the selected
 /// day and the events loaded for the surrounding weeks.
 class CalendarViewModel extends ChangeNotifier {
-  CalendarViewModel({
+  factory CalendarViewModel({
     required EventsRepository eventsRepository,
     DateTime? today,
-  }) : _eventsRepository = eventsRepository,
-       _today = _dateOnly(today ?? DateTime.now()) {
-    _visibleMonth = DateTime(_today.year, _today.month);
-    _selectedDay = _today;
+  }) {
+    final resolvedToday = _dateOnly(today ?? DateTime.now());
+    return CalendarViewModel._(
+      eventsRepository: eventsRepository,
+      today: resolvedToday,
+    );
   }
+
+  CalendarViewModel._({
+    required EventsRepository eventsRepository,
+    required DateTime today,
+  }) : _eventsRepository = eventsRepository,
+       _today = today,
+       _visibleMonth = DateTime(today.year, today.month),
+       _selectedDay = today;
 
   final EventsRepository _eventsRepository;
 
@@ -21,8 +31,8 @@ class CalendarViewModel extends ChangeNotifier {
   /// does not drift during a long session.
   final DateTime _today;
 
-  late DateTime _visibleMonth;
-  late DateTime _selectedDay;
+  DateTime _visibleMonth;
+  DateTime _selectedDay;
 
   List<CalendarEvent> _events = const [];
   bool _isLoading = true;

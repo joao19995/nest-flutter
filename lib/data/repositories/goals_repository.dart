@@ -2,6 +2,7 @@ import 'package:nest/data/models/goal_model.dart';
 import 'package:nest/data/models/goal_month_model.dart';
 import 'package:nest/data/models/goal_template_model.dart';
 import 'package:nest/data/models/goal_year_model.dart';
+import 'package:nest/data/models/json_mapper.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/goal.dart';
@@ -18,25 +19,19 @@ class GoalsRepository {
   /// Returns the goal catalogue, including inactive goals.
   Future<List<Goal>> fetchGoals() async {
     final data = await _client.get('/api/goals?includeInactive=true');
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => GoalModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(data, (json) => GoalModel.fromJson(json).toDomain());
   }
 
   /// Creates a goal in the catalogue.
   Future<Goal> createGoal({required String name}) async {
     final data = await _client.post('/api/goals', {'name': name});
-    return _goal(data);
+    return mapJson(data, (json) => GoalModel.fromJson(json).toDomain());
   }
 
   /// Renames the goal [id]. The catalogue input accepts only the name.
   Future<Goal> updateGoal(String id, {required String name}) async {
     final data = await _client.put('/api/goals/$id', {'name': name});
-    return _goal(data);
+    return mapJson(data, (json) => GoalModel.fromJson(json).toDomain());
   }
 
   /// Soft-deletes the goal [id] (sets `active = false`). Fails with a 409 when
@@ -46,19 +41,16 @@ class GoalsRepository {
   /// Restores a soft-deleted goal [id].
   Future<Goal> restoreGoal(String id) async {
     final data = await _client.post('/api/goals/$id/restore', const {});
-    return _goal(data);
+    return mapJson(data, (json) => GoalModel.fromJson(json).toDomain());
   }
 
   /// Returns the annual goal-template versions, oldest first.
   Future<List<GoalTemplate>> fetchGoalTemplates() async {
     final data = await _client.get('/api/goal-templates');
-    if (data is! List) {
-      return const [];
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((json) => GoalTemplateModel.fromJson(json).toDomain())
-        .toList(growable: false);
+    return mapJsonList(
+      data,
+      (json) => GoalTemplateModel.fromJson(json).toDomain(),
+    );
   }
 
   /// Allocates a detected salary raise to [goalId]: the server tops up the
@@ -87,7 +79,12 @@ class GoalsRepository {
       'annualTotal': annualTotal,
       'entries': [for (final entry in entries) _entryJson(entry)],
     });
-    return _templateResult(data);
+    return mapJson(
+      data,
+      (json) => GoalTemplateModel.fromJson(
+        requireJsonObject(json['template']),
+      ).toDomain(),
+    );
   }
 
   /// Replaces the entries of the template [id]. The version's month does not
@@ -101,7 +98,12 @@ class GoalsRepository {
       'annualTotal': annualTotal,
       'entries': [for (final entry in entries) _entryJson(entry)],
     });
-    return _templateResult(data);
+    return mapJson(
+      data,
+      (json) => GoalTemplateModel.fromJson(
+        requireJsonObject(json['template']),
+      ).toDomain(),
+    );
   }
 
   /// Returns the goal-template version in force for [month] (`YYYY-MM`), or
@@ -110,23 +112,19 @@ class GoalsRepository {
     final data = await _client.get(
       '/api/goal-templates/applicable?month=$month',
     );
-    if (data is! Map<String, dynamic>) {
-      return null;
-    }
-    final template = data['template'];
-    if (template is! Map<String, dynamic>) {
-      return null;
-    }
-    return GoalTemplateModel.fromJson(template).toDomain();
+    return mapJson(data, (json) {
+      final template = json['template'];
+      if (template is! Map<String, dynamic>) {
+        return null;
+      }
+      return GoalTemplateModel.fromJson(template).toDomain();
+    });
   }
 
   /// Returns the saved plans and funding of [year].
   Future<GoalYear> fetchGoalYear(int year) async {
     final data = await _client.get('/api/goal-plan?year=$year');
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return GoalYearModel.fromJson(data).toDomain();
+    return mapJson(data, (json) => GoalYearModel.fromJson(json).toDomain());
   }
 
   /// Returns the full view of [month] (`YYYY-MM`) — plan, available amount and
@@ -134,10 +132,7 @@ class GoalsRepository {
   Future<GoalMonthView?> fetchGoalMonth(String month) async {
     try {
       final data = await _client.get('/api/goal-plan/$month');
-      if (data is! Map<String, dynamic>) {
-        throw const ApiFailure('Resposta inesperada do servidor.');
-      }
-      return GoalMonthModel.fromJson(data).toDomain();
+      return mapJson(data, (json) => GoalMonthModel.fromJson(json).toDomain());
     } on ApiFailure catch (failure) {
       if (failure.statusCode == 404) {
         return null;
@@ -149,7 +144,7 @@ class GoalsRepository {
   /// Creates [month] (`YYYY-MM`) from the applicable template's snapshot.
   Future<GoalPlan> createGoalPlan(String month) async {
     final data = await _client.post('/api/goal-plan', {'month': month});
-    return _plan(data);
+    return mapJson(data, (json) => GoalPlanModel.fromJson(json).toDomain());
   }
 
   /// Saves the reserved amount of [goalId] within [month] (`YYYY-MM`) and
@@ -163,7 +158,7 @@ class GoalsRepository {
       '/api/goal-plan/$month/allocations/$goalId',
       {'actual': actual},
     );
-    return _view(data);
+    return mapJson(data, (json) => GoalMonthModel.fromJson(json).toDomain());
   }
 
   /// Redistributes an open month's planned amounts from the applicable
@@ -176,25 +171,7 @@ class GoalsRepository {
   /// Closes [month] (`YYYY-MM`) and returns the frozen month view.
   Future<GoalMonthView> closeGoalPlan(String month) async {
     final data = await _client.post('/api/goal-plan/$month/close', const {});
-    return _view(data);
-  }
-
-  Goal _goal(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return GoalModel.fromJson(data).toDomain();
-  }
-
-  GoalTemplate _templateResult(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    final template = data['template'];
-    if (template is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return GoalTemplateModel.fromJson(template).toDomain();
+    return mapJson(data, (json) => GoalMonthModel.fromJson(json).toDomain());
   }
 
   static Map<String, dynamic> _entryJson(GoalTemplateEntry entry) => {
@@ -219,18 +196,4 @@ class GoalsRepository {
     GoalPriority.pequeno => 'PEQUENO',
     GoalPriority.niceToHave => 'NICE_TO_HAVE',
   };
-
-  GoalPlan _plan(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return GoalPlanModel.fromJson(data).toDomain();
-  }
-
-  GoalMonthView _view(dynamic data) {
-    if (data is! Map<String, dynamic>) {
-      throw const ApiFailure('Resposta inesperada do servidor.');
-    }
-    return GoalMonthModel.fromJson(data).toDomain();
-  }
 }

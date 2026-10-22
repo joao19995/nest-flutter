@@ -60,19 +60,11 @@ class _AccountsViewState extends State<AccountsView>
     if (!deleted || !mounted) {
       return;
     }
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('"${account.name}" apagada.'),
-          duration: AppMotion.snackBar,
-          persist: false,
-          action: SnackBarAction(
-            label: 'Anular',
-            onPressed: () => viewModel.restoreAccount(account),
-          ),
-        ),
-      );
+    showAppSnackBar(
+      ScaffoldMessenger.of(context),
+      message: '"${account.name}" apagada.',
+      onAction: () => viewModel.restoreAccount(account),
+    );
   }
 
   @override
@@ -326,9 +318,15 @@ class _AccountFormSheetState extends State<_AccountFormSheet> {
   late final TextEditingController _name = TextEditingController(
     text: widget.initialName,
   );
-  late String _ownerId = widget.initialOwnerId ?? _jointOwnerId;
+  String _ownerId = _jointOwnerId;
   bool _isSaving = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _ownerId = widget.initialOwnerId ?? _jointOwnerId;
+  }
 
   @override
   void dispose() {

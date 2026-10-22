@@ -70,7 +70,7 @@ class AppButton extends StatelessWidget {
       return const SizedBox(
         width: AppSizes.iconSmall,
         height: AppSizes.iconSmall,
-        child: CircularProgressIndicator(strokeWidth: 2),
+        child: CircularProgressIndicator(strokeWidth: AppSizes.spinnerStroke),
       );
     }
     if (_isIconOnly) {
@@ -92,7 +92,7 @@ class AppButton extends StatelessWidget {
   ButtonStyle _style(NestColors colors) {
     return ButtonStyle(
       elevation: const WidgetStatePropertyAll(0),
-      textStyle: WidgetStatePropertyAll(AppTextStyles.button),
+      textStyle: const WidgetStatePropertyAll(AppTextStyles.button),
       alignment: Alignment.center,
       padding: WidgetStatePropertyAll(
         _isIconOnly

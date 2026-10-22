@@ -1,28 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:nest/ui/core/theme/nest_colors.dart';
 
 /// Nest typography tokens.
 ///
 /// Body copy uses DM Sans; headings and large numbers use Manrope — matching
-/// the web type scale.
+/// the web type scale. Both fonts are bundled as assets, so the PWA renders
+/// the same typography offline without fetching from Google Fonts.
 ///
 /// Styles that carry a role colour take the active [NestColors] so they adapt
 /// to light and dark: `AppTextStyles.bodyMuted(context.colors)`. Styles whose
 /// colour is applied at the call site (or inherited) have no colour.
 abstract final class AppTextStyles {
+  /// Bundled body font family.
+  static const String bodyFamily = 'DMSans';
+
+  /// Bundled heading font family.
+  static const String headingFamily = 'Manrope';
+
   /// Tabular figures keep monetary digits aligned in columns.
   static const List<FontFeature> _tabular = [FontFeature.tabularFigures()];
 
   /// Page-level heading — list pages, detail pages, module headers.
-  static TextStyle get pageTitle => GoogleFonts.manrope(
+  static const TextStyle pageTitle = TextStyle(
+    fontFamily: headingFamily,
     fontSize: 22,
     fontWeight: FontWeight.w800,
     letterSpacing: -0.3,
   );
 
   /// Card and section heading.
-  static TextStyle get sectionHeading => GoogleFonts.manrope(
+  static const TextStyle sectionHeading = TextStyle(
+    fontFamily: headingFamily,
     fontSize: 17,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.3,
@@ -33,7 +41,8 @@ abstract final class AppTextStyles {
   ///
   /// Colour is applied at the call site using the card's accent token:
   /// `AppTextStyles.statDisplay.copyWith(color: context.colors.primary)`.
-  static TextStyle get statDisplay => GoogleFonts.manrope(
+  static const TextStyle statDisplay = TextStyle(
+    fontFamily: headingFamily,
     fontSize: 32,
     fontWeight: FontWeight.w800,
     letterSpacing: -0.5,
@@ -41,14 +50,16 @@ abstract final class AppTextStyles {
   );
 
   /// General body content.
-  static TextStyle get body => GoogleFonts.dmSans(
+  static const TextStyle body = TextStyle(
+    fontFamily: bodyFamily,
     fontSize: 14,
     fontWeight: FontWeight.w400,
     fontFeatures: _tabular,
   );
 
   /// Secondary body copy — descriptions, table cells.
-  static TextStyle bodyMuted(NestColors colors) => GoogleFonts.dmSans(
+  static TextStyle bodyMuted(NestColors colors) => TextStyle(
+    fontFamily: bodyFamily,
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: colors.muted,
@@ -56,7 +67,8 @@ abstract final class AppTextStyles {
   );
 
   /// Small secondary text — subtitles, counts, breadcrumbs.
-  static TextStyle small(NestColors colors) => GoogleFonts.dmSans(
+  static TextStyle small(NestColors colors) => TextStyle(
+    fontFamily: bodyFamily,
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: colors.muted,
@@ -64,7 +76,8 @@ abstract final class AppTextStyles {
   );
 
   /// Form and inline labels.
-  static TextStyle label(NestColors colors) => GoogleFonts.dmSans(
+  static TextStyle label(NestColors colors) => TextStyle(
+    fontFamily: bodyFamily,
     fontSize: 12,
     fontWeight: FontWeight.w600,
     color: colors.inkSoft,
@@ -72,7 +85,8 @@ abstract final class AppTextStyles {
   );
 
   /// Assistive text below inputs.
-  static TextStyle helper(NestColors colors) => GoogleFonts.dmSans(
+  static TextStyle helper(NestColors colors) => TextStyle(
+    fontFamily: bodyFamily,
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: colors.faint,
@@ -82,7 +96,8 @@ abstract final class AppTextStyles {
   ///
   /// Colour is applied by the button's `foregroundColor`, never set here.
   /// Matches the Material 3 label-large scale.
-  static TextStyle get button => GoogleFonts.dmSans(
+  static const TextStyle button = TextStyle(
+    fontFamily: bodyFamily,
     fontSize: 14,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.1,
@@ -91,11 +106,15 @@ abstract final class AppTextStyles {
   /// Status badge label.
   ///
   /// Colour comes from the badge's `BadgeStyle`, never set here.
-  static TextStyle get badge =>
-      GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700);
+  static const TextStyle badge = TextStyle(
+    fontFamily: bodyFamily,
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+  );
 
   /// Section eyebrow above a list or panel, e.g. `Por mês`.
-  static TextStyle navSection(NestColors colors) => GoogleFonts.dmSans(
+  static TextStyle navSection(NestColors colors) => TextStyle(
+    fontFamily: bodyFamily,
     fontSize: 13,
     fontWeight: FontWeight.w600,
     color: colors.muted,

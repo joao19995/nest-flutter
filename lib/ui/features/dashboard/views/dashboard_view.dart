@@ -6,6 +6,7 @@ import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/dashboard/view_models/dashboard_view_model.dart';
+import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 
 /// A to-do list's completion on the dashboard.
 class DashboardTaskList {
@@ -195,7 +196,8 @@ class _DashboardContent extends StatelessWidget {
             child: _DashboardSection(
               title: 'Objetivos do ano',
               onTap: onOpenGoals,
-              trailing: _PeriodStepper(
+              trailing: AppPeriodStepper(
+                variant: AppPeriodStepperVariant.inline,
                 label: '${viewModel.goalsYear}',
                 onPrevious: viewModel.canGoToPreviousGoalsYear
                     ? viewModel.showPreviousGoalsYear
@@ -259,7 +261,7 @@ class _AttentionCard extends StatelessWidget {
                 color: context.colors.over,
               ),
               const SizedBox(width: AppSpacing.sm),
-              Text('Atenção', style: AppTextStyles.sectionHeading),
+              const Text('Atenção', style: AppTextStyles.sectionHeading),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -424,7 +426,7 @@ class _TaskListRow extends StatelessWidget {
 class _GoalsList extends StatelessWidget {
   const _GoalsList({required this.goals});
 
-  final List<DashboardGoal> goals;
+  final List<GoalSummary> goals;
 
   static const int _max = 3;
 
@@ -448,7 +450,7 @@ class _GoalsList extends StatelessWidget {
 class _GoalRow extends StatelessWidget {
   const _GoalRow({required this.goal});
 
-  final DashboardGoal goal;
+  final GoalSummary goal;
 
   @override
   Widget build(BuildContext context) {
@@ -525,7 +527,8 @@ class _MonthPanel extends StatelessWidget {
     return _DashboardSection(
       title: 'Despesa do mês',
       onTap: onOpenMonth == null ? null : () => onOpenMonth(month),
-      trailing: _PeriodStepper(
+      trailing: AppPeriodStepper(
+        variant: AppPeriodStepperVariant.inline,
         label: AppFormatters.monthShort(month),
         onPrevious: canGoToPrevious ? onPrevious : null,
         onNext: canGoToNext ? onNext : null,
@@ -575,81 +578,6 @@ class _MonthPanel extends StatelessWidget {
           else
             const _EmptyHint('Sem plano para este mês.'),
         ],
-      ),
-    );
-  }
-}
-
-/// A theme-aware period stepper for the light cards.
-class _PeriodStepper extends StatelessWidget {
-  const _PeriodStepper({
-    required this.label,
-    this.onPrevious,
-    this.onNext,
-    this.previousTooltip = 'Anterior',
-    this.nextTooltip = 'Seguinte',
-  });
-
-  final String label;
-  final VoidCallback? onPrevious;
-  final VoidCallback? onNext;
-  final String previousTooltip;
-  final String nextTooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _StepperArrow(
-          icon: Icons.chevron_left,
-          onTap: onPrevious,
-          tooltip: previousTooltip,
-        ),
-        Text(
-          label,
-          style: AppTextStyles.label(
-            context.colors,
-          ).copyWith(color: context.colors.primaryDark),
-        ),
-        _StepperArrow(
-          icon: Icons.chevron_right,
-          onTap: onNext,
-          tooltip: nextTooltip,
-        ),
-      ],
-    );
-  }
-}
-
-class _StepperArrow extends StatelessWidget {
-  const _StepperArrow({
-    required this.icon,
-    required this.onTap,
-    required this.tooltip,
-  });
-
-  final IconData icon;
-  final VoidCallback? onTap;
-  final String tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Icon(
-            icon,
-            size: AppSizes.iconMedium,
-            color: onTap == null
-                ? context.colors.faint
-                : context.colors.primary,
-          ),
-        ),
       ),
     );
   }

@@ -1,12 +1,11 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/accounts_repository.dart';
 import 'package:nest/data/repositories/people_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/features/accounts/view_models/accounts_view_model.dart';
+
+import '../../../support/test_helpers.dart';
 
 AccountsViewModel _viewModel(MockClient client) {
   final api = NestApiClient(
@@ -20,21 +19,15 @@ AccountsViewModel _viewModel(MockClient client) {
   );
 }
 
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
-
 void main() {
   test('load maps accounts and resolves the owner name', () async {
     final client = MockClient((request) async {
       if (request.url.path == '/api/people') {
-        return _json(const [
+        return jsonResponse(const [
           {'id': 'p1', 'name': 'Ana', 'dailySpendingPercentage': 25},
         ]);
       }
-      return _json(const [
+      return jsonResponse(const [
         {'id': 'a1', 'name': 'Casa', 'ownerPersonId': null, 'active': true},
         {
           'id': 'a2',
@@ -58,20 +51,20 @@ void main() {
   test('delete is optimistic and restore brings the account back', () async {
     final client = MockClient((request) async {
       if (request.url.path == '/api/people') {
-        return _json(const <Object>[]);
+        return jsonResponse(const <Object>[]);
       }
       if (request.method == 'DELETE') {
-        return _json(const {'id': 'a1'});
+        return jsonResponse(const {'id': 'a1'});
       }
       if (request.url.path == '/api/accounts/a1/restore') {
-        return _json(const {
+        return jsonResponse(const {
           'id': 'a1',
           'name': 'Casa',
           'ownerPersonId': null,
           'active': true,
         });
       }
-      return _json(const [
+      return jsonResponse(const [
         {'id': 'a1', 'name': 'Casa', 'ownerPersonId': null, 'active': true},
       ]);
     });
@@ -89,7 +82,7 @@ void main() {
 
   test('reports a load failure without throwing', () async {
     final client = MockClient(
-      (request) async => _json(const {'error': 'Falhou.'}, status: 500),
+      (request) async => jsonResponse(const {'error': 'Falhou.'}, status: 500),
     );
 
     final viewModel = _viewModel(client);

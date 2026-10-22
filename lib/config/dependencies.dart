@@ -1,3 +1,4 @@
+import 'package:nest/config/settings_controller.dart';
 import 'package:nest/data/repositories/accounts_repository.dart';
 import 'package:nest/data/repositories/categories_repository.dart';
 import 'package:nest/data/repositories/category_templates_repository.dart';
@@ -14,8 +15,9 @@ import 'package:nest/data/services/nest_api_client.dart';
 /// widget tree via `DependenciesScope`. No DI package is used — the graph is
 /// small and explicit.
 class AppDependencies {
-  AppDependencies({NestApiClient? apiClient})
-    : apiClient = apiClient ?? NestApiClient() {
+  AppDependencies({NestApiClient? apiClient, SettingsController? settings})
+    : apiClient = apiClient ?? NestApiClient(),
+      settingsController = settings ?? SettingsController() {
     peopleRepository = PeopleRepository(client: this.apiClient);
     accountsRepository = AccountsRepository(client: this.apiClient);
     categoriesRepository = CategoriesRepository(client: this.apiClient);
@@ -29,6 +31,7 @@ class AppDependencies {
   }
 
   final NestApiClient apiClient;
+  final SettingsController settingsController;
   late final PeopleRepository peopleRepository;
   late final AccountsRepository accountsRepository;
   late final CategoriesRepository categoriesRepository;
@@ -38,6 +41,9 @@ class AppDependencies {
   late final GoalsRepository goalsRepository;
   late final TodoListsRepository todoListsRepository;
 
-  /// Releases the underlying HTTP client.
-  void dispose() => apiClient.dispose();
+  /// Releases the underlying HTTP client and controllers.
+  void dispose() {
+    settingsController.dispose();
+    apiClient.dispose();
+  }
 }

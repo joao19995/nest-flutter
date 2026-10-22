@@ -2,32 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:nest/config/dependencies.dart';
-import 'package:nest/data/services/nest_api_client.dart';
-import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/todos/views/todos_view.dart';
 
-AppDependencies _dependencies(MockClient client) => AppDependencies(
-  apiClient: NestApiClient(
-    httpClient: client,
-    baseUrl: 'http://test.local',
-    apiKey: '',
-  ),
-);
-
-Widget _wrap(AppDependencies dependencies, Widget child) => DependenciesScope(
-  dependencies: dependencies,
-  child: MaterialApp(theme: AppTheme.light, home: child),
-);
-
-http.Response _json(Object body, {int status = 200}) => http.Response(
-  jsonEncode(body),
-  status,
-  headers: {'content-type': 'application/json'},
-);
+import '../../../support/test_helpers.dart';
 
 List<Object> _lists() => <Object>[
   {
@@ -56,13 +35,6 @@ List<Object> _lists() => <Object>[
   },
 ];
 
-void _setPhone(WidgetTester tester) {
-  tester.view.physicalSize = const Size(390, 844);
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.resetPhysicalSize);
-  addTearDown(tester.view.resetDevicePixelRatio);
-}
-
 /// The animated text style applied to a task's label.
 TextStyle _taskStyle(WidgetTester tester, String text) {
   final finder = find.ancestor(
@@ -74,15 +46,17 @@ TextStyle _taskStyle(WidgetTester tester, String text) {
 
 void main() {
   testWidgets('renders each list with its tasks and progress', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Casa'), findsOneWidget);
@@ -99,10 +73,12 @@ void main() {
   });
 
   testWidgets('shows the empty state when there are no lists', (tester) async {
-    _setPhone(tester);
-    final client = MockClient((request) async => _json(<Object>[]));
+    setPhoneSize(tester);
+    final client = MockClient((request) async => jsonResponse(<Object>[]));
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Ainda não há listas.'), findsOneWidget);
@@ -110,17 +86,17 @@ void main() {
   });
 
   testWidgets('toggles a task and strikes it through', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     String? patchedPath;
     Object? patchedBody;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.method == 'PATCH') {
         patchedPath = request.url.path;
         patchedBody = jsonDecode(request.body);
-        return _json(const {
+        return jsonResponse(const {
           'id': 'i2',
           'listId': 'l1',
           'text': 'Pagar renda',
@@ -128,10 +104,12 @@ void main() {
           'position': 2000,
         });
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Concluir'));
@@ -148,21 +126,21 @@ void main() {
   });
 
   testWidgets('swiping a task deletes it and offers undo', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     String? deletedPath;
     String? restoredPath;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.method == 'DELETE') {
         deletedPath = request.url.path;
-        return _json(const {'id': 'i2'});
+        return jsonResponse(const {'id': 'i2'});
       }
       if (request.url.path == '/api/todo-lists/l1/items/i2/restore' &&
           request.method == 'POST') {
         restoredPath = request.url.path;
-        return _json(const {
+        return jsonResponse(const {
           'id': 'i2',
           'listId': 'l1',
           'text': 'Pagar renda',
@@ -170,10 +148,12 @@ void main() {
           'position': 2000,
         });
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     await tester.drag(find.text('Pagar renda'), const Offset(-600, 0));
@@ -192,11 +172,11 @@ void main() {
   });
 
   testWidgets('reorders lists through the drag handles', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     Object? reorderBody;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(<Object>[
+        return jsonResponse(<Object>[
           {
             'id': 'l1',
             'name': 'Casa',
@@ -216,12 +196,14 @@ void main() {
       if (request.url.path == '/api/todo-lists/reorder' &&
           request.method == 'POST') {
         reorderBody = jsonDecode(request.body);
-        return _json(const <Object>[]);
+        return jsonResponse(const <Object>[]);
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Casa'), findsOneWidget);
@@ -238,16 +220,16 @@ void main() {
   });
 
   testWidgets('adds a task through the inline field', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     Object? createdBody;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.url.path == '/api/todo-lists/l1/items' &&
           request.method == 'POST') {
         createdBody = jsonDecode(request.body);
-        return _json(const {
+        return jsonResponse(const {
           'id': 'i3',
           'listId': 'l1',
           'text': 'Comprar pão',
@@ -255,10 +237,12 @@ void main() {
           'position': 3000,
         }, status: 201);
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Comprar pão');
@@ -275,15 +259,17 @@ void main() {
   });
 
   testWidgets('places the add-task button after the input', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     final input = tester.getRect(find.byType(TextField));
@@ -295,18 +281,20 @@ void main() {
   testWidgets('dismisses the delete notification automatically', (
     tester,
   ) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.method == 'DELETE') {
-        return _json(const {'id': 'i2'});
+        return jsonResponse(const {'id': 'i2'});
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     await tester.drag(find.text('Pagar renda'), const Offset(-600, 0));
@@ -321,25 +309,27 @@ void main() {
   });
 
   testWidgets('creates a new list from the app bar action', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     Object? createdBody;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.url.path == '/api/todo-lists' && request.method == 'POST') {
         createdBody = jsonDecode(request.body);
-        return _json(const {
+        return jsonResponse(const {
           'id': 'l2',
           'name': 'Mercado',
           'position': 2000,
           'active': true,
         }, status: 201);
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Nova lista'));
@@ -362,15 +352,17 @@ void main() {
   });
 
   testWidgets('hides completed tasks when the filter is on', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Comprar leite'), findsOneWidget);
 
@@ -385,21 +377,23 @@ void main() {
   });
 
   testWidgets('clears the completed tasks', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     String? clearedPath;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.url.path == '/api/todo-lists/l1/clear-completed' &&
           request.method == 'POST') {
         clearedPath = request.url.path;
-        return _json(const {'deleted': 1});
+        return jsonResponse(const {'deleted': 1});
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Opções da lista'));
@@ -414,15 +408,15 @@ void main() {
   });
 
   testWidgets('edits a task text', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     Object? patchedBody;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.method == 'PATCH') {
         patchedBody = jsonDecode(request.body);
-        return _json(const {
+        return jsonResponse(const {
           'id': 'i2',
           'listId': 'l1',
           'text': 'Pagar água',
@@ -430,10 +424,12 @@ void main() {
           'position': 2000,
         });
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Pagar renda'));
@@ -455,12 +451,12 @@ void main() {
   });
 
   testWidgets('restores an archived list', (tester) async {
-    _setPhone(tester);
+    setPhoneSize(tester);
     String? restoredPath;
     final client = MockClient((request) async {
       if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
         if (request.url.queryParameters['includeInactive'] == 'true') {
-          return _json(<Object>[
+          return jsonResponse(<Object>[
             ..._lists(),
             {
               'id': 'l9',
@@ -471,22 +467,24 @@ void main() {
             },
           ]);
         }
-        return _json(_lists());
+        return jsonResponse(_lists());
       }
       if (request.url.path == '/api/todo-lists/l9/restore' &&
           request.method == 'POST') {
         restoredPath = request.url.path;
-        return _json(const {
+        return jsonResponse(const {
           'id': 'l9',
           'name': 'Arquivada',
           'position': 500,
           'active': true,
         });
       }
-      return _json(<Object>[], status: 404);
+      return jsonResponse(<Object>[], status: 404);
     });
 
-    await tester.pumpWidget(_wrap(_dependencies(client), const TodosView()));
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Mais opções'));

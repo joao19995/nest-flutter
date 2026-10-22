@@ -25,18 +25,18 @@ class NestApiClient {
     'Accept': 'application/json',
   };
 
-  Future<dynamic> get(String path) => _send('GET', path);
+  Future<Object?> get(String path) => _send('GET', path);
 
-  Future<dynamic> post(String path, Map<String, dynamic> body) =>
+  Future<Object?> post(String path, Map<String, dynamic> body) =>
       _send('POST', path, body: body);
 
-  Future<dynamic> patch(String path, Map<String, dynamic> body) =>
+  Future<Object?> patch(String path, Map<String, dynamic> body) =>
       _send('PATCH', path, body: body);
 
-  Future<dynamic> put(String path, Map<String, dynamic> body) =>
+  Future<Object?> put(String path, Map<String, dynamic> body) =>
       _send('PUT', path, body: body);
 
-  Future<dynamic> delete(String path) => _send('DELETE', path);
+  Future<Object?> delete(String path) => _send('DELETE', path);
 
   void dispose() => _httpClient.close();
 
@@ -51,7 +51,7 @@ class NestApiClient {
     return Uri.parse('$base$path');
   }
 
-  Future<dynamic> _send(
+  Future<Object?> _send(
     String method,
     String path, {
     Map<String, dynamic>? body,
@@ -66,8 +66,10 @@ class NestApiClient {
       if (body != null) {
         request.body = jsonEncode(body);
       }
-      final streamed = await _httpClient.send(request).timeout(_timeout);
-      final response = await http.Response.fromStream(streamed);
+      final response = await _httpClient
+          .send(request)
+          .then(http.Response.fromStream)
+          .timeout(_timeout);
       return _decode(response);
     } on ApiFailure {
       rethrow;
@@ -76,8 +78,8 @@ class NestApiClient {
     }
   }
 
-  dynamic _decode(http.Response response) {
-    dynamic payload;
+  Object? _decode(http.Response response) {
+    Object? payload;
     if (response.body.isNotEmpty) {
       try {
         payload = jsonDecode(response.body);
@@ -95,7 +97,7 @@ class NestApiClient {
     );
   }
 
-  String _errorMessage(dynamic payload, int statusCode) {
+  String _errorMessage(Object? payload, int statusCode) {
     if (payload is Map<String, dynamic>) {
       final error = payload['error'];
       if (error is String && error.isNotEmpty) {

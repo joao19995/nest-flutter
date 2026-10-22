@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/expenses/views/expenses_view.dart';
 import 'package:nest/ui/features/goals/views/goals_view.dart';
 
@@ -23,7 +24,13 @@ class FinancesView extends StatefulWidget {
 }
 
 class _FinancesViewState extends State<FinancesView> {
-  late FinancesSection _section = widget.initialSection;
+  FinancesSection _section = FinancesSection.expenses;
+
+  @override
+  void initState() {
+    super.initState();
+    _section = widget.initialSection;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +108,7 @@ class _FinancesViewState extends State<FinancesView> {
                   ),
                 ),
                 Expanded(
-                  child: IndexedStack(
+                  child: LazyIndexedStack(
                     index: _section.index,
                     children: const [
                       ExpensesView(embedded: true),
