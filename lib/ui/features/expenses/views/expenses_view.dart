@@ -91,7 +91,7 @@ class _ExpensesContent extends StatelessWidget {
             onNextYear: viewModel.showNextYear,
           ),
           const SizedBox(height: AppSpacing.xl),
-          Text('Por mês', style: AppTextStyles.navSection(context.colors)),
+          const AppSectionHeader(title: 'Por mês'),
           const SizedBox(height: AppSpacing.md),
           AsyncView(
             isLoading: viewModel.isLoading,

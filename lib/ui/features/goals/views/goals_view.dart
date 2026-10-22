@@ -99,10 +99,7 @@ class _GoalsContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'Por mês',
-                  style: AppTextStyles.navSection(context.colors),
-                ),
+                const AppSectionHeader(title: 'Por mês'),
                 const SizedBox(height: AppSpacing.md),
                 _MonthsCard(months: viewModel.months),
               ],

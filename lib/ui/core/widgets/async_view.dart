@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/app_button.dart';
+import 'package:nest/ui/core/widgets/app_empty_state.dart';
 import 'package:nest/ui/core/widgets/app_skeleton.dart';
 
 /// Renders the four mandatory async states for a screen: loading, error,
@@ -44,7 +45,7 @@ class AsyncView extends StatelessWidget {
       );
     }
     if (isEmpty) {
-      return _StateMessage(icon: emptyIcon, title: emptyMessage);
+      return AppEmptyState(icon: emptyIcon, title: emptyMessage);
     }
     return child;
   }

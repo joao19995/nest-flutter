@@ -45,6 +45,18 @@ abstract final class AppSizes {
   /// Empty-state and placeholder icons.
   static const double iconDisplay = 32;
 
+  /// Diameter of the tinted circle behind an empty-state icon.
+  static const double emptyStateCircle = 64;
+
+  /// Diameter of a donut chart.
+  static const double donutChart = 160;
+
+  /// Stroke width of a donut chart ring.
+  static const double donutStroke = 20;
+
+  /// Diameter of a donut legend swatch.
+  static const double donutLegendDot = 10;
+
   /// Minimum height of an interactive button.
   static const double buttonHeight = 40;
 
