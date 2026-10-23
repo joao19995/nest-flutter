@@ -178,6 +178,10 @@ void main() {
     expect(viewModel.monthSummary, isNotNull);
     expect(viewModel.monthSummary?.actual, 1240);
     expect(viewModel.monthSummary?.planned, 1500);
+
+    expect(viewModel.yearMonths, hasLength(2));
+    expect(viewModel.yearMonths.first.month, '2026-10');
+    expect(viewModel.yearMonths.last.month, '2026-11');
   });
 
   test('steps the header month and clears the summary when missing', () async {

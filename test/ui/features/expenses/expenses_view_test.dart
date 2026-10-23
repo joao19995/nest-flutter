@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/core/widgets/app_month_tile.dart';
 import 'package:nest/ui/features/expenses/views/expenses_view.dart';
 
 import '../../../support/test_helpers.dart';
@@ -62,7 +63,7 @@ Map<String, dynamic> _closedMonth() => <String, dynamic>{
 };
 
 void main() {
-  testWidgets('renders the year hero and the month list', (tester) async {
+  testWidgets('renders the year hero and the month grid', (tester) async {
     setPhoneSize(tester);
     final client = MockClient((request) async {
       if (request.url.path == '/api/months/summary') {
@@ -78,7 +79,8 @@ void main() {
 
     expect(find.text('Despesa do ano'), findsOneWidget);
     expect(find.text('Por mês'), findsOneWidget);
-    // 'Jan' appears both in the chart and in the month list.
+    expect(find.byType(AppMonthTile), findsNWidgets(2));
+    // 'Jan' appears both in the chart and in its month tile.
     expect(find.text('Jan'), findsNWidgets(2));
     expect(find.text('Fev'), findsNWidgets(2));
     expect(find.text('Por categoria'), findsNothing);
@@ -113,7 +115,7 @@ void main() {
     expect(find.text('Por categoria'), findsOneWidget);
     expect(find.text('Total'), findsOneWidget);
     expect(find.text('Casa'), findsOneWidget);
-    // Also the January row in the month list.
+    // Also the January month tile.
     expect(find.text(AppFormatters.currency(1200)), findsNWidgets(2));
     expect(find.text('Extra'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -138,8 +140,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The last 'Jan' is the month list row (the first is the chart label).
-    await tester.tap(find.text('Jan').last);
+    await tester.tap(find.widgetWithText(AppMonthTile, 'Jan'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pumpAndSettle();

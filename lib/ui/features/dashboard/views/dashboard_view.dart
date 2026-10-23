@@ -166,6 +166,16 @@ class _DashboardContent extends StatelessWidget {
             ),
           ),
         ),
+        if (viewModel.yearMonths.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          AppYearStrip(
+            months: viewModel.yearMonths,
+            currentMonth: viewModel.month,
+            onTap: (month) {
+              onOpenMonth?.call(month);
+            },
+          ),
+        ],
         const SizedBox(height: AppSpacing.lg),
         if (viewModel.alerts.isNotEmpty) ...[
           _AttentionCard(alerts: viewModel.alerts, onOpenMonth: onOpenMonth),

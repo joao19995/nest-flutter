@@ -106,20 +106,9 @@ class _ExpensesContent extends StatelessWidget {
             isEmpty: viewModel.isEmpty,
             onRetry: viewModel.load,
             emptyMessage: 'Ainda não há despesas neste ano.',
-            child: AppCard(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppBreakpoints.cardPadding(context),
-                vertical: AppSpacing.sm,
-              ),
-              child: AppStagger(
-                children: [
-                  for (var index = 0; index < months.length; index++)
-                    _MonthRow(
-                      month: months[index],
-                      onTap: () => _openMonth(context, months[index].month),
-                    ),
-                ],
-              ),
+            child: _MonthGrid(
+              months: months,
+              onOpenMonth: (month) => _openMonth(context, month),
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -376,6 +365,7 @@ class _ExpenseYearHero extends StatelessWidget {
                   (
                     label: AppFormatters.monthShort(month.month),
                     value: month.actual,
+                    planned: month.planned,
                     over: month.over,
                     highlighted: month.month == highlightMonth,
                   ),
@@ -412,6 +402,50 @@ class _RebalancePill extends StatelessWidget {
   }
 }
 
+class _MonthGrid extends StatelessWidget {
+  const _MonthGrid({required this.months, required this.onOpenMonth});
+
+  final List<ExpenseMonthSummary> months;
+  final ValueChanged<String> onOpenMonth;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = AppBreakpoints.columnsForWidth(constraints.maxWidth);
+        final rowCount = (months.length / columns).ceil();
+        return AppStagger(
+          children: [
+            for (var row = 0; row < rowCount; row++) ...[
+              if (row > 0) const SizedBox(height: AppSpacing.sm),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var column = 0; column < columns; column++) ...[
+                      if (column > 0) const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: row * columns + column < months.length
+                            ? _MonthRow(
+                                month: months[row * columns + column],
+                                onTap: () => onOpenMonth(
+                                  months[row * columns + column].month,
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _MonthRow extends StatelessWidget {
   const _MonthRow({required this.month, required this.onTap});
 
@@ -421,96 +455,23 @@ class _MonthRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasPlan = month.status != ExpenseMonthStatus.missing;
-    final delta = month.actual - month.planned;
-    final deltaLabel = delta >= 0
-        ? '+${AppFormatters.currency(delta)}'
-        : AppFormatters.currency(delta);
     return Hero(
       tag: 'expense-month-${month.month}',
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        AppFormatters.monthShort(month.month),
-                        style: AppTextStyles.sectionHeading,
-                      ),
-                    ),
-                    Text(
-                      hasPlan ? AppFormatters.currency(month.actual) : '—',
-                      style: AppTextStyles.sectionHeading.copyWith(
-                        color: month.over
-                            ? context.colors.over
-                            : context.colors.ink,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _MonthBar(month: month, hasPlan: hasPlan),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        hasPlan
-                            ? 'Planeado ${AppFormatters.currency(month.planned)}'
-                            : 'Sem plano',
-                        style: AppTextStyles.small(context.colors),
-                      ),
-                    ),
-                    if (hasPlan)
-                      Text(
-                        deltaLabel,
-                        style: AppTextStyles.small(context.colors).copyWith(
-                          color: month.over
-                              ? context.colors.over
-                              : context.colors.primaryDark,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Icon(
-                      Icons.chevron_right,
-                      size: AppSizes.iconSmall,
-                      color: context.colors.faint,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+      child: AppMonthTile(
+        month: month.month,
+        status: _statusOf(month.status),
+        amount: hasPlan ? month.actual : null,
+        over: month.over,
+        progress: hasPlan ? month.progressPct / 100 : 0,
+        onTap: onTap,
       ),
     );
   }
-}
 
-class _MonthBar extends StatelessWidget {
-  const _MonthBar({required this.month, required this.hasPlan});
-
-  final ExpenseMonthSummary month;
-  final bool hasPlan;
-
-  @override
-  Widget build(BuildContext context) {
-    final factor = hasPlan
-        ? (month.progressPct / 100).clamp(0.0, 1.0).toDouble()
-        : 0.0;
-    return LinearProgressIndicator(
-      value: factor,
-      minHeight: AppSizes.progressBarHeight,
-      backgroundColor: context.colors.lineSoft,
-      color: month.over ? context.colors.over : context.colors.primary,
-      borderRadius: AppRadius.fullAll,
-    );
-  }
+  static AppMonthStatus _statusOf(ExpenseMonthStatus status) =>
+      switch (status) {
+        ExpenseMonthStatus.missing => AppMonthStatus.missing,
+        ExpenseMonthStatus.open => AppMonthStatus.open,
+        ExpenseMonthStatus.closed => AppMonthStatus.closed,
+      };
 }

@@ -101,7 +101,7 @@ class _GoalsContent extends StatelessWidget {
               children: [
                 const AppSectionHeader(title: 'Por mês'),
                 const SizedBox(height: AppSpacing.md),
-                _MonthsCard(months: viewModel.months),
+                _MonthGrid(months: viewModel.months),
               ],
             ),
           ),
@@ -274,27 +274,46 @@ class _UnallocatedPill extends StatelessWidget {
   }
 }
 
-class _MonthsCard extends StatelessWidget {
-  const _MonthsCard({required this.months});
+class _MonthGrid extends StatelessWidget {
+  const _MonthGrid({required this.months});
 
   final List<GoalMonthSummary> months;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppBreakpoints.cardPadding(context),
-        vertical: AppSpacing.sm,
-      ),
-      child: AppStagger(
-        children: [
-          for (var index = 0; index < months.length; index++)
-            _MonthRow(
-              month: months[index],
-              onTap: () => _openMonth(context, months[index].month),
-            ),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = AppBreakpoints.columnsForWidth(constraints.maxWidth);
+        final rowCount = (months.length / columns).ceil();
+        return AppStagger(
+          children: [
+            for (var row = 0; row < rowCount; row++) ...[
+              if (row > 0) const SizedBox(height: AppSpacing.sm),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var column = 0; column < columns; column++) ...[
+                      if (column > 0) const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: row * columns + column < months.length
+                            ? _GoalMonthTile(
+                                month: months[row * columns + column],
+                                onTap: () => _openMonth(
+                                  context,
+                                  months[row * columns + column].month,
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -307,76 +326,33 @@ class _MonthsCard extends StatelessWidget {
   }
 }
 
-class _MonthRow extends StatelessWidget {
-  const _MonthRow({required this.month, required this.onTap});
+class _GoalMonthTile extends StatelessWidget {
+  const _GoalMonthTile({required this.month, required this.onTap});
 
   final GoalMonthSummary month;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final progress = month.available > 0
+        ? month.reserved / month.available
+        : 0.0;
     return Hero(
       tag: 'goal-month-${month.month}',
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        AppFormatters.monthShort(month.month),
-                        style: AppTextStyles.sectionHeading,
-                      ),
-                    ),
-                    Text(
-                      month.hasPlan
-                          ? AppFormatters.currency(month.reserved)
-                          : '—',
-                      style: AppTextStyles.sectionHeading.copyWith(
-                        color: month.hasPlan
-                            ? context.colors.primary
-                            : context.colors.faint,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _subtitle(month),
-                        style: AppTextStyles.small(context.colors),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Icon(
-                      Icons.chevron_right,
-                      size: AppSizes.iconSmall,
-                      color: context.colors.faint,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+      child: AppMonthTile(
+        month: month.month,
+        status: month.hasPlan ? AppMonthStatus.open : AppMonthStatus.missing,
+        amount: month.hasPlan ? month.reserved : null,
+        progress: progress,
+        caption: _caption(month),
+        onTap: onTap,
       ),
     );
   }
 
-  static String _subtitle(GoalMonthSummary month) {
+  static String _caption(GoalMonthSummary month) {
     if (!month.hasPlan) {
       return 'Sem plano';
-    }
-    if (month.fundedCount == 0) {
-      return 'Sem alocações';
     }
     return month.fundedCount == 1
         ? '1 objetivo'

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
+import 'package:nest/ui/core/widgets/app_month_tile.dart';
 import 'package:nest/ui/features/goals/views/goals_view.dart';
 
 import '../../../support/test_helpers.dart';
@@ -42,6 +43,17 @@ Map<String, dynamic> _applicableTemplate() => <String, dynamic>{
   ],
 };
 
+Map<String, dynamic> _monthView() => <String, dynamic>{
+  'month': '2026-01',
+  'planId': 'p1',
+  'closed': true,
+  'availableAmount': 1725,
+  'allocations': [
+    {'goalId': 'g1', 'goalName': 'Viagem', 'planned': 800, 'actual': 800},
+  ],
+  'quotas': <Object>[],
+};
+
 void main() {
   testWidgets('renders the year hero and opens the per-goal accumulation', (
     tester,
@@ -68,7 +80,9 @@ void main() {
     expect(find.text('2026'), findsOneWidget);
     expect(find.text('Objetivos do ano'), findsOneWidget);
     expect(find.text('Por mês'), findsOneWidget);
+    expect(find.byType(AppMonthTile), findsNWidgets(12));
     expect(find.text('Jan'), findsOneWidget);
+    expect(find.text('2 objetivos'), findsOneWidget);
     expect(find.text('Distribuição'), findsOneWidget);
     expect(find.text('Acumulado'), findsOneWidget);
     expect(find.text('Viagem'), findsNothing);
@@ -82,6 +96,40 @@ void main() {
     expect(find.text('Carro'), findsOneWidget);
     expect(find.textContaining('Completo'), findsOneWidget);
     expect(find.textContaining('Falta'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opens the goal month through the hero transition', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/goal-plan') {
+        return jsonResponse(_goalYear());
+      }
+      if (request.url.path == '/api/goals') {
+        return jsonResponse(_goals());
+      }
+      if (request.url.path == '/api/goal-templates/applicable') {
+        return jsonResponse({'template': _applicableTemplate()});
+      }
+      if (request.url.path == '/api/goal-plan/2026-01') {
+        return jsonResponse(_monthView());
+      }
+      return jsonResponse(<Object>[], status: 404);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const GoalsView()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(AppMonthTile, 'Jan'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Janeiro'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

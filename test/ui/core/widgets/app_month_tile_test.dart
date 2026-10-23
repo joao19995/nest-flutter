@@ -23,9 +23,10 @@ void main() {
 
       expect(find.text('Out'), findsOneWidget);
       expect(find.text(AppFormatters.currency(1234.5)), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('labels a missing month as unplanned', (tester) async {
+    testWidgets('shows a dash for a missing month', (tester) async {
       await tester.pumpWidget(
         _wrap(
           const AppMonthTile(month: '2026-11', status: AppMonthStatus.missing),
@@ -33,7 +34,7 @@ void main() {
       );
 
       expect(find.text('Nov'), findsOneWidget);
-      expect(find.text('Sem plano'), findsOneWidget);
+      expect(find.text('—'), findsOneWidget);
     });
 
     testWidgets('paints an over amount coral and opens on tap', (tester) async {

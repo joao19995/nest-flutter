@@ -83,6 +83,7 @@ class DashboardViewModel extends ChangeNotifier {
   List<DashboardAlert> _alerts = const [];
   List<CalendarEvent> _upcomingEvents = const [];
   List<GoalSummary> _goalsList = const [];
+  List<ExpenseMonthSummary> _yearMonths = const [];
   ExpenseMonthSummary? _monthSummary;
 
   /// Warnings worth surfacing at the top of the dashboard.
@@ -93,6 +94,9 @@ class DashboardViewModel extends ChangeNotifier {
 
   /// The goals ordered by reserved amount, most funded first.
   List<GoalSummary> get goals => _goalsList;
+
+  /// The selected year's twelve months, for the year strip.
+  List<ExpenseMonthSummary> get yearMonths => _yearMonths;
 
   /// The month shown in the header hero, formatted `YYYY-MM`.
   String get month => _month;
@@ -144,6 +148,7 @@ class DashboardViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final summary = await _expensesRepository.fetchYearSummary(_now.year);
+      _yearMonths = summary.months;
       _alerts = _alertsFrom(summary);
 
       _upcomingEvents = await _eventsRepository.fetchEvents(

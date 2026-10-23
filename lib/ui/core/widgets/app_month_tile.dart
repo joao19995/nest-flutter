@@ -5,7 +5,8 @@ import 'package:nest/ui/core/widgets/app_card.dart';
 /// The state of a month in a year overview.
 enum AppMonthStatus { missing, open, closed }
 
-/// A mini month card: the short month name, the amount, and a state dot.
+/// A mini month card: the short month name, the amount, a state dot and a
+/// tiny progress bar.
 class AppMonthTile extends StatelessWidget {
   const AppMonthTile({
     super.key,
@@ -13,6 +14,8 @@ class AppMonthTile extends StatelessWidget {
     required this.status,
     this.amount,
     this.over = false,
+    this.progress = 0,
+    this.caption,
     this.onTap,
   });
 
@@ -24,8 +27,14 @@ class AppMonthTile extends StatelessWidget {
   /// The spent/reserved amount; when omitted the card reads as unplanned.
   final double? amount;
 
-  /// Paints the amount coral.
+  /// Paints the amount and the progress bar coral.
   final bool over;
+
+  /// Progress of the mini bar, as a 0..1 fraction.
+  final double progress;
+
+  /// Optional line below the amount, e.g. the funded goal count.
+  final String? caption;
 
   final VoidCallback? onTap;
 
@@ -33,9 +42,8 @@ class AppMonthTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final amount = this.amount;
-    final value = amount == null
-        ? _statusLabel(status)
-        : AppFormatters.currency(amount);
+    final caption = this.caption;
+    final value = amount == null ? '—' : AppFormatters.currency(amount);
     final valueStyle = amount == null
         ? AppTextStyles.small(colors)
         : AppTextStyles.label(
@@ -78,6 +86,23 @@ class AppMonthTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: valueStyle,
+          ),
+          if (caption != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              caption,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.small(colors),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0),
+            minHeight: AppSizes.monthTileProgressHeight,
+            backgroundColor: colors.lineSoft,
+            color: over ? colors.over : colors.primary,
+            borderRadius: AppRadius.fullAll,
           ),
         ],
       ),

@@ -37,6 +37,12 @@ abstract final class AppBreakpoints {
   static double cardPadding(BuildContext context) =>
       isMobile(context) ? AppSpacing.mobileCardPadding : AppSpacing.cardPadding;
 
+  /// The number of columns for a grid laid out inside [width].
+  ///
+  /// Defaults to three columns on mobile and four from [md] upwards.
+  static int columnsForWidth(double width, {int mobile = 3, int tablet = 4}) =>
+      width >= md ? tablet : mobile;
+
   /// The number of stat-card columns for the current viewport.
   static int statColumns(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
