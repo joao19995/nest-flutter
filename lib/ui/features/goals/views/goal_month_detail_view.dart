@@ -135,10 +135,7 @@ class _Content extends StatelessWidget {
           onClose: viewModel.closeMonth,
         ),
         const SizedBox(height: AppSpacing.lg),
-        _TransfersCard(
-          transfers: viewModel.transfers,
-          reserved: viewModel.reserved,
-        ),
+        _TransfersCard(transfers: viewModel.transfers),
       ],
     );
   }
@@ -299,10 +296,9 @@ class _GoalRow extends StatelessWidget {
 }
 
 class _TransfersCard extends StatelessWidget {
-  const _TransfersCard({required this.transfers, required this.reserved});
+  const _TransfersCard({required this.transfers});
 
   final List<GoalMonthQuota> transfers;
-  final double reserved;
 
   @override
   Widget build(BuildContext context) {
@@ -321,7 +317,7 @@ class _TransfersCard extends StatelessWidget {
             AppStagger(
               children: [
                 for (var index = 0; index < transfers.length; index++)
-                  _TransferRow(transfer: transfers[index], reserved: reserved),
+                  _TransferRow(transfer: transfers[index]),
               ],
             ),
         ],
@@ -331,60 +327,35 @@ class _TransfersCard extends StatelessWidget {
 }
 
 class _TransferRow extends StatelessWidget {
-  const _TransferRow({required this.transfer, required this.reserved});
+  const _TransferRow({required this.transfer});
 
   final GoalMonthQuota transfer;
-  final double reserved;
 
   @override
   Widget build(BuildContext context) {
-    final quota = (transfer.share * 100).round();
+    final parts = transfer.parts;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              InitialAvatar(name: transfer.name),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      transfer.name,
-                      style: AppTextStyles.label(
-                        context.colors,
-                      ).copyWith(color: context.colors.ink),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Ganho ${AppFormatters.currency(transfer.earning)} · '
-                      'quota $quota% de ${AppFormatters.currency(reserved)}',
-                      style: AppTextStyles.small(context.colors),
-                    ),
-                  ],
-                ),
+          if (parts.isEmpty)
+            AppTransferFlow(
+              name: transfer.name,
+              amount: transfer.amount,
+              targetLabel: 'Objetivos',
+              targetIcon: Icons.flag_outlined,
+            )
+          else
+            for (var index = 0; index < parts.length; index++) ...[
+              if (index > 0) const SizedBox(height: AppSpacing.md),
+              AppTransferFlow(
+                name: transfer.name,
+                amount: parts[index].amount,
+                targetLabel: parts[index].name,
+                targetIcon: Icons.flag_outlined,
               ),
             ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Transfere ${AppFormatters.currency(transfer.amount)} '
-            'para os objetivos',
-            style: AppTextStyles.small(context.colors).copyWith(
-              color: context.colors.primaryDark,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          for (final part in transfer.parts) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '${AppFormatters.currency(part.amount)} para ${part.name}',
-              style: AppTextStyles.small(context.colors),
-            ),
-          ],
         ],
       ),
     );

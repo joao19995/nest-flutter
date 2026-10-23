@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
+import 'package:nest/ui/features/goals/goal_badges.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 
 /// The per-goal accumulation for a year: how much each goal has reserved
@@ -130,6 +131,13 @@ class _GoalRow extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (goal.timeline != null || goal.priority != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  GoalMetaChips(
+                    timeline: goal.timeline,
+                    priority: goal.priority,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.xs),
                 if (complete)
                   const _CompleteIndicator()

@@ -46,7 +46,8 @@ Map<String, dynamic> _closedMonth() => <String, dynamic>{
     {
       'id': 'e1',
       'categoryName': 'Casa',
-      'accountName': 'João',
+      'categoryType': 'FIXED',
+      'accountName': 'JoA�o',
       'planned': 450,
       'actual': 471.94,
     },

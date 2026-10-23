@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nest/domain/models/goal_template.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
@@ -26,6 +27,7 @@ void main() {
       expect(find.text('50%'), findsOneWidget);
       expect(find.text('Carro'), findsOneWidget);
       expect(find.text('Completo'), findsNothing);
+      expect(find.byType(AppChip), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -49,6 +51,31 @@ void main() {
       expect(find.byType(AppSavedTick), findsOneWidget);
       expect(find.byIcon(Icons.flag_outlined), findsOneWidget);
       expect(find.text('Sem orçamento'), findsOneWidget);
+      expect(find.byType(AppChip), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('shows template timeline and priority chips', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          const GoalsBreakdownView(
+            year: 2026,
+            goals: [
+              GoalSummary(
+                name: 'Carro',
+                reserved: 0,
+                target: 1000,
+                timeline: GoalTimeline.t1,
+                priority: GoalPriority.grande,
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(AppChip, 'T1'), findsOneWidget);
+      expect(find.widgetWithText(AppChip, 'Grande'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

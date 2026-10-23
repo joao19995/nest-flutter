@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nest/domain/models/category.dart';
 import 'package:nest/domain/models/month_settlement.dart';
 import 'package:nest/domain/models/monthly_plan.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
@@ -10,10 +11,17 @@ import 'package:nest/ui/features/expenses/view_models/month_detail_view_model.da
 /// The detail of a single month: its planned vs. actual spend and, once the
 /// month is closed, the contributions snapshot.
 class MonthDetailView extends StatelessWidget {
-  const MonthDetailView({super.key, required this.month});
+  const MonthDetailView({
+    super.key,
+    required this.month,
+    this.heroTagPrefix = 'expense-month',
+  });
 
   /// The month to open, formatted `YYYY-MM`.
   final String month;
+
+  /// The prefix of the hero tag shared with the screen that opened this one.
+  final String heroTagPrefix;
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +30,7 @@ class MonthDetailView extends StatelessWidget {
       month: month,
       pageBuilder: (context, month, onPreviousMonth, onNextMonth) => _MonthPage(
         month: month,
+        heroTagPrefix: heroTagPrefix,
         onPreviousMonth: onPreviousMonth,
         onNextMonth: onNextMonth,
       ),
@@ -33,11 +42,13 @@ class MonthDetailView extends StatelessWidget {
 class _MonthPage extends StatefulWidget {
   const _MonthPage({
     required this.month,
+    required this.heroTagPrefix,
     required this.onPreviousMonth,
     required this.onNextMonth,
   });
 
   final String month;
+  final String heroTagPrefix;
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
 
@@ -64,7 +75,7 @@ class _MonthPageState extends State<_MonthPage>
     return ListenableBuilder(
       listenable: viewModel,
       builder: (context, _) => MonthDetailPage(
-        heroTag: 'expense-month-${viewModel.month}',
+        heroTag: '${widget.heroTagPrefix}-${viewModel.month}',
         title: 'Despesa do mês',
         month: viewModel.month,
         actual: viewModel.plan?.actual ?? 0,
@@ -161,6 +172,12 @@ class _EntriesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = plan.entries;
+    final fixed = entries
+        .where((entry) => entry.type == CategoryType.fixed)
+        .toList(growable: false);
+    final variable = entries
+        .where((entry) => entry.type == CategoryType.variable)
+        .toList(growable: false);
     final editable = !plan.closed;
     return AppCard(
       child: Column(
@@ -174,11 +191,21 @@ class _EntriesCard extends StatelessWidget {
               style: AppTextStyles.bodyMuted(context.colors),
             )
           else
-            AppStagger(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (var index = 0; index < entries.length; index++)
-                  _EntryRow(
-                    entry: entries[index],
+                if (fixed.isNotEmpty)
+                  _EntryGroup(
+                    title: 'Fixas',
+                    entries: fixed,
+                    onSaveActual: editable ? onSaveActual : null,
+                  ),
+                if (fixed.isNotEmpty && variable.isNotEmpty)
+                  const SizedBox(height: AppSpacing.lg),
+                if (variable.isNotEmpty)
+                  _EntryGroup(
+                    title: 'Variáveis',
+                    entries: variable,
                     onSaveActual: editable ? onSaveActual : null,
                   ),
               ],
@@ -213,6 +240,48 @@ class _EntriesCard extends StatelessWidget {
   }
 }
 
+/// One category type group, with its actual subtotal.
+class _EntryGroup extends StatelessWidget {
+  const _EntryGroup({
+    required this.title,
+    required this.entries,
+    required this.onSaveActual,
+  });
+
+  final String title;
+  final List<MonthlyPlanEntry> entries;
+  final void Function(String entryId, double actual)? onSaveActual;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final subtotal = entries.fold<double>(
+      0,
+      (sum, entry) => sum + entry.actual,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSectionHeader(
+          title: title,
+          trailing: Text(
+            AppFormatters.currency(subtotal),
+            key: ValueKey('entry-group-total-$title'),
+            style: AppTextStyles.label(colors).copyWith(color: colors.ink),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        AppStagger(
+          children: [
+            for (final entry in entries)
+              _EntryRow(entry: entry, onSaveActual: onSaveActual),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _EntryRow extends StatelessWidget {
   const _EntryRow({required this.entry, required this.onSaveActual});
 
@@ -240,6 +309,18 @@ class _EntryRow extends StatelessWidget {
                 Text(
                   'Planeado ${AppFormatters.currency(entry.planned)}',
                   style: AppTextStyles.small(context.colors),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                LinearProgressIndicator(
+                  value: entry.planned > 0
+                      ? (entry.actual / entry.planned).clamp(0.0, 1.0)
+                      : 0,
+                  minHeight: AppSizes.progressBarHeight,
+                  backgroundColor: context.colors.lineSoft,
+                  color: entry.actual > entry.planned
+                      ? context.colors.over
+                      : context.colors.primary,
+                  borderRadius: AppRadius.fullAll,
                 ),
               ],
             ),
@@ -303,60 +384,22 @@ class _ContributionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final transfer = _transfer(context.colors);
-    final amount = transfer.amount;
+    final toJoint = person.transfersToJoint;
+    final toPerson = person.transfersToPerson;
+    final amount = toJoint
+        ? person.transferToJoint
+        : toPerson
+        ? person.transferToPerson
+        : null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-      child: Row(
-        children: [
-          InitialAvatar(name: person.personName),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(person.personName, style: AppTextStyles.sectionHeading),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  transfer.direction,
-                  style: AppTextStyles.small(
-                    context.colors,
-                  ).copyWith(color: transfer.color),
-                ),
-              ],
-            ),
-          ),
-          if (amount != null) ...[
-            const SizedBox(width: AppSpacing.md),
-            Text(
-              AppFormatters.currency(amount),
-              style: AppTextStyles.sectionHeading.copyWith(
-                color: transfer.color,
-              ),
-            ),
-          ],
-        ],
+      child: AppTransferFlow(
+        name: person.personName,
+        amount: amount,
+        direction: toPerson
+            ? AppTransferDirection.toPerson
+            : AppTransferDirection.toJoint,
       ),
     );
-  }
-
-  ({double? amount, String direction, Color color}) _transfer(
-    NestColors colors,
-  ) {
-    if (person.transfersToJoint) {
-      return (
-        amount: person.transferToJoint,
-        direction: 'para a conta conjunta',
-        color: colors.primaryDark,
-      );
-    }
-    if (person.transfersToPerson) {
-      return (
-        amount: person.transferToPerson,
-        direction: 'da conta conjunta',
-        color: colors.primaryDark,
-      );
-    }
-    return (amount: null, direction: 'Está certo', color: colors.muted);
   }
 }

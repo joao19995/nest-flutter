@@ -38,6 +38,8 @@ class GoalSummary {
     required this.name,
     required this.reserved,
     required this.target,
+    this.timeline,
+    this.priority,
   });
 
   final String name;
@@ -47,6 +49,12 @@ class GoalSummary {
 
   /// The goal's annual saving target, in euros. Zero when none is defined.
   final double target;
+
+  /// The timeline from the applicable template, when there is one.
+  final GoalTimeline? timeline;
+
+  /// The priority from the applicable template, when there is one.
+  final GoalPriority? priority;
 
   /// True when the goal has a saving target.
   bool get hasTarget => target > 0;
@@ -161,14 +169,16 @@ class GoalsViewModel extends ChangeNotifier {
         }
       }
     }
-    final targets = _targetByGoal();
+    final entries = _templateEntryByGoal();
     final summaries = <GoalSummary>[
       for (final goal in _catalogue)
         if (goal.active)
           GoalSummary(
             name: nameByGoal[goal.id] ?? goal.name,
             reserved: reservedByGoal[goal.id] ?? 0,
-            target: targets[goal.id] ?? 0,
+            target: entries[goal.id]?.budget ?? 0,
+            timeline: entries[goal.id]?.timeline,
+            priority: entries[goal.id]?.priority,
           ),
     ];
     for (final entry in reservedByGoal.entries) {
@@ -178,7 +188,9 @@ class GoalsViewModel extends ChangeNotifier {
           GoalSummary(
             name: nameByGoal[entry.key] ?? 'Objetivo',
             reserved: entry.value,
-            target: targets[entry.key] ?? 0,
+            target: entries[entry.key]?.budget ?? 0,
+            timeline: entries[entry.key]?.timeline,
+            priority: entries[entry.key]?.priority,
           ),
         );
       }
@@ -192,15 +204,14 @@ class GoalsViewModel extends ChangeNotifier {
     return summaries;
   }
 
-  /// The goal budgets of the template version in force at the year's start,
-  /// resolved by the server.
-  Map<String, double> _targetByGoal() {
+  /// The template entries in force at the year's start, resolved by the server.
+  Map<String, GoalTemplateEntry> _templateEntryByGoal() {
     final template = _applicableTemplate;
     if (template == null) {
       return const {};
     }
-    return <String, double>{
-      for (final entry in template.entries) entry.goalId: entry.budget,
+    return <String, GoalTemplateEntry>{
+      for (final entry in template.entries) entry.goalId: entry,
     };
   }
 

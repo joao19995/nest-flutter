@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/goals/views/goal_month_detail_view.dart';
 
 import '../../../support/test_helpers.dart';
@@ -105,11 +106,12 @@ void main() {
     expect(find.text('Fechado'), findsOneWidget);
     expect(find.text('Objetivos'), findsOneWidget);
     expect(find.text('Transferências'), findsOneWidget);
-    expect(find.text('Viagem'), findsOneWidget);
-    expect(find.text('Carro'), findsOneWidget);
-    expect(find.text('João'), findsOneWidget);
+    // The goals card plus one transfer line per allocation target.
+    expect(find.text('Viagem'), findsNWidgets(2));
+    expect(find.text('Carro'), findsNWidgets(3));
+    expect(find.text('João'), findsNWidgets(2));
     expect(find.text('Nathalia'), findsOneWidget);
-    expect(find.textContaining('Transfere'), findsNWidgets(2));
+    expect(find.byType(AppTransferFlow), findsNWidgets(3));
     expect(find.text('Fechar mês'), findsNothing);
     expect(tester.takeException(), isNull);
   });

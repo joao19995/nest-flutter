@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nest/data/models/monthly_plan_model.dart';
+import 'package:nest/domain/models/category.dart';
 import 'package:nest/domain/models/month_settlement.dart';
 import 'package:nest/domain/models/monthly_plan.dart';
 
@@ -15,13 +16,15 @@ void main() {
           {
             'id': 'e1',
             'categoryName': 'Casa',
-            'accountName': 'João',
+            'categoryType': 'FIXED',
+            'accountName': 'JoA�o',
             'planned': 450,
             'actual': 471.94,
           },
           {
             'id': 'e2',
             'categoryName': 'Internet',
+            'categoryType': 'VARIABLE',
             'accountName': 'Conjunta',
             'planned': 20,
             'actual': 20,
@@ -63,9 +66,11 @@ void main() {
 
       final casa = plan.entries.first;
       expect(casa.categoryName, 'Casa');
-      expect(casa.accountName, 'João');
+      expect(casa.type, CategoryType.fixed);
+      expect(casa.accountName, 'JoA�o');
       expect(casa.planned, 450);
       expect(casa.actual, 471.94);
+      expect(plan.entries.last.type, CategoryType.variable);
 
       final settlement = plan.settlement;
       expect(settlement, isNotNull);

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
+import 'package:nest/domain/models/goal_template.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 
 import '../../../support/test_helpers.dart';
@@ -49,8 +50,8 @@ Map<String, dynamic> _applicableTemplate() => <String, dynamic>{
   'id': 't2',
   'validFrom': '2026-01',
   'entries': [
-    {'goalId': 'g1', 'budget': 800},
-    {'goalId': 'g2', 'budget': 925},
+    {'goalId': 'g1', 'budget': 800, 'timeline': 'T1', 'priority': 'PEQUENO'},
+    {'goalId': 'g2', 'budget': 925, 'timeline': 'T3', 'priority': 'GRANDE'},
   ],
 };
 
@@ -94,6 +95,8 @@ void main() {
     expect(carro.target, 925);
     expect(carro.progress, 1);
     expect(carro.hasTarget, isTrue);
+    expect(carro.timeline, GoalTimeline.t3);
+    expect(carro.priority, GoalPriority.grande);
   });
 
   test('the template in force at the year start sets the targets', () async {
@@ -103,6 +106,8 @@ void main() {
 
     final viagem = viewModel.goals.firstWhere((goal) => goal.name == 'Viagem');
     expect(viagem.target, 800);
+    expect(viagem.timeline, GoalTimeline.t1);
+    expect(viagem.priority, GoalPriority.pequeno);
   });
 
   test('reports a failure without throwing', () async {

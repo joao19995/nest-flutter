@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/goals/views/goal_templates_view.dart';
 
 import '../../../support/test_helpers.dart';
@@ -74,6 +75,9 @@ void main() {
     expect(_text(tester, 'Percentagem', 0), '25');
     expect(_text(tester, 'Percentagem', 1), '75');
     expect(find.text('100.00%'), findsOneWidget);
+    expect(find.byType(AppChip), findsNWidgets(4));
+    expect(find.widgetWithText(AppChip, 'Anual'), findsNWidgets(2));
+    expect(find.widgetWithText(AppChip, 'Nice to have'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 }

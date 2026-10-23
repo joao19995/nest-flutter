@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/expenses/views/month_detail_view.dart';
 
 import '../../../support/test_helpers.dart';
@@ -15,13 +17,15 @@ Map<String, dynamic> _closedMonth() => <String, dynamic>{
     {
       'id': 'e1',
       'categoryName': 'Casa',
-      'accountName': 'João',
+      'categoryType': 'FIXED',
+      'accountName': 'Joao',
       'planned': 450,
       'actual': 471.94,
     },
     {
       'id': 'e2',
       'categoryName': 'Luz',
+      'categoryType': 'VARIABLE',
       'accountName': 'Conjunta',
       'planned': 60,
       'actual': 57.78,
@@ -69,7 +73,8 @@ Map<String, dynamic> _openMonth({double actual = 0}) => <String, dynamic>{
     {
       'id': 'e1',
       'categoryName': 'Casa',
-      'accountName': 'João',
+      'categoryType': 'FIXED',
+      'accountName': 'Joao',
       'planned': 450,
       'actual': actual,
     },
@@ -84,6 +89,9 @@ Map<String, dynamic> _openMonth({double actual = 0}) => <String, dynamic>{
   },
   'settlement': null,
 };
+
+String? _groupTotal(WidgetTester tester, String group) =>
+    tester.widget<Text>(find.byKey(ValueKey('entry-group-total-$group'))).data;
 
 void main() {
   testWidgets('renders a closed month with entries and contributions', (
@@ -103,10 +111,14 @@ void main() {
     expect(find.text('Janeiro'), findsOneWidget);
     expect(find.text('Fechado'), findsOneWidget);
     expect(find.text('Despesas'), findsOneWidget);
+    expect(find.text('Fixas'), findsOneWidget);
+    expect(find.text('Variáveis'), findsOneWidget);
     expect(find.text('Casa'), findsOneWidget);
+    expect(_groupTotal(tester, 'Fixas'), AppFormatters.currency(471.94));
+    expect(_groupTotal(tester, 'Variáveis'), AppFormatters.currency(57.78));
     expect(find.text('Contribuições'), findsOneWidget);
-    expect(find.text('para a conta conjunta'), findsOneWidget);
-    expect(find.text('da conta conjunta'), findsOneWidget);
+    expect(find.byType(AppTransferFlow), findsNWidgets(2));
+    expect(find.text('Conjunta'), findsNWidgets(2));
     expect(find.text('Fechar mês'), findsNothing);
     expect(find.byType(TextField), findsNothing);
     expect(tester.takeException(), isNull);
@@ -127,6 +139,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Aberto'), findsOneWidget);
+    expect(find.text('Fixas'), findsOneWidget);
+    expect(find.text('Variáveis'), findsNothing);
     expect(find.byType(TextField), findsOneWidget);
     expect(find.text('Fechar mês'), findsOneWidget);
     expect(find.text('Contribuições'), findsNothing);

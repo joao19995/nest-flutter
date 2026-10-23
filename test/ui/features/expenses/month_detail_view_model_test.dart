@@ -35,6 +35,7 @@ Map<String, dynamic> _month({
     {
       'id': 'e1',
       'categoryName': 'Casa',
+      'categoryType': 'FIXED',
       'accountName': 'João',
       'planned': 450,
       'actual': actual,

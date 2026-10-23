@@ -1,3 +1,4 @@
+import 'package:nest/domain/models/category.dart';
 import 'package:nest/domain/models/expense_year_summary.dart';
 import 'package:nest/domain/models/month_settlement.dart';
 
@@ -6,6 +7,7 @@ class MonthlyPlanEntry {
   const MonthlyPlanEntry({
     required this.id,
     required this.categoryName,
+    required this.type,
     required this.accountName,
     required this.planned,
     required this.actual,
@@ -15,6 +17,9 @@ class MonthlyPlanEntry {
 
   /// The expense category name.
   final String categoryName;
+
+  /// Whether the category is fixed or variable.
+  final CategoryType type;
 
   /// The account the expense is charged to.
   final String accountName;

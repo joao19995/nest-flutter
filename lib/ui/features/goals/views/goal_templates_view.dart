@@ -6,6 +6,7 @@ import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
+import 'package:nest/ui/features/goals/goal_badges.dart';
 import 'package:nest/ui/features/goals/view_models/goal_templates_view_model.dart';
 
 /// The annual goal distribution: list the versions and create or edit one.
@@ -498,6 +499,8 @@ class _EntryRow extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: AppSpacing.xs),
+        GoalMetaChips(timeline: timeline, priority: priority),
         const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
@@ -541,10 +544,7 @@ class _EntryRow extends StatelessWidget {
                   for (final value in GoalTimeline.values)
                     DropdownMenuItem(
                       value: value,
-                      child: Text(
-                        _timelineLabel(value),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      child: Text(value.label, overflow: TextOverflow.ellipsis),
                     ),
                 ],
                 onChanged: (value) {
@@ -565,10 +565,7 @@ class _EntryRow extends StatelessWidget {
                   for (final value in GoalPriority.values)
                     DropdownMenuItem(
                       value: value,
-                      child: Text(
-                        _priorityLabel(value),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      child: Text(value.label, overflow: TextOverflow.ellipsis),
                     ),
                 ],
                 onChanged: (value) {
@@ -594,19 +591,5 @@ class _EntryRow extends StatelessWidget {
     );
   }
 }
-
-String _timelineLabel(GoalTimeline timeline) => switch (timeline) {
-  GoalTimeline.t1 => 'T1',
-  GoalTimeline.t2 => 'T2',
-  GoalTimeline.t3 => 'T3',
-  GoalTimeline.t4 => 'T4',
-  GoalTimeline.annual => 'Anual',
-};
-
-String _priorityLabel(GoalPriority priority) => switch (priority) {
-  GoalPriority.grande => 'Grande',
-  GoalPriority.pequeno => 'Pequeno',
-  GoalPriority.niceToHave => 'Nice to have',
-};
 
 const int _notesMaxLength = 2000;

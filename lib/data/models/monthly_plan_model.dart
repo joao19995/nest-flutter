@@ -1,4 +1,5 @@
 import 'package:nest/data/models/expense_year_summary_model.dart';
+import 'package:nest/domain/models/category.dart';
 import 'package:nest/domain/models/month_settlement.dart';
 import 'package:nest/domain/models/monthly_plan.dart';
 
@@ -58,6 +59,7 @@ class MonthlyPlanEntryModel {
   const MonthlyPlanEntryModel({
     required this.id,
     required this.categoryName,
+    required this.type,
     required this.accountName,
     required this.planned,
     required this.actual,
@@ -67,6 +69,7 @@ class MonthlyPlanEntryModel {
       MonthlyPlanEntryModel(
         id: json['id'] as String,
         categoryName: json['categoryName'] as String,
+        type: _typeFromJson(json['categoryType']),
         accountName: json['accountName'] as String,
         planned: (json['planned'] as num).toDouble(),
         actual: (json['actual'] as num).toDouble(),
@@ -74,6 +77,7 @@ class MonthlyPlanEntryModel {
 
   final String id;
   final String categoryName;
+  final CategoryType type;
   final String accountName;
   final double planned;
   final double actual;
@@ -81,10 +85,16 @@ class MonthlyPlanEntryModel {
   MonthlyPlanEntry toDomain() => MonthlyPlanEntry(
     id: id,
     categoryName: categoryName,
+    type: type,
     accountName: accountName,
     planned: planned,
     actual: actual,
   );
+
+  static CategoryType _typeFromJson(Object? value) => switch (value) {
+    'FIXED' => CategoryType.fixed,
+    _ => CategoryType.variable,
+  };
 }
 
 /// API-facing representation of a [MonthSettlement], with JSON mapping.
