@@ -1,3 +1,4 @@
+import 'package:nest/data/models/expense_category_total_model.dart';
 import 'package:nest/domain/models/expense_year_summary.dart';
 
 /// API-facing representation of an [ExpenseYearSummary], with JSON mapping.
@@ -12,11 +13,13 @@ class ExpenseYearSummaryModel {
     required this.remainingMonths,
     required this.perRemainingMonth,
     required this.hasData,
+    required this.byCategory,
     required this.months,
   });
 
   factory ExpenseYearSummaryModel.fromJson(Map<String, dynamic> json) {
     final months = json['months'];
+    final byCategory = json['byCategory'];
     return ExpenseYearSummaryModel(
       year: (json['year'] as num).toInt(),
       planned: (json['planned'] as num).toDouble(),
@@ -27,6 +30,12 @@ class ExpenseYearSummaryModel {
       remainingMonths: (json['remainingMonths'] as num).toInt(),
       perRemainingMonth: (json['perRemainingMonth'] as num).toDouble(),
       hasData: json['hasData'] as bool,
+      byCategory: byCategory is List
+          ? byCategory
+                .whereType<Map<String, dynamic>>()
+                .map(ExpenseCategoryTotalModel.fromJson)
+                .toList(growable: false)
+          : const [],
       months: months is List
           ? months
                 .whereType<Map<String, dynamic>>()
@@ -45,6 +54,7 @@ class ExpenseYearSummaryModel {
   final int remainingMonths;
   final double perRemainingMonth;
   final bool hasData;
+  final List<ExpenseCategoryTotalModel> byCategory;
   final List<ExpenseMonthSummaryModel> months;
 
   ExpenseYearSummary toDomain() => ExpenseYearSummary(
@@ -57,6 +67,9 @@ class ExpenseYearSummaryModel {
     remainingMonths: remainingMonths,
     perRemainingMonth: perRemainingMonth,
     hasData: hasData,
+    byCategory: byCategory
+        .map((category) => category.toDomain())
+        .toList(growable: false),
     months: months.map((month) => month.toDomain()).toList(growable: false),
   );
 }

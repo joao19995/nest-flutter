@@ -1,3 +1,5 @@
+import 'package:nest/domain/models/expense_category_total.dart';
+
 /// The lifecycle state of a month within the yearly expense panorama.
 enum ExpenseMonthStatus {
   /// No plan exists for the month yet.
@@ -52,6 +54,7 @@ class ExpenseYearSummary {
     required this.remainingMonths,
     required this.perRemainingMonth,
     required this.hasData,
+    required this.byCategory,
     required this.months,
   });
 
@@ -81,6 +84,9 @@ class ExpenseYearSummary {
 
   /// False when the year has no plan or spend recorded at all.
   final bool hasData;
+
+  /// The year's spend grouped by category, as supplied by the API.
+  final List<ExpenseCategoryTotal> byCategory;
 
   /// The twelve months of the year, in calendar order.
   final List<ExpenseMonthSummary> months;

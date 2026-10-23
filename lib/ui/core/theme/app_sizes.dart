@@ -57,6 +57,9 @@ abstract final class AppSizes {
   /// Diameter of a donut legend swatch.
   static const double donutLegendDot = 10;
 
+  /// Angular gap between donut slices, in radians.
+  static const double donutSliceGap = 0.04;
+
   /// Minimum height of an interactive button.
   static const double buttonHeight = 40;
 

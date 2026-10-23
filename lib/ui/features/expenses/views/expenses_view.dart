@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nest/domain/models/expense_category_total.dart';
 import 'package:nest/domain/models/expense_year_summary.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
@@ -77,6 +78,8 @@ class _ExpensesContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final months = viewModel.months;
+    final categories =
+        viewModel.summary?.byCategory ?? const <ExpenseCategoryTotal>[];
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -90,6 +93,10 @@ class _ExpensesContent extends StatelessWidget {
             onPreviousYear: viewModel.showPreviousYear,
             onNextYear: viewModel.showNextYear,
           ),
+          if (categories.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xl),
+            _CategoryBreakdown(categories: categories),
+          ],
           const SizedBox(height: AppSpacing.xl),
           const AppSectionHeader(title: 'Por mês'),
           const SizedBox(height: AppSpacing.md),
@@ -139,6 +146,121 @@ class _ExpensesContent extends StatelessWidget {
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => view));
     await viewModel.load();
+  }
+}
+
+/// The year's spend broken down by category: a donut with the top five rows.
+class _CategoryBreakdown extends StatelessWidget {
+  const _CategoryBreakdown({required this.categories});
+
+  final List<ExpenseCategoryTotal> categories;
+
+  static const int _topCount = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final sorted = [...categories]
+      ..sort((a, b) => b.actual.compareTo(a.actual));
+    final total = sorted.fold<double>(0, (sum, item) => sum + item.actual);
+    final top = sorted.take(_topCount).toList(growable: false);
+    final donut = AppDonutChart(
+      data: [
+        for (final category in sorted)
+          (
+            label: category.categoryName,
+            value: category.actual,
+            color: colors.colorForCategory(category.categoryName),
+          ),
+      ],
+      centerValue: AppFormatters.currency(total),
+      centerLabel: 'Total',
+      showLegend: false,
+    );
+    final list = Column(
+      children: [
+        for (var index = 0; index < top.length; index++) ...[
+          if (index > 0) const SizedBox(height: AppSpacing.md),
+          _CategoryTotalRow(category: top[index], total: total),
+        ],
+      ],
+    );
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AppSectionHeader(title: 'Por categoria'),
+          const SizedBox(height: AppSpacing.md),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= AppBreakpoints.sm) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    donut,
+                    const SizedBox(width: AppSpacing.xl),
+                    Expanded(child: list),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  donut,
+                  const SizedBox(height: AppSpacing.lg),
+                  list,
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One category row in the breakdown: icon, name, percentage and amount.
+class _CategoryTotalRow extends StatelessWidget {
+  const _CategoryTotalRow({required this.category, required this.total});
+
+  final ExpenseCategoryTotal category;
+  final double total;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final percentage = total > 0 ? category.actual / total * 100 : 0.0;
+    return Row(
+      children: [
+        CategoryIcon(category: category.categoryName),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                category.categoryName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.body.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colors.ink,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                AppFormatters.percentage(percentage),
+                style: AppTextStyles.small(colors),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          AppFormatters.currency(category.actual),
+          style: AppTextStyles.label(colors).copyWith(color: colors.ink),
+        ),
+      ],
+    );
   }
 }
 

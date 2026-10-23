@@ -178,16 +178,18 @@ class _DonutPainter extends CustomPainter {
     if (total <= 0 || progress <= 0) {
       return;
     }
+    final visible = data.where((datum) => datum.value > 0).toList();
+    final gap = visible.length > 1 ? AppSizes.donutSliceGap : 0.0;
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke;
     var start = -math.pi / 2;
-    for (final datum in data) {
-      if (datum.value <= 0) {
-        continue;
+    for (final datum in visible) {
+      final sweep = 2 * math.pi * (datum.value / total);
+      final drawn = math.max(0.0, sweep * progress - gap);
+      if (drawn > 0) {
+        canvas.drawArc(rect, start, drawn, false, paint..color = datum.color);
       }
-      final sweep = 2 * math.pi * (datum.value / total) * progress;
-      canvas.drawArc(rect, start, sweep, false, paint..color = datum.color);
       start += sweep;
     }
   }

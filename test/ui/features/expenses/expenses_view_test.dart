@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
+import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/expenses/views/expenses_view.dart';
 
 import '../../../support/test_helpers.dart';
@@ -80,6 +81,41 @@ void main() {
     // 'Jan' appears both in the chart and in the month list.
     expect(find.text('Jan'), findsNWidgets(2));
     expect(find.text('Fev'), findsNWidgets(2));
+    expect(find.text('Por categoria'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('renders the category donut and the top five rows', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    final summary = _yearSummary()
+      ..['byCategory'] = [
+        {'name': 'Casa', 'actual': 1200},
+        {'name': 'Gastos', 'actual': 800},
+        {'name': 'Luz', 'actual': 300},
+        {'name': 'Água', 'actual': 200},
+        {'name': 'Pilates', 'actual': 100},
+        {'name': 'Extra', 'actual': 50},
+      ];
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/months/summary') {
+        return jsonResponse(summary);
+      }
+      return jsonResponse(<Object>[], status: 404);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const ExpensesView()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Por categoria'), findsOneWidget);
+    expect(find.text('Total'), findsOneWidget);
+    expect(find.text('Casa'), findsOneWidget);
+    // Also the January row in the month list.
+    expect(find.text(AppFormatters.currency(1200)), findsNWidgets(2));
+    expect(find.text('Extra'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

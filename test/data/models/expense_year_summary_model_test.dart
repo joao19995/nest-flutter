@@ -18,7 +18,10 @@ void main() {
         'hasData': true,
         'remainingMonths': 3,
         'perRemainingMonth': 66.75,
-        'byCategory': <Object>[],
+        'byCategory': [
+          {'name': 'Casa', 'planned': 900, 'actual': 1200.25},
+          {'name': 'Transporte', 'actual': 200},
+        ],
         'months': [
           {
             'month': '2026-01',
@@ -58,6 +61,18 @@ void main() {
       expect(summary.remainingMonths, 3);
       expect(summary.perRemainingMonth, 66.75);
       expect(summary.hasData, isTrue);
+      expect(summary.byCategory, hasLength(2));
+
+      final casa = summary.byCategory.first;
+      expect(casa.categoryName, 'Casa');
+      expect(casa.planned, 900);
+      expect(casa.actual, 1200.25);
+
+      final transporte = summary.byCategory.last;
+      expect(transporte.categoryName, 'Transporte');
+      expect(transporte.planned, 0);
+      expect(transporte.actual, 200);
+
       expect(summary.months, hasLength(3));
 
       final january = summary.months.first;
@@ -70,7 +85,7 @@ void main() {
       expect(summary.months[2].status, ExpenseMonthStatus.missing);
     });
 
-    test('tolerates a missing months list', () {
+    test('tolerates a missing months and byCategory list', () {
       final summary = ExpenseYearSummaryModel.fromJson(const {
         'year': 2026,
         'planned': 0,
@@ -85,6 +100,7 @@ void main() {
 
       expect(summary.hasData, isFalse);
       expect(summary.months, isEmpty);
+      expect(summary.byCategory, isEmpty);
     });
   });
 }
