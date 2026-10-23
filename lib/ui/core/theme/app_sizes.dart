@@ -48,6 +48,15 @@ abstract final class AppSizes {
   /// Diameter of the tinted circle behind an empty-state icon.
   static const double emptyStateCircle = 64;
 
+  /// Diameter of a year-strip month dot.
+  static const double yearStripDot = 10;
+
+  /// Diameter of the current month's ring in a year strip.
+  static const double yearStripRing = 16;
+
+  /// Stroke width of the current month's ring in a year strip.
+  static const double yearStripRingWidth = 1.5;
+
   /// Diameter of a donut chart.
   static const double donutChart = 160;
 
@@ -77,14 +86,29 @@ abstract final class AppSizes {
   /// Thickness of a progress bar.
   static const double progressBarHeight = 6;
 
+  /// Thickness of the mini progress bar inside a month tile.
+  static const double monthTileProgressHeight = 4;
+
   /// Diameter of the hero progress ring.
   static const double progressRing = 68;
 
   /// Stroke width of the hero progress ring.
   static const double progressRingStroke = 7;
 
+  /// Diameter of a compact progress ring inside a list row.
+  static const double progressRingSmall = 44;
+
+  /// Stroke width of a compact progress ring.
+  static const double progressRingSmallStroke = 5;
+
   /// Maximum height of a bar in the mini bar chart.
   static const double barChartHeight = 64;
+
+  /// Height reserved for the value label above the bar chart.
+  static const double barChartTooltipHeight = 18;
+
+  /// Thickness of the planned-value marker on a bar chart.
+  static const double barChartPlannedLine = 2;
 
   /// Width of an editable money field in the expense ledger.
   static const double moneyFieldWidth = 112;

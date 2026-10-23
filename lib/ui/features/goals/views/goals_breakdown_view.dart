@@ -84,46 +84,102 @@ class _GoalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final complete = goal.progress >= 1;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  goal.name,
-                  style: AppTextStyles.sectionHeading,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          if (goal.hasTarget)
+            AppProgressRing(
+              progress: goal.progress,
+              size: AppSizes.progressRingSmall,
+              strokeWidth: AppSizes.progressRingSmallStroke,
+              color: complete ? colors.primaryDark : colors.primary,
+              trackColor: colors.lineSoft,
+              label: AppFormatters.percentage((goal.progress * 100).round()),
+              labelColor: colors.ink,
+            )
+          else
+            Icon(
+              Icons.flag_outlined,
+              size: AppSizes.iconDisplay,
+              color: colors.faint,
+            ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        goal.name,
+                        style: AppTextStyles.sectionHeading,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Text(
+                      AppFormatters.currency(goal.reserved),
+                      style: AppTextStyles.sectionHeading.copyWith(
+                        color: colors.ink,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Text(
-                AppFormatters.currency(goal.reserved),
-                style: AppTextStyles.sectionHeading.copyWith(
-                  color: context.colors.ink,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ClipRRect(
-            borderRadius: AppRadius.fullAll,
-            child: LinearProgressIndicator(
-              value: goal.progress,
-              minHeight: AppSizes.progressBarHeight,
-              backgroundColor: context.colors.lineSoft,
-              color: goal.hasTarget && goal.progress >= 1
-                  ? context.colors.primaryDark
-                  : context.colors.primary,
+                const SizedBox(height: AppSpacing.xs),
+                if (complete)
+                  const _CompleteIndicator()
+                else
+                  _TargetLine(goal: goal),
+              ],
             ),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          _TargetLine(goal: goal),
         ],
       ),
+    );
+  }
+}
+
+/// The "Completo" badge with a one-shot saved tick.
+class _CompleteIndicator extends StatefulWidget {
+  const _CompleteIndicator();
+
+  @override
+  State<_CompleteIndicator> createState() => _CompleteIndicatorState();
+}
+
+class _CompleteIndicatorState extends State<_CompleteIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: AppMotion.large);
+    _animation = CurvedAnimation(parent: _controller, curve: AppMotion.easing);
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppBadge(label: 'Completo', style: AppBadgeStyles.open(context.colors)),
+        const SizedBox(width: AppSpacing.xs),
+        AppSavedTick(animation: _animation),
+      ],
     );
   }
 }
@@ -138,15 +194,6 @@ class _TargetLine extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!goal.hasTarget) {
       return Text('Sem orçamento', style: AppTextStyles.small(context.colors));
-    }
-    if (goal.missing <= 0.005) {
-      return Text(
-        'Completo · ${AppFormatters.currency(goal.target)}',
-        style: AppTextStyles.small(context.colors).copyWith(
-          color: context.colors.primaryDark,
-          fontWeight: FontWeight.w600,
-        ),
-      );
     }
     return Text(
       'Falta ${AppFormatters.currency(goal.missing)} '

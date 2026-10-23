@@ -14,6 +14,10 @@ class AppProgressRing extends StatelessWidget {
     this.label,
     this.color = AppColors.mint,
     this.trackColor = AppColors.heroPill,
+    this.size = AppSizes.progressRing,
+    this.strokeWidth = AppSizes.progressRingStroke,
+    this.labelStyle,
+    this.labelColor,
   });
 
   /// How much of the ring is filled, as a 0..1 fraction.
@@ -28,16 +32,29 @@ class AppProgressRing extends StatelessWidget {
   /// Colour of the unfilled track.
   final Color trackColor;
 
+  /// Diameter of the ring.
+  final double size;
+
+  /// Width of the painted arc.
+  final double strokeWidth;
+
+  /// Base label style; defaults to the theme label.
+  final TextStyle? labelStyle;
+
+  /// Label colour; defaults to [AppColors.onHero].
+  final Color? labelColor;
+
   @override
   Widget build(BuildContext context) {
     final label = this.label;
+    final labelStyle = this.labelStyle ?? AppTextStyles.label(context.colors);
     return Semantics(
       label: label,
       value: '${(progress.clamp(0.0, 1.0) * 100).round()}%',
       child: ExcludeSemantics(
         child: SizedBox(
-          width: AppSizes.progressRing,
-          height: AppSizes.progressRing,
+          width: size,
+          height: size,
           child: TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0, end: progress.clamp(0.0, 1.0)),
             duration: AppMotion.large,
@@ -46,19 +63,20 @@ class AppProgressRing extends StatelessWidget {
               alignment: Alignment.center,
               children: [
                 CustomPaint(
-                  size: const Size.square(AppSizes.progressRing),
+                  size: Size.square(size),
                   painter: _RingPainter(
                     value: value,
                     color: color,
                     trackColor: trackColor,
+                    strokeWidth: strokeWidth,
                   ),
                 ),
                 if (label != null)
                   Text(
                     label,
-                    style: AppTextStyles.label(
-                      context.colors,
-                    ).copyWith(color: AppColors.onHero),
+                    style: labelStyle.copyWith(
+                      color: labelColor ?? AppColors.onHero,
+                    ),
                   ),
               ],
             ),
@@ -74,17 +92,19 @@ class _RingPainter extends CustomPainter {
     required this.value,
     required this.color,
     required this.trackColor,
+    required this.strokeWidth,
   });
 
   final double value;
   final Color color;
   final Color trackColor;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = AppSizes.progressRingStroke;
+    final stroke = strokeWidth;
     final rect =
-        const Offset(stroke / 2, stroke / 2) &
+        Offset(stroke / 2, stroke / 2) &
         Size(size.width - stroke, size.height - stroke);
     final track = Paint()
       ..color = trackColor
@@ -106,5 +126,6 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(covariant _RingPainter oldDelegate) =>
       oldDelegate.value != value ||
       oldDelegate.color != color ||
-      oldDelegate.trackColor != trackColor;
+      oldDelegate.trackColor != trackColor ||
+      oldDelegate.strokeWidth != strokeWidth;
 }

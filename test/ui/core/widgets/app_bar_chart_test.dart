@@ -20,8 +20,20 @@ void main() {
         _wrap(
           const AppBarChart(
             bars: [
-              (label: 'Jan', value: 100, over: false, highlighted: false),
-              (label: 'Fev', value: 200, over: false, highlighted: false),
+              (
+                label: 'Jan',
+                value: 100,
+                planned: null,
+                over: false,
+                highlighted: false,
+              ),
+              (
+                label: 'Fev',
+                value: 200,
+                planned: null,
+                over: false,
+                highlighted: false,
+              ),
             ],
           ),
         ),
@@ -30,6 +42,7 @@ void main() {
 
       expect(find.text('Jan'), findsOneWidget);
       expect(find.text('Fev'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bar-chart-planned-Jan')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -40,9 +53,27 @@ void main() {
         _wrap(
           const AppBarChart(
             bars: [
-              (label: 'Jan', value: 100, over: false, highlighted: false),
-              (label: 'Fev', value: 200, over: true, highlighted: false),
-              (label: 'Mar', value: 150, over: false, highlighted: true),
+              (
+                label: 'Jan',
+                value: 100,
+                planned: null,
+                over: false,
+                highlighted: false,
+              ),
+              (
+                label: 'Fev',
+                value: 200,
+                planned: null,
+                over: true,
+                highlighted: false,
+              ),
+              (
+                label: 'Mar',
+                value: 150,
+                planned: null,
+                over: false,
+                highlighted: true,
+              ),
             ],
           ),
         ),
@@ -54,6 +85,76 @@ void main() {
       expect(colors, contains(AppColors.overOnDark));
       expect(colors, contains(AppColors.onHero));
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('draws the planned marker when a plan is present', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const AppBarChart(
+            bars: [
+              (
+                label: 'Jan',
+                value: 100,
+                planned: 200,
+                over: false,
+                highlighted: false,
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('bar-chart-planned-Jan')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('tapping a bar shows its value and tapping away closes it', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          const AppBarChart(
+            bars: [
+              (
+                label: 'Jan',
+                value: 100,
+                planned: null,
+                over: false,
+                highlighted: false,
+              ),
+              (
+                label: 'Fev',
+                value: 200,
+                planned: null,
+                over: false,
+                highlighted: false,
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(AppFormatters.currency(100)), findsNothing);
+
+      await tester.tap(find.text('Jan'));
+      await tester.pumpAndSettle();
+      expect(find.text(AppFormatters.currency(100)), findsOneWidget);
+
+      await tester.tap(find.text('Fev'));
+      await tester.pumpAndSettle();
+      expect(find.text(AppFormatters.currency(200)), findsOneWidget);
+      expect(find.text(AppFormatters.currency(100)), findsNothing);
+
+      await tester.tapAt(const Offset(20, 550));
+      await tester.pumpAndSettle();
+      expect(find.text(AppFormatters.currency(200)), findsNothing);
     });
 
     testWidgets('handles an empty set', (tester) async {
