@@ -220,7 +220,10 @@ class _CategoryTotalRow extends StatelessWidget {
     final percentage = total > 0 ? category.actual / total * 100 : 0.0;
     return Row(
       children: [
-        CategoryIcon(category: category.categoryName),
+        CategoryIcon(
+          category: category.categoryName,
+          iconKey: category.iconKey,
+        ),
         const SizedBox(width: AppSpacing.md),
         Expanded(
           child: Column(

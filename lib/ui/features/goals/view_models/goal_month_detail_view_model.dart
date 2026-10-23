@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
+import 'package:nest/domain/models/goal.dart';
 import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/goal_year.dart';
 
@@ -31,8 +32,12 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   GoalMonthView? _view;
+  Map<String, String?> _iconKeyByGoal = const {};
 
   GoalPlan? get plan => _view?.plan;
+
+  /// The catalogue's semantic icon keys, by goal id, for the month's rows.
+  Map<String, String?> get iconKeyByGoal => _iconKeyByGoal;
 
   /// Who transfers what towards this month's goals, computed by the server.
   List<GoalMonthQuota> get transfers => _view?.quotas ?? const [];
@@ -72,10 +77,14 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
     final month = _month;
     try {
       final view = await _goalsRepository.fetchGoalMonth(month);
+      final goals = view?.plan == null
+          ? <Goal>[]
+          : await _goalsRepository.fetchGoals(includeInactive: true);
       if (month != _month) {
         return;
       }
       _view = view;
+      _iconKeyByGoal = {for (final goal in goals) goal.id: goal.iconKey};
     } on ApiFailure catch (failure) {
       if (month == _month) {
         _errorMessage = failure.message;

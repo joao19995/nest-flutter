@@ -80,10 +80,21 @@ Map<String, dynamic> _plan() => <String, dynamic>{
   'allocations': <Object>[],
 };
 
+List<Object> _goals() => <Object>[
+  {'id': 'g1', 'name': 'Viagem', 'active': true, 'iconKey': 'plane'},
+  {'id': 'g2', 'name': 'Carro', 'active': true, 'iconKey': 'car'},
+];
+
+bool _isGoalsRequest(dynamic request) => request.url.path == '/api/goals';
+
 void main() {
   test('load exposes the plan, totals and server-computed quotas', () async {
     final viewModel = _viewModel(
-      MockClient((request) async => jsonResponse(_view())),
+      MockClient(
+        (request) async => _isGoalsRequest(request)
+            ? jsonResponse(_goals())
+            : jsonResponse(_view()),
+      ),
     );
 
     await viewModel.load();
@@ -94,6 +105,7 @@ void main() {
     expect(viewModel.planned, 1000);
     expect(viewModel.available, 1000);
     expect(viewModel.isOpen, isTrue);
+    expect(viewModel.iconKeyByGoal['g1'], 'plane');
 
     expect(viewModel.transfers, hasLength(2));
     final joao = viewModel.transfers.firstWhere((t) => t.name == 'João');
@@ -120,6 +132,9 @@ void main() {
     var created = false;
     final writes = <String>[];
     final client = MockClient((request) async {
+      if (_isGoalsRequest(request)) {
+        return jsonResponse(_goals());
+      }
       if (request.method == 'GET') {
         return jsonResponse(created ? _view() : _missing());
       }
@@ -142,6 +157,9 @@ void main() {
     final paths = <String>[];
     final client = MockClient((request) async {
       paths.add(request.url.path);
+      if (_isGoalsRequest(request)) {
+        return jsonResponse(_goals());
+      }
       if (request.method == 'PATCH') {
         patchedPath = request.url.path;
         patchBody = jsonDecode(request.body);
@@ -170,6 +188,9 @@ void main() {
     () async {
       final writes = <String>[];
       final client = MockClient((request) async {
+        if (_isGoalsRequest(request)) {
+          return jsonResponse(_goals());
+        }
         if (request.method == 'GET') {
           return jsonResponse(_view(a1: 0, a2: 0));
         }
@@ -204,6 +225,9 @@ void main() {
 
   test('a failed write records the action error', () async {
     final client = MockClient((request) async {
+      if (_isGoalsRequest(request)) {
+        return jsonResponse(_goals());
+      }
       if (request.method == 'PATCH') {
         return jsonResponse(const {'error': 'Não guardou.'}, status: 500);
       }

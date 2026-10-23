@@ -35,6 +35,8 @@ export 'hero_delta_pill.dart';
 export 'hero_deviation_pill.dart';
 export 'hero_flight.dart';
 export 'hero_panel.dart';
+export 'icon_chip.dart';
+export 'icon_choice_picker.dart';
 export 'initial_avatar.dart';
 export 'lazy_indexed_stack.dart';
 export 'money_field.dart';

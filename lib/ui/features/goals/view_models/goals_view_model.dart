@@ -38,11 +38,15 @@ class GoalSummary {
     required this.name,
     required this.reserved,
     required this.target,
+    this.iconKey,
     this.timeline,
     this.priority,
   });
 
   final String name;
+
+  /// The goal's semantic icon key, when the catalogue supplies one.
+  final String? iconKey;
 
   /// The amount reserved for the goal across the year, in euros.
   final double reserved;
@@ -177,6 +181,7 @@ class GoalsViewModel extends ChangeNotifier {
             name: nameByGoal[goal.id] ?? goal.name,
             reserved: reservedByGoal[goal.id] ?? 0,
             target: entries[goal.id]?.budget ?? 0,
+            iconKey: goal.iconKey,
             timeline: entries[goal.id]?.timeline,
             priority: entries[goal.id]?.priority,
           ),

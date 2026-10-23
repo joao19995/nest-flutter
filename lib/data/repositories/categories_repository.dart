@@ -23,10 +23,12 @@ class CategoriesRepository {
   Future<Category> createCategory({
     required String name,
     required CategoryType type,
+    String? iconKey,
   }) async {
     final data = await _client.post('/api/categories', {
       'name': name,
       'type': _apiType(type),
+      'iconKey': ?iconKey,
     });
     return mapJson(data, (json) => CategoryModel.fromJson(json).toDomain());
   }
@@ -38,11 +40,13 @@ class CategoriesRepository {
     required String name,
     required CategoryType type,
     required bool active,
+    String? iconKey,
   }) async {
     final data = await _client.put('/api/categories/$id', {
       'name': name,
       'type': _apiType(type),
       'active': active,
+      'iconKey': ?iconKey,
     });
     return mapJson(data, (json) => CategoryModel.fromJson(json).toDomain());
   }

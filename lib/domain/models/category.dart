@@ -8,6 +8,7 @@ class Category {
     required this.name,
     required this.type,
     required this.active,
+    this.iconKey,
   });
 
   final String id;
@@ -16,6 +17,11 @@ class Category {
 
   /// Whether the category is visible (soft-deleted categories are inactive).
   final bool active;
+
+  /// Semantic icon key chosen by the user (e.g. `cart`, `bolt`).
+  ///
+  /// `null` means the icon is derived from [name].
+  final String? iconKey;
 
   /// Whether this is a fixed expense category.
   bool get isFixed => type == CategoryType.fixed;

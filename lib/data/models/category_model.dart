@@ -7,6 +7,7 @@ class CategoryModel {
     required this.name,
     required this.type,
     required this.active,
+    this.iconKey,
   });
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) => CategoryModel(
@@ -14,15 +15,22 @@ class CategoryModel {
     name: json['name'] as String,
     type: _typeFromJson(json['type'] as String),
     active: json['active'] as bool? ?? true,
+    iconKey: json['iconKey'] as String?,
   );
 
   final String id;
   final String name;
   final CategoryType type;
   final bool active;
+  final String? iconKey;
 
-  Category toDomain() =>
-      Category(id: id, name: name, type: type, active: active);
+  Category toDomain() => Category(
+    id: id,
+    name: name,
+    type: type,
+    active: active,
+    iconKey: iconKey,
+  );
 
   static CategoryType _typeFromJson(String value) => switch (value) {
     'FIXED' => CategoryType.fixed,

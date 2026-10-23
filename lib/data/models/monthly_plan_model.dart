@@ -63,6 +63,7 @@ class MonthlyPlanEntryModel {
     required this.accountName,
     required this.planned,
     required this.actual,
+    this.categoryIconKey,
   });
 
   factory MonthlyPlanEntryModel.fromJson(Map<String, dynamic> json) =>
@@ -73,6 +74,7 @@ class MonthlyPlanEntryModel {
         accountName: json['accountName'] as String,
         planned: (json['planned'] as num).toDouble(),
         actual: (json['actual'] as num).toDouble(),
+        categoryIconKey: json['categoryIconKey'] as String?,
       );
 
   final String id;
@@ -81,6 +83,7 @@ class MonthlyPlanEntryModel {
   final String accountName;
   final double planned;
   final double actual;
+  final String? categoryIconKey;
 
   MonthlyPlanEntry toDomain() => MonthlyPlanEntry(
     id: id,
@@ -89,6 +92,7 @@ class MonthlyPlanEntryModel {
     accountName: accountName,
     planned: planned,
     actual: actual,
+    categoryIconKey: categoryIconKey,
   );
 
   static CategoryType _typeFromJson(Object? value) => switch (value) {

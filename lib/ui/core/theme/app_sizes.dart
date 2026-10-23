@@ -21,6 +21,15 @@ abstract final class AppSizes {
   /// Diameter of a category icon chip in an expense row.
   static const double categoryIcon = 40;
 
+  /// Diameter of a goal icon chip in a list row.
+  static const double goalIcon = 40;
+
+  /// Diameter of a compact goal icon chip next to a goal name.
+  static const double goalIconSmall = 28;
+
+  /// Diameter of a selectable goal icon in the picker.
+  static const double goalIconPicker = 44;
+
   /// Diameter of the small state dot in a badge.
   static const double badgeDot = 6;
 

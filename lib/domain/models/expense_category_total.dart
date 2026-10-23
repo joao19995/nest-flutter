@@ -4,9 +4,13 @@ class ExpenseCategoryTotal {
     required this.categoryName,
     required this.planned,
     required this.actual,
+    this.iconKey,
   });
 
   final String categoryName;
+
+  /// The category's stored semantic icon key, when it has one.
+  final String? iconKey;
 
   /// The amount planned for the year, in euros.
   ///

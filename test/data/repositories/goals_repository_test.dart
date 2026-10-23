@@ -257,8 +257,8 @@ void main() {
         }),
       );
 
-      await repository.createGoal(name: 'Férias');
-      await repository.updateGoal('g1', name: 'Férias 2026');
+      await repository.createGoal(name: 'Férias', iconKey: 'plane');
+      await repository.updateGoal('g1', name: 'Férias 2026', iconKey: 'car');
       await repository.deleteGoal('g1');
       await repository.restoreGoal('g1');
 
@@ -269,7 +269,9 @@ void main() {
         'POST /api/goals/g1/restore',
       ]);
       expect((bodies[0] as Map<String, dynamic>)['name'], 'Férias');
+      expect((bodies[0] as Map<String, dynamic>)['iconKey'], 'plane');
       expect((bodies[1] as Map<String, dynamic>)['name'], 'Férias 2026');
+      expect((bodies[1] as Map<String, dynamic>)['iconKey'], 'car');
     },
   );
 

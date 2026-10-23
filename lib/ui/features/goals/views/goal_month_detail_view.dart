@@ -5,6 +5,7 @@ import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
+import 'package:nest/ui/features/goals/goal_icons.dart';
 import 'package:nest/ui/features/goals/view_models/goal_month_detail_view_model.dart';
 
 /// The detail of a single goals month: what each goal is planned and reserved
@@ -130,12 +131,16 @@ class _Content extends StatelessWidget {
         ],
         _GoalsCard(
           plan: plan,
+          iconKeyByGoal: viewModel.iconKeyByGoal,
           isBusy: viewModel.isBusy,
           onSaveActual: viewModel.updateAllocationActual,
           onClose: viewModel.closeMonth,
         ),
         const SizedBox(height: AppSpacing.lg),
-        _TransfersCard(transfers: viewModel.transfers),
+        _TransfersCard(
+          transfers: viewModel.transfers,
+          iconKeyByGoal: viewModel.iconKeyByGoal,
+        ),
       ],
     );
   }
@@ -144,12 +149,14 @@ class _Content extends StatelessWidget {
 class _GoalsCard extends StatelessWidget {
   const _GoalsCard({
     required this.plan,
+    required this.iconKeyByGoal,
     required this.isBusy,
     required this.onSaveActual,
     required this.onClose,
   });
 
   final GoalPlan plan;
+  final Map<String, String?> iconKeyByGoal;
   final bool isBusy;
   final void Function(String goalId, double actual) onSaveActual;
   final VoidCallback onClose;
@@ -179,6 +186,7 @@ class _GoalsCard extends StatelessWidget {
                 for (var index = 0; index < allocations.length; index++)
                   _GoalRow(
                     allocation: allocations[index],
+                    iconKey: iconKeyByGoal[allocations[index].goalId],
                     onSaveActual: editable ? onSaveActual : null,
                   ),
               ],
@@ -234,9 +242,14 @@ class _GoalsCard extends StatelessWidget {
 }
 
 class _GoalRow extends StatelessWidget {
-  const _GoalRow({required this.allocation, required this.onSaveActual});
+  const _GoalRow({
+    required this.allocation,
+    required this.iconKey,
+    required this.onSaveActual,
+  });
 
   final GoalAllocation allocation;
+  final String? iconKey;
 
   /// When provided, the reserved amount is editable and saved on focus loss.
   final void Function(String goalId, double actual)? onSaveActual;
@@ -257,6 +270,13 @@ class _GoalRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          GoalIcon(
+            name: allocation.goalName,
+            iconKey: iconKey,
+            size: AppSizes.goalIconSmall,
+            iconSize: AppSizes.iconSmall,
+          ),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,9 +316,10 @@ class _GoalRow extends StatelessWidget {
 }
 
 class _TransfersCard extends StatelessWidget {
-  const _TransfersCard({required this.transfers});
+  const _TransfersCard({required this.transfers, required this.iconKeyByGoal});
 
   final List<GoalMonthQuota> transfers;
+  final Map<String, String?> iconKeyByGoal;
 
   @override
   Widget build(BuildContext context) {
@@ -317,7 +338,10 @@ class _TransfersCard extends StatelessWidget {
             AppStagger(
               children: [
                 for (var index = 0; index < transfers.length; index++)
-                  _TransferRow(transfer: transfers[index]),
+                  _TransferRow(
+                    transfer: transfers[index],
+                    iconKeyByGoal: iconKeyByGoal,
+                  ),
               ],
             ),
         ],
@@ -327,9 +351,10 @@ class _TransfersCard extends StatelessWidget {
 }
 
 class _TransferRow extends StatelessWidget {
-  const _TransferRow({required this.transfer});
+  const _TransferRow({required this.transfer, required this.iconKeyByGoal});
 
   final GoalMonthQuota transfer;
+  final Map<String, String?> iconKeyByGoal;
 
   @override
   Widget build(BuildContext context) {
@@ -353,7 +378,9 @@ class _TransferRow extends StatelessWidget {
                 name: transfer.name,
                 amount: parts[index].amount,
                 targetLabel: parts[index].name,
-                targetIcon: Icons.flag_outlined,
+                targetIcon: GoalIcons.forKey(
+                  iconKeyByGoal[parts[index].goalId],
+                ),
               ),
             ],
         ],

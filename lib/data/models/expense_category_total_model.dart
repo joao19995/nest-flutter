@@ -6,6 +6,7 @@ class ExpenseCategoryTotalModel {
     required this.categoryName,
     required this.planned,
     required this.actual,
+    this.iconKey,
   });
 
   factory ExpenseCategoryTotalModel.fromJson(Map<String, dynamic> json) =>
@@ -13,15 +14,18 @@ class ExpenseCategoryTotalModel {
         categoryName: json['name'] as String? ?? '',
         planned: (json['planned'] as num?)?.toDouble() ?? 0,
         actual: (json['actual'] as num?)?.toDouble() ?? 0,
+        iconKey: json['iconKey'] as String?,
       );
 
   final String categoryName;
   final double planned;
   final double actual;
+  final String? iconKey;
 
   ExpenseCategoryTotal toDomain() => ExpenseCategoryTotal(
     categoryName: categoryName,
     planned: planned,
     actual: actual,
+    iconKey: iconKey,
   );
 }

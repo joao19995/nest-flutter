@@ -16,21 +16,35 @@ class GoalsRepository {
 
   final NestApiClient _client;
 
-  /// Returns the goal catalogue, including inactive goals.
-  Future<List<Goal>> fetchGoals() async {
-    final data = await _client.get('/api/goals?includeInactive=true');
+  /// Returns the goal catalogue. Soft-deleted goals are excluded unless
+  /// [includeInactive].
+  Future<List<Goal>> fetchGoals({bool includeInactive = false}) async {
+    final path = includeInactive
+        ? '/api/goals?includeInactive=true'
+        : '/api/goals';
+    final data = await _client.get(path);
     return mapJsonList(data, (json) => GoalModel.fromJson(json).toDomain());
   }
 
-  /// Creates a goal in the catalogue.
-  Future<Goal> createGoal({required String name}) async {
-    final data = await _client.post('/api/goals', {'name': name});
+  /// Creates a goal in the catalogue, optionally with an [iconKey].
+  Future<Goal> createGoal({required String name, String? iconKey}) async {
+    final data = await _client.post('/api/goals', {
+      'name': name,
+      'iconKey': ?iconKey,
+    });
     return mapJson(data, (json) => GoalModel.fromJson(json).toDomain());
   }
 
-  /// Renames the goal [id]. The catalogue input accepts only the name.
-  Future<Goal> updateGoal(String id, {required String name}) async {
-    final data = await _client.put('/api/goals/$id', {'name': name});
+  /// Renames [id] and, when given, updates its [iconKey].
+  Future<Goal> updateGoal(
+    String id, {
+    required String name,
+    String? iconKey,
+  }) async {
+    final data = await _client.put('/api/goals/$id', {
+      'name': name,
+      'iconKey': ?iconKey,
+    });
     return mapJson(data, (json) => GoalModel.fromJson(json).toDomain());
   }
 

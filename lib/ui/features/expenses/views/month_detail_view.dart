@@ -298,7 +298,10 @@ class _EntryRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CategoryIcon(category: entry.categoryName),
+          CategoryIcon(
+            category: entry.categoryName,
+            iconKey: entry.categoryIconKey,
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(

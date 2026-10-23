@@ -48,10 +48,15 @@ void main() {
       }),
     );
 
-    await repository.createCategory(name: 'Renda', type: CategoryType.fixed);
+    await repository.createCategory(
+      name: 'Renda',
+      type: CategoryType.fixed,
+      iconKey: 'home',
+    );
 
     expect(body?['name'], 'Renda');
     expect(body?['type'], 'FIXED');
+    expect(body?['iconKey'], 'home');
     expect(body?.containsKey('active'), isFalse);
   });
 
@@ -76,11 +81,13 @@ void main() {
       name: 'Renda',
       type: CategoryType.variable,
       active: false,
+      iconKey: 'bolt',
     );
 
     expect(path, '/api/categories/c1');
     expect(body?['type'], 'VARIABLE');
     expect(body?['active'], isFalse);
+    expect(body?['iconKey'], 'bolt');
   });
 
   test('delete and restore hit the expected routes', () async {

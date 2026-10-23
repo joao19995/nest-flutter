@@ -9,11 +9,23 @@ void main() {
         'id': 'g1',
         'name': 'Viagem à Madeira',
         'active': true,
+        'iconKey': 'plane',
       }).toDomain();
 
       expect(goal.id, 'g1');
       expect(goal.name, 'Viagem à Madeira');
       expect(goal.active, isTrue);
+      expect(goal.iconKey, 'plane');
+    });
+
+    test('leaves iconKey null when the API omits it', () {
+      final Goal goal = GoalModel.fromJson(const {
+        'id': 'g2',
+        'name': 'Casa',
+        'active': true,
+      }).toDomain();
+
+      expect(goal.iconKey, isNull);
     });
   });
 }

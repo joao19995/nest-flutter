@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/goals/goal_badges.dart';
+import 'package:nest/ui/features/goals/goal_icons.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 
 /// The per-goal accumulation for a year: how much each goal has reserved
@@ -114,6 +115,13 @@ class _GoalRow extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    GoalIcon(
+                      name: goal.name,
+                      iconKey: goal.iconKey,
+                      size: AppSizes.goalIconSmall,
+                      iconSize: AppSizes.iconSmall,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         goal.name,

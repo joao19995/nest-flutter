@@ -54,12 +54,14 @@ class CategoriesViewModel extends ChangeNotifier {
   Future<String?> createCategory({
     required String name,
     required CategoryType type,
+    String? iconKey,
   }) async {
     _actionError = null;
     try {
       final created = await _categoriesRepository.createCategory(
         name: name,
         type: type,
+        iconKey: iconKey,
       );
       _upsert(created);
       return null;
@@ -76,6 +78,7 @@ class CategoriesViewModel extends ChangeNotifier {
     Category category, {
     required String name,
     required CategoryType type,
+    String? iconKey,
   }) async {
     _actionError = null;
     try {
@@ -84,6 +87,7 @@ class CategoriesViewModel extends ChangeNotifier {
         name: name,
         type: type,
         active: category.active,
+        iconKey: iconKey,
       );
       _upsert(updated);
       return null;

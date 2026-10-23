@@ -37,8 +37,18 @@ void main() {
           const GoalsBreakdownView(
             year: 2026,
             goals: [
-              GoalSummary(name: 'Viagem', reserved: 800, target: 800),
-              GoalSummary(name: 'Extra', reserved: 0, target: 0),
+              GoalSummary(
+                name: 'Viagem',
+                reserved: 800,
+                target: 800,
+                iconKey: 'plane',
+              ),
+              GoalSummary(
+                name: 'Extra',
+                reserved: 0,
+                target: 0,
+                iconKey: 'home',
+              ),
             ],
           ),
         ),
@@ -49,6 +59,8 @@ void main() {
       expect(find.text('100%'), findsOneWidget);
       expect(find.text('Completo'), findsOneWidget);
       expect(find.byType(AppSavedTick), findsOneWidget);
+      expect(find.byIcon(Icons.flight_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.home_outlined), findsOneWidget);
       expect(find.byIcon(Icons.flag_outlined), findsOneWidget);
       expect(find.text('Sem orçamento'), findsOneWidget);
       expect(find.byType(AppChip), findsNothing);

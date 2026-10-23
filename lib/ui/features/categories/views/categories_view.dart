@@ -39,10 +39,16 @@ class _CategoriesViewState extends State<CategoriesView>
       builder: (_) => _CategoryFormSheet(
         initialName: category?.name ?? '',
         initialType: category?.type ?? CategoryType.variable,
+        initialIconKey: category?.iconKey,
         isEditing: category != null,
-        onSave: (name, type) => category == null
-            ? viewModel.createCategory(name: name, type: type)
-            : viewModel.updateCategory(category, name: name, type: type),
+        onSave: (name, type, iconKey) => category == null
+            ? viewModel.createCategory(name: name, type: type, iconKey: iconKey)
+            : viewModel.updateCategory(
+                category,
+                name: name,
+                type: type,
+                iconKey: iconKey,
+              ),
         onDelete: category == null ? null : () => _deleteWithUndo(category),
       ),
     );
@@ -204,7 +210,10 @@ class _CategoryRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             child: Row(
               children: [
-                CategoryIcon(category: category.name),
+                CategoryIcon(
+                  category: category.name,
+                  iconKey: category.iconKey,
+                ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(
@@ -251,6 +260,7 @@ class _CategoryFormSheet extends StatefulWidget {
   const _CategoryFormSheet({
     required this.initialName,
     required this.initialType,
+    required this.initialIconKey,
     required this.isEditing,
     required this.onSave,
     this.onDelete,
@@ -258,8 +268,10 @@ class _CategoryFormSheet extends StatefulWidget {
 
   final String initialName;
   final CategoryType initialType;
+  final String? initialIconKey;
   final bool isEditing;
-  final Future<String?> Function(String name, CategoryType type) onSave;
+  final Future<String?> Function(String name, CategoryType type, String iconKey)
+  onSave;
   final Future<void> Function()? onDelete;
 
   @override
@@ -271,6 +283,10 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
     text: widget.initialName,
   );
   CategoryType _type = CategoryType.variable;
+  late String _iconKey = CategoryIcons.initialKey(
+    widget.initialName,
+    widget.initialIconKey,
+  );
   bool _isSaving = false;
   String? _error;
 
@@ -295,7 +311,7 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
       _isSaving = true;
       _error = null;
     });
-    final failure = await widget.onSave(name, _type);
+    final failure = await widget.onSave(name, _type, _iconKey);
     if (!mounted) {
       return;
     }
@@ -371,6 +387,13 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
             selected: {_type},
             onSelectionChanged: (selection) =>
                 setState(() => _type = selection.first),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Ícone', style: AppTextStyles.label(context.colors)),
+          const SizedBox(height: AppSpacing.sm),
+          CategoryIconPicker(
+            selectedKey: _iconKey,
+            onChanged: (key) => setState(() => _iconKey = key),
           ),
           if (error != null) ...[
             const SizedBox(height: AppSpacing.md),

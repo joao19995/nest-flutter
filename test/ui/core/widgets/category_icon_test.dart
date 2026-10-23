@@ -3,11 +3,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/category_icon.dart';
 
-Future<IconData?> _iconFor(WidgetTester tester, String category) async {
+Future<IconData?> _iconFor(
+  WidgetTester tester,
+  String category, {
+  String? iconKey,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.light,
-      home: Scaffold(body: CategoryIcon(category: category)),
+      home: Scaffold(
+        body: CategoryIcon(category: category, iconKey: iconKey),
+      ),
     ),
   );
   return tester.widget<Icon>(find.byType(Icon)).icon;
@@ -35,6 +41,19 @@ void main() {
       expect(
         await _iconFor(tester, 'Zzz inexplicável'),
         CategoryIcons.fallback,
+      );
+    });
+
+    testWidgets('a stored iconKey wins over the name heuristic', (
+      tester,
+    ) async {
+      expect(
+        await _iconFor(tester, 'Supermercado', iconKey: 'gift'),
+        Icons.card_giftcard_outlined,
+      );
+      expect(
+        await _iconFor(tester, 'Supermercado', iconKey: 'unknown'),
+        Icons.shopping_cart_outlined,
       );
     });
   });

@@ -14,21 +14,25 @@ class GoalsCatalogViewModel extends ChangeNotifier {
   bool _isLoading = true;
   String? _errorMessage;
   String? _actionError;
+  bool _includeInactive = false;
   List<Goal> _goals = const [];
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get actionError => _actionError;
+  bool get includeInactive => _includeInactive;
   List<Goal> get goals => _goals;
   bool get isEmpty => _goals.isEmpty;
 
-  /// Loads the catalogue, including the deactivated goals.
+  /// Loads the catalogue, including deactivated goals when [includeInactive].
   Future<void> load() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
     try {
-      final goals = await _goalsRepository.fetchGoals();
+      final goals = await _goalsRepository.fetchGoals(
+        includeInactive: _includeInactive,
+      );
       _goals = _sorted(goals);
     } on ApiFailure catch (failure) {
       _errorMessage = failure.message;
@@ -38,11 +42,20 @@ class GoalsCatalogViewModel extends ChangeNotifier {
     }
   }
 
+  /// Reloads, including (or excluding) the deactivated goals.
+  Future<void> setIncludeInactive(bool value) async {
+    if (_includeInactive == value) {
+      return;
+    }
+    _includeInactive = value;
+    await load();
+  }
+
   /// Creates a goal. Returns null on success, or the failure message.
-  Future<String?> createGoal(String name) async {
+  Future<String?> createGoal(String name, {String? iconKey}) async {
     _actionError = null;
     try {
-      _upsert(await _goalsRepository.createGoal(name: name));
+      _upsert(await _goalsRepository.createGoal(name: name, iconKey: iconKey));
       return null;
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
@@ -51,11 +64,18 @@ class GoalsCatalogViewModel extends ChangeNotifier {
     }
   }
 
-  /// Renames [goal]. Returns null on success, or the failure message.
-  Future<String?> updateGoal(Goal goal, String name) async {
+  /// Renames [goal] and updates its icon. Returns null on success, or the
+  /// failure message.
+  Future<String?> updateGoal(Goal goal, String name, {String? iconKey}) async {
     _actionError = null;
     try {
-      _upsert(await _goalsRepository.updateGoal(goal.id, name: name));
+      _upsert(
+        await _goalsRepository.updateGoal(
+          goal.id,
+          name: name,
+          iconKey: iconKey,
+        ),
+      );
       return null;
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
@@ -103,10 +123,11 @@ class GoalsCatalogViewModel extends ChangeNotifier {
   }
 
   void _upsert(Goal goal) {
+    final visible = _includeInactive || goal.active;
     _goals = _sorted([
       for (final current in _goals)
         if (current.id != goal.id) current,
-      goal,
+      if (visible) goal,
     ]);
     notifyListeners();
   }

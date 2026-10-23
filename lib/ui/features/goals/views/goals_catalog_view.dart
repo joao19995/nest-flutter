@@ -4,6 +4,7 @@ import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
+import 'package:nest/ui/features/goals/goal_icons.dart';
 import 'package:nest/ui/features/goals/view_models/goals_catalog_view_model.dart';
 
 /// The goals catalogue: create, rename and deactivate/restore goals.
@@ -34,19 +35,19 @@ class _GoalsCatalogViewState extends State<GoalsCatalogView>
       backgroundColor: context.colors.surface,
       builder: (_) => _GoalFormSheet(
         initialName: goal?.name ?? '',
+        initialIconKey: goal?.iconKey,
         isEditing: goal != null,
-        onSave: (name) => goal == null
-            ? viewModel.createGoal(name)
-            : viewModel.updateGoal(goal, name),
+        onSave: (name, iconKey) => goal == null
+            ? viewModel.createGoal(name, iconKey: iconKey)
+            : viewModel.updateGoal(goal, name, iconKey: iconKey),
+        onDelete: goal == null ? null : () => _deactivateWithUndo(goal),
       ),
     );
   }
 
-  Future<void> _toggle(Goal goal, bool active) async {
-    final failure = active
-        ? await viewModel.restoreGoal(goal)
-        : await viewModel.deleteGoal(goal);
-    if (!mounted || failure != null || active) {
+  Future<void> _deactivateWithUndo(Goal goal) async {
+    final failure = await viewModel.deleteGoal(goal);
+    if (!mounted || failure != null) {
       return;
     }
     showAppSnackBar(
@@ -64,6 +65,16 @@ class _GoalsCatalogViewState extends State<GoalsCatalogView>
         appBar: AppBar(
           title: const Text('Catálogo de objetivos'),
           actions: [
+            AppButton.icon(
+              icon: viewModel.includeInactive
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              tooltip: viewModel.includeInactive
+                  ? 'Ocultar inativos'
+                  : 'Mostrar inativos',
+              onPressed: () =>
+                  viewModel.setIncludeInactive(!viewModel.includeInactive),
+            ),
             AppButton.icon(
               icon: Icons.add,
               tooltip: 'Novo objetivo',
@@ -92,7 +103,7 @@ class _GoalsCatalogViewState extends State<GoalsCatalogView>
                 child: _CatalogContent(
                   viewModel: viewModel,
                   onEdit: _openForm,
-                  onToggle: _toggle,
+                  onDelete: _deactivateWithUndo,
                 ),
               ),
             ),
@@ -107,12 +118,12 @@ class _CatalogContent extends StatelessWidget {
   const _CatalogContent({
     required this.viewModel,
     required this.onEdit,
-    required this.onToggle,
+    required this.onDelete,
   });
 
   final GoalsCatalogViewModel viewModel;
   final ValueChanged<Goal> onEdit;
-  final void Function(Goal goal, bool active) onToggle;
+  final ValueChanged<Goal> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +152,7 @@ class _CatalogContent extends StatelessWidget {
                   _GoalRow(
                     goal: goals[index],
                     onEdit: () => onEdit(goals[index]),
-                    onToggle: (value) => onToggle(goals[index], value),
+                    onDelete: () => onDelete(goals[index]),
                   ),
                 ],
               ],
@@ -157,41 +168,63 @@ class _GoalRow extends StatelessWidget {
   const _GoalRow({
     required this.goal,
     required this.onEdit,
-    required this.onToggle,
+    required this.onDelete,
   });
 
   final Goal goal;
   final VoidCallback onEdit;
-  final ValueChanged<bool> onToggle;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        children: [
-          Expanded(
-            child: InkWell(
-              onTap: onEdit,
-              borderRadius: AppRadius.smAll,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                child: Text(
-                  goal.name,
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: goal.active
-                        ? context.colors.ink
-                        : context.colors.muted,
+    return Dismissible(
+      key: ValueKey(goal.id),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => onDelete(),
+      background: const DismissBackground(alignment: Alignment.centerLeft),
+      secondaryBackground: const DismissBackground(
+        alignment: Alignment.centerRight,
+      ),
+      child: Material(
+        color: context.colors.surface,
+        child: InkWell(
+          onTap: onEdit,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: Row(
+              children: [
+                GoalIcon(name: goal.name, iconKey: goal.iconKey),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    goal.name,
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: goal.active
+                          ? context.colors.ink
+                          : context.colors.muted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
+                if (!goal.active) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  AppBadge(
+                    label: 'INATIVO',
+                    style: AppBadgeStyles.destructive(context.colors),
+                  ),
+                ],
+                const SizedBox(width: AppSpacing.sm),
+                Icon(
+                  Icons.chevron_right,
+                  size: AppSizes.iconMedium,
+                  color: context.colors.faint,
+                ),
+              ],
             ),
           ),
-          Switch(value: goal.active, onChanged: onToggle),
-        ],
+        ),
       ),
     );
   }
@@ -201,13 +234,17 @@ class _GoalRow extends StatelessWidget {
 class _GoalFormSheet extends StatefulWidget {
   const _GoalFormSheet({
     required this.initialName,
+    required this.initialIconKey,
     required this.isEditing,
     required this.onSave,
+    this.onDelete,
   });
 
   final String initialName;
+  final String? initialIconKey;
   final bool isEditing;
-  final Future<String?> Function(String name) onSave;
+  final Future<String?> Function(String name, String iconKey) onSave;
+  final Future<void> Function()? onDelete;
 
   @override
   State<_GoalFormSheet> createState() => _GoalFormSheetState();
@@ -217,6 +254,7 @@ class _GoalFormSheetState extends State<_GoalFormSheet> {
   late final TextEditingController _name = TextEditingController(
     text: widget.initialName,
   );
+  late String _iconKey = GoalIcons.resolveKey(widget.initialIconKey);
   bool _isSaving = false;
   String? _error;
 
@@ -235,7 +273,7 @@ class _GoalFormSheetState extends State<_GoalFormSheet> {
       _isSaving = true;
       _error = null;
     });
-    final failure = await widget.onSave(name);
+    final failure = await widget.onSave(name, _iconKey);
     if (!mounted) {
       return;
     }
@@ -247,6 +285,23 @@ class _GoalFormSheetState extends State<_GoalFormSheet> {
         _error = failure;
       });
     }
+  }
+
+  Future<void> _delete() async {
+    final onDelete = widget.onDelete;
+    if (onDelete == null) {
+      return;
+    }
+    final confirmed = await confirmAction(
+      context,
+      title: 'Desativar objetivo?',
+      message: 'O objetivo deixa de aparecer nas listas.',
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    Navigator.of(context).pop();
+    await onDelete();
   }
 
   @override
@@ -274,6 +329,13 @@ class _GoalFormSheetState extends State<_GoalFormSheet> {
               counterText: '',
             ),
           ),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Ícone', style: AppTextStyles.label(context.colors)),
+          const SizedBox(height: AppSpacing.sm),
+          GoalIconPicker(
+            selectedKey: _iconKey,
+            onChanged: (key) => setState(() => _iconKey = key),
+          ),
           if (error != null) ...[
             const SizedBox(height: AppSpacing.md),
             AppErrorBanner(message: error),
@@ -291,6 +353,16 @@ class _GoalFormSheetState extends State<_GoalFormSheet> {
               );
             },
           ),
+          if (widget.isEditing) ...[
+            const SizedBox(height: AppSpacing.sm),
+            AppButton(
+              label: 'Desativar objetivo',
+              icon: Icons.delete_outline,
+              variant: AppButtonVariant.ghost,
+              isFullWidth: true,
+              onPressed: _delete,
+            ),
+          ],
         ],
       ),
     );

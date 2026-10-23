@@ -10,6 +10,7 @@ void main() {
         'name': 'Renda',
         'type': 'FIXED',
         'active': true,
+        'iconKey': 'home',
       }).toDomain();
 
       expect(category.id, 'c1');
@@ -17,6 +18,7 @@ void main() {
       expect(category.type, CategoryType.fixed);
       expect(category.isFixed, isTrue);
       expect(category.active, isTrue);
+      expect(category.iconKey, 'home');
     });
 
     test('maps a variable category', () {
@@ -30,6 +32,7 @@ void main() {
       expect(category.type, CategoryType.variable);
       expect(category.isFixed, isFalse);
       expect(category.active, isFalse);
+      expect(category.iconKey, isNull);
     });
   });
 }

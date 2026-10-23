@@ -74,9 +74,17 @@ Map<String, dynamic> _missingMonth() => <String, dynamic>{
   'quotas': <Object>[],
 };
 
+List<Object> _goals() => <Object>[
+  {'id': 'g1', 'name': 'Viagem', 'active': true, 'iconKey': 'plane'},
+  {'id': 'g2', 'name': 'Carro', 'active': true, 'iconKey': 'car'},
+];
+
 MockClient _client({bool created = false}) {
   var hasMonth = created;
   return MockClient((request) async {
+    if (request.url.path == '/api/goals') {
+      return jsonResponse(_goals());
+    }
     if (request.url.path == '/api/goal-plan' && request.method == 'POST') {
       hasMonth = true;
       return jsonResponse(_plan(), status: 201);
@@ -142,6 +150,9 @@ void main() {
     var closed = false;
     final client = MockClient((request) async {
       requests.add(request);
+      if (request.url.path == '/api/goals') {
+        return jsonResponse(_goals());
+      }
       if (request.method == 'GET') {
         return jsonResponse(_monthView(closed: closed, actual1: 0, actual2: 0));
       }

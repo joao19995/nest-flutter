@@ -11,12 +11,16 @@ class MonthlyPlanEntry {
     required this.accountName,
     required this.planned,
     required this.actual,
+    this.categoryIconKey,
   });
 
   final String id;
 
   /// The expense category name.
   final String categoryName;
+
+  /// The category's stored semantic icon key, when it has one.
+  final String? categoryIconKey;
 
   /// Whether the category is fixed or variable.
   final CategoryType type;

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
@@ -26,7 +28,7 @@ void main() {
     );
 
     final viewModel = _viewModel(client);
-    await viewModel.load();
+    await viewModel.setIncludeInactive(true);
 
     expect(viewModel.goals, hasLength(2));
     expect(viewModel.goals.first.name, 'Carro');
@@ -34,22 +36,27 @@ void main() {
   });
 
   test('createGoal adds the goal to the catalogue', () async {
+    Object? body;
     final client = MockClient((request) async {
       if (request.method == 'POST') {
+        body = jsonDecode(request.body);
         return jsonResponse(const {
           'id': 'g3',
           'name': 'Casa',
           'active': true,
+          'iconKey': 'home',
         }, status: 201);
       }
       return jsonResponse(const <Object>[], status: 404);
     });
 
     final viewModel = _viewModel(client);
-    final failure = await viewModel.createGoal('Casa');
+    final failure = await viewModel.createGoal('Casa', iconKey: 'home');
 
     expect(failure, isNull);
     expect(viewModel.goals.single.name, 'Casa');
+    expect(viewModel.goals.single.iconKey, 'home');
+    expect((body as Map<String, dynamic>)['iconKey'], 'home');
   });
 
   test(
@@ -76,7 +83,7 @@ void main() {
       final goal = viewModel.goals.single;
 
       expect(await viewModel.deleteGoal(goal), isNull);
-      expect(viewModel.goals.single.active, isFalse);
+      expect(viewModel.goals, isEmpty);
 
       expect(await viewModel.restoreGoal(goal), isNull);
       expect(viewModel.goals.single.active, isTrue);
