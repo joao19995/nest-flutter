@@ -62,39 +62,41 @@ class _YearMonthDot extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         customBorder: const CircleBorder(),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xs),
-          child: Container(
-            key: ValueKey('year-strip-ring-${month.month}'),
-            width: AppSizes.yearStripRing,
-            height: AppSizes.yearStripRing,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: isCurrent
-                  ? Border.all(
-                      color: colors.primary,
-                      width: AppSizes.yearStripRingWidth,
-                    )
-                  : null,
-            ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppSizes.minTouchTarget),
+          child: Center(
             child: Container(
-              key: ValueKey('year-strip-${month.month}'),
-              width: AppSizes.yearStripDot,
-              height: AppSizes.yearStripDot,
+              key: ValueKey('year-strip-ring-${month.month}'),
+              width: AppSizes.yearStripRing,
+              height: AppSizes.yearStripRing,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: closed
-                    ? colors.primary
-                    : open
-                    ? colors.mint
-                    : colors.lineSoft,
-                border: open
+                border: isCurrent
                     ? Border.all(
                         color: colors.primary,
                         width: AppSizes.yearStripRingWidth,
                       )
                     : null,
+              ),
+              child: Container(
+                key: ValueKey('year-strip-${month.month}'),
+                width: AppSizes.yearStripDot,
+                height: AppSizes.yearStripDot,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: closed
+                      ? colors.primary
+                      : open
+                      ? colors.mint
+                      : colors.lineSoft,
+                  border: open
+                      ? Border.all(
+                          color: colors.primary,
+                          width: AppSizes.yearStripRingWidth,
+                        )
+                      : null,
+                ),
               ),
             ),
           ),

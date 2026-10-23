@@ -96,5 +96,26 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('year-strip-2026-03')));
       expect(tapped, '2026-03');
     });
+
+    testWidgets('gives every point a tall touch target', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          AppYearStrip(
+            months: _months(),
+            currentMonth: '2026-09',
+            onTap: (_) {},
+          ),
+        ),
+      );
+
+      final target = find.descendant(
+        of: find.byTooltip('Janeiro'),
+        matching: find.byType(InkWell),
+      );
+      expect(
+        tester.getSize(target).height,
+        greaterThanOrEqualTo(AppSizes.minTouchTarget),
+      );
+    });
   });
 }

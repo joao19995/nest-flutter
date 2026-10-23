@@ -114,7 +114,11 @@ Map<String, dynamic> _month() => const {
   },
 };
 
-DashboardViewModel _viewModel(MockClient client) {
+DashboardViewModel _viewModel(
+  MockClient client, {
+  DateTime? now,
+  DateTime Function()? clock,
+}) {
   final api = NestApiClient(
     httpClient: client,
     baseUrl: 'http://test.local',
@@ -124,11 +128,15 @@ DashboardViewModel _viewModel(MockClient client) {
     expensesRepository: ExpensesRepository(client: api),
     goalsRepository: GoalsRepository(client: api),
     eventsRepository: EventsRepository(client: api),
-    now: DateTime(2026, 10, 18, 15),
+    now: now ?? DateTime(2026, 10, 18, 15),
+    clock: clock,
   );
 }
 
-MockClient _client() => MockClient((request) async {
+MockClient _client({bool failEvents = false}) => MockClient((request) async {
+  if (failEvents && request.url.path == '/api/events') {
+    return jsonResponse(const {'error': 'Eventos indisponíveis'}, status: 500);
+  }
   switch (request.url.path) {
     case '/api/months/summary':
       return jsonResponse(_yearSummary());
@@ -147,6 +155,36 @@ MockClient _client() => MockClient((request) async {
   }
 });
 
+Map<String, dynamic> _yearSummaryFor(int year) => {
+  'year': year,
+  'planned': 0,
+  'actual': 0,
+  'diff': 0,
+  'diffPct': 0,
+  'over': false,
+  'remainingMonths': 0,
+  'perRemainingMonth': 0,
+  'hasData': true,
+  'months': [
+    {
+      'month': '$year-01',
+      'status': 'closed',
+      'planned': 0,
+      'actual': 0,
+      'progressPct': 0,
+      'over': false,
+    },
+    {
+      'month': '$year-12',
+      'status': 'closed',
+      'planned': 0,
+      'actual': 0,
+      'progressPct': 0,
+      'over': false,
+    },
+  ],
+};
+
 void main() {
   test('aggregates alerts, events, goals and the month hero', () async {
     final viewModel = _viewModel(_client());
@@ -154,7 +192,8 @@ void main() {
     await viewModel.load();
 
     expect(viewModel.isLoading, isFalse);
-    expect(viewModel.errorMessage, isNull);
+    expect(viewModel.monthSection.errorMessage, isNull);
+    expect(viewModel.eventsSection.errorMessage, isNull);
     expect(viewModel.greeting, 'Boa tarde');
     final alerts = viewModel.alerts;
     expect(alerts, hasLength(2));
@@ -208,5 +247,69 @@ void main() {
 
     expect(viewModel.goalsYear, 2025);
     expect(viewModel.goals, hasLength(2));
+  });
+
+  test('keeps the other sections when one request fails', () async {
+    final viewModel = _viewModel(_client(failEvents: true));
+
+    await viewModel.load();
+
+    expect(viewModel.monthSummary?.actual, 1240);
+    expect(viewModel.alerts, hasLength(2));
+    expect(viewModel.goals, hasLength(2));
+    expect(viewModel.eventsSection.errorMessage, 'Eventos indisponíveis');
+    expect(viewModel.upcomingEvents, isEmpty);
+    expect(viewModel.monthSection.errorMessage, isNull);
+    expect(viewModel.goalsSection.errorMessage, isNull);
+  });
+
+  test('refresh reads the clock again', () async {
+    var current = DateTime(2026, 10, 18, 15);
+    final viewModel = _viewModel(_client(), now: current, clock: () => current);
+
+    await viewModel.load();
+    expect(viewModel.greeting, 'Boa tarde');
+    expect(viewModel.today, DateTime(2026, 10, 18));
+
+    current = DateTime(2026, 10, 19, 9);
+    await viewModel.refresh();
+
+    expect(viewModel.greeting, 'Bom dia');
+    expect(viewModel.today, DateTime(2026, 10, 19));
+  });
+
+  test('loads the year strip for the displayed month year', () async {
+    final requestedYears = <String>[];
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/months/summary') {
+        final year = request.url.queryParameters['year'] ?? '';
+        requestedYears.add(year);
+        return jsonResponse(_yearSummaryFor(int.parse(year)));
+      }
+      switch (request.url.path) {
+        case '/api/events':
+          return jsonResponse(const <Object>[]);
+        case '/api/goal-plan':
+          return jsonResponse(_goalYear());
+        case '/api/goals':
+          return jsonResponse(const <Object>[]);
+        case '/api/goal-templates/applicable':
+          return jsonResponse(const {'template': null});
+        default:
+          return jsonResponse(const <Object>[], status: 404);
+      }
+    });
+    final viewModel = _viewModel(client, now: DateTime(2026, 1, 15, 12));
+
+    await viewModel.load();
+    expect(viewModel.yearMonths.first.month, '2026-01');
+
+    await viewModel.showPreviousMonth();
+
+    expect(viewModel.month, '2025-12');
+    expect(viewModel.monthSummary, isNull);
+    expect(viewModel.yearMonths.first.month, '2025-01');
+    expect(viewModel.stripSection.isLoading, isFalse);
+    expect(requestedYears, contains('2025'));
   });
 }

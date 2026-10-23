@@ -28,7 +28,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   static const List<_NavDestination> _mobileDestinations = [
     _NavDestination.inicio,
     _NavDestination.tarefas,
@@ -49,11 +49,20 @@ class _AppShellState extends State<AppShell> {
 
   TodosViewModel? _todosViewModel;
 
+  /// Bumped when Início becomes visible again, so its view model can refresh.
+  final ValueNotifier<int> _dashboardRefresh = ValueNotifier<int>(0);
+
   _NavDestination _selected = _NavDestination.inicio;
 
   /// The section Finanças opens on, so the dashboard's goals card can deep-link
   /// straight to Objectivos.
   FinancesSection _financesSection = FinancesSection.expenses;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void didChangeDependencies() {
@@ -68,12 +77,31 @@ class _AppShellState extends State<AppShell> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      return;
+    }
+    final todos = _todosViewModel;
+    if (todos != null && !todos.isLoading) {
+      todos.refresh();
+    }
+    if (_selected == _NavDestination.inicio) {
+      _dashboardRefresh.value++;
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _dashboardRefresh.dispose();
     _todosViewModel?.dispose();
     super.dispose();
   }
 
   void _select(_NavDestination destination) {
+    if (destination == _NavDestination.inicio) {
+      _dashboardRefresh.value++;
+    }
     setState(() => _selected = destination);
   }
 
@@ -202,6 +230,7 @@ class _AppShellState extends State<AppShell> {
         onOpenTodos: () => _select(_NavDestination.tarefas),
         onOpenGoals: _openGoals,
         onOpenMonth: _openMonth,
+        refreshSignal: _dashboardRefresh,
       ),
       _NavDestination.tarefas => TodosView(viewModel: _todosViewModel),
       _NavDestination.calendario => const CalendarView(),

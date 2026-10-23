@@ -63,4 +63,45 @@ void main() {
     expect(requested, contains('/api/people'));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('refreshes the dashboard when Início is selected again', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    final year = DateTime.now().year;
+    var summaryRequests = 0;
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/months/summary') {
+        summaryRequests++;
+        return jsonResponse(_yearSummary(year));
+      }
+      if (request.url.path == '/api/goal-plan') {
+        return jsonResponse({
+          'plans': <Object>[],
+          'funding': {'year': year, 'annualTotal': 0, 'months': <Object>[]},
+        });
+      }
+      if (request.url.path == '/api/goal-templates/applicable') {
+        return jsonResponse(const {'template': null});
+      }
+      if (request.url.path.startsWith('/api/months/')) {
+        return jsonResponse(const {'error': 'not found'}, status: 404);
+      }
+      return jsonResponse(const <Object>[]);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const AppShell()),
+    );
+    await tester.pumpAndSettle();
+    expect(summaryRequests, 1);
+
+    await tester.tap(find.text('Tarefas'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Início'));
+    await tester.pumpAndSettle();
+
+    expect(summaryRequests, 2);
+    expect(tester.takeException(), isNull);
+  });
 }

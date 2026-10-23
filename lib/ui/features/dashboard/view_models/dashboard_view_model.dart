@@ -35,25 +35,59 @@ class DashboardAlert {
   final DashboardAlertKind kind;
 }
 
+/// The loading/error state of one dashboard section.
+///
+/// Each section loads and fails on its own, so a failing events request never
+/// hides the hero or the alerts.
+class DashboardSectionState {
+  const DashboardSectionState({this.isLoading = false, this.errorMessage});
+
+  /// True while the section is being fetched.
+  final bool isLoading;
+
+  /// The failure to surface in the section, or null.
+  final String? errorMessage;
+}
+
 /// Presentation state for the dashboard: the household's at-a-glance summary.
 ///
-/// Reads run sequentially — the API shares a single database connection, so
-/// concurrent requests gain nothing and can stall.
+/// Each section loads sequentially — the API shares a single database
+/// connection, so concurrent requests gain nothing and can stall — but their
+/// loading and failure states are independent.
 class DashboardViewModel extends ChangeNotifier {
-  DashboardViewModel({
+  factory DashboardViewModel({
     required ExpensesRepository expensesRepository,
     required GoalsRepository goalsRepository,
     required EventsRepository eventsRepository,
     DateTime? now,
+    DateTime Function()? clock,
+  }) {
+    final resolvedNow = now ?? (clock ?? DateTime.now)();
+    return DashboardViewModel._(
+      expensesRepository: expensesRepository,
+      goalsRepository: goalsRepository,
+      eventsRepository: eventsRepository,
+      now: resolvedNow,
+      clock: clock ?? (now == null ? DateTime.now : () => resolvedNow),
+    );
+  }
+
+  DashboardViewModel._({
+    required ExpensesRepository expensesRepository,
+    required GoalsRepository goalsRepository,
+    required EventsRepository eventsRepository,
+    required DateTime now,
+    required DateTime Function() clock,
   }) : _expensesRepository = expensesRepository,
        _goalsRepository = goalsRepository,
        _eventsRepository = eventsRepository,
-       _now = now ?? DateTime.now(),
-       _month = MonthKey.current(),
-       _goalsYear = (now ?? DateTime.now()).year,
+       _now = now,
+       _clock = clock,
+       _month = MonthKey.of(now.year, now.month),
+       _goalsYear = now.year,
        _goals = GoalsViewModel(
          goalsRepository: goalsRepository,
-         year: (now ?? DateTime.now()).year,
+         year: now.year,
        );
 
   /// How many days ahead the "Hoje e próximos" list looks.
@@ -68,23 +102,62 @@ class DashboardViewModel extends ChangeNotifier {
   final ExpensesRepository _expensesRepository;
   final GoalsRepository _goalsRepository;
   final EventsRepository _eventsRepository;
-  final DateTime _now;
+
+  /// Supplies the current time. Tests pin it with [DashboardViewModel.new].
+  final DateTime Function() _clock;
+
+  DateTime _now;
 
   GoalsViewModel _goals;
   String _month;
   int _goalsYear;
 
-  bool _isLoading = true;
-  bool get isLoading => _isLoading;
+  /// True once the user has stepped away from the current month/year, so a
+  /// refresh does not yank the selection back.
+  bool _monthSelected = false;
+  bool _goalsYearSelected = false;
 
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
+  bool _isFetching = false;
+
+  /// True while any dashboard section is being fetched.
+  bool get isLoading => _isFetching;
+
+  DashboardSectionState _monthSection = const DashboardSectionState(
+    isLoading: true,
+  );
+  DashboardSectionState _alertsSection = const DashboardSectionState(
+    isLoading: true,
+  );
+  DashboardSectionState _stripSection = const DashboardSectionState(
+    isLoading: true,
+  );
+  DashboardSectionState _eventsSection = const DashboardSectionState(
+    isLoading: true,
+  );
+  DashboardSectionState _goalsSection = const DashboardSectionState(
+    isLoading: true,
+  );
 
   List<DashboardAlert> _alerts = const [];
   List<CalendarEvent> _upcomingEvents = const [];
   List<GoalSummary> _goalsList = const [];
   List<ExpenseMonthSummary> _yearMonths = const [];
   ExpenseMonthSummary? _monthSummary;
+
+  /// The header hero's loading state.
+  DashboardSectionState get monthSection => _monthSection;
+
+  /// The alerts card's loading state.
+  DashboardSectionState get alertsSection => _alertsSection;
+
+  /// The year strip's loading state.
+  DashboardSectionState get stripSection => _stripSection;
+
+  /// The upcoming events section's loading state.
+  DashboardSectionState get eventsSection => _eventsSection;
+
+  /// The goals section's loading state.
+  DashboardSectionState get goalsSection => _goalsSection;
 
   /// Warnings worth surfacing at the top of the dashboard.
   List<DashboardAlert> get alerts => _alerts;
@@ -119,7 +192,7 @@ class DashboardViewModel extends ChangeNotifier {
   /// True while the goals panel can step forward a year.
   bool get canGoToNextGoalsYear => _goalsYear < _now.year + 1;
 
-  /// Today, at midnight, fixed at construction.
+  /// Today, at midnight, in the current clock.
   DateTime get today => DateTime(_now.year, _now.month, _now.day);
 
   /// The time-of-day greeting for the header.
@@ -134,36 +207,70 @@ class DashboardViewModel extends ChangeNotifier {
     return 'Boa noite';
   }
 
-  /// Loads every dashboard section.
+  /// Loads every dashboard section, showing skeletons.
   Future<void> load() => _load(showSkeleton: true);
 
-  /// Reloads without showing the loading skeleton (pull-to-refresh).
+  /// Reloads without showing the loading skeleton (pull-to-refresh, tab and
+  /// app resume). Keeps the previous data on screen until each refresh lands.
   Future<void> refresh() => _load(showSkeleton: false);
 
   Future<void> _load({required bool showSkeleton}) async {
-    if (showSkeleton) {
-      _isLoading = true;
+    if (_isFetching) {
+      return;
     }
-    _errorMessage = null;
-    notifyListeners();
+    _isFetching = true;
     try {
-      final summary = await _expensesRepository.fetchYearSummary(_now.year);
-      _yearMonths = summary.months;
-      _alerts = _alertsFrom(summary);
+      final wasCurrent = MonthKey.of(_now.year, _now.month);
+      _now = _clock();
+      if (!_monthSelected || _month == wasCurrent) {
+        _month = MonthKey.of(_now.year, _now.month);
+      }
+      if (!_goalsYearSelected && _goalsYear != _now.year) {
+        _goalsYear = _now.year;
+        _replaceGoals();
+      }
 
-      _upcomingEvents = await _eventsRepository.fetchEvents(
-        from: today,
-        to: today.add(const Duration(days: _upcomingDays)),
-      );
+      _monthSection = DashboardSectionState(isLoading: showSkeleton);
+      _alertsSection = DashboardSectionState(isLoading: showSkeleton);
+      _stripSection = DashboardSectionState(isLoading: showSkeleton);
+      _eventsSection = DashboardSectionState(isLoading: showSkeleton);
+      _goalsSection = DashboardSectionState(isLoading: showSkeleton);
+      notifyListeners();
 
-      await _goals.load();
-      _readGoals();
-
-      await _loadMonth();
-    } on ApiFailure catch (failure) {
-      _errorMessage = failure.message;
+      await _loadMonth(showLoading: showSkeleton && _monthSummary == null);
+      await _loadYear(showLoading: showSkeleton);
+      await _loadEvents(showLoading: showSkeleton);
+      await _loadGoals(showLoading: showSkeleton);
     } finally {
-      _isLoading = false;
+      _isFetching = false;
+      notifyListeners();
+    }
+  }
+
+  /// Retries the header hero after a failure.
+  Future<void> retryMonth() => _runSection(_loadMonth);
+
+  /// Retries the alerts year summary after a failure.
+  Future<void> retryAlerts() => _runSection(() => _loadYear(showLoading: true));
+
+  /// Retries the year strip after a failure.
+  Future<void> retryStrip() => _runSection(_loadStrip);
+
+  /// Retries the upcoming events after a failure.
+  Future<void> retryEvents() => _runSection(_loadEvents);
+
+  /// Retries the goals after a failure.
+  Future<void> retryGoals() => _runSection(_loadGoals);
+
+  Future<void> _runSection(Future<void> Function() action) async {
+    if (_isFetching) {
+      return;
+    }
+    _isFetching = true;
+    try {
+      await action();
+    } finally {
+      _isFetching = false;
       notifyListeners();
     }
   }
@@ -173,8 +280,13 @@ class DashboardViewModel extends ChangeNotifier {
     if (!canGoToPreviousMonth) {
       return;
     }
+    _monthSelected = true;
+    final previousYear = _stripYear;
     _month = MonthKey.shift(_month, -1);
-    await _reloadMonth();
+    await _loadMonth(showLoading: false);
+    if (_stripYear != previousYear) {
+      await _loadStrip();
+    }
   }
 
   /// Steps the header hero forward a month and reloads its summary.
@@ -182,22 +294,102 @@ class DashboardViewModel extends ChangeNotifier {
     if (!canGoToNextMonth) {
       return;
     }
+    _monthSelected = true;
+    final previousYear = _stripYear;
     _month = MonthKey.shift(_month, 1);
-    await _reloadMonth();
+    await _loadMonth(showLoading: false);
+    if (_stripYear != previousYear) {
+      await _loadStrip();
+    }
   }
 
-  Future<void> _reloadMonth() async {
+  Future<void> _loadMonth({bool showLoading = true}) async {
+    if (showLoading) {
+      _monthSection = const DashboardSectionState(isLoading: true);
+      notifyListeners();
+    }
     try {
-      await _loadMonth();
+      final plan = await _expensesRepository.fetchMonth(_month);
+      _monthSummary = plan?.summary;
+      _monthSection = const DashboardSectionState();
     } on ApiFailure catch (failure) {
-      _errorMessage = failure.message;
+      _monthSection = DashboardSectionState(errorMessage: failure.message);
     }
     notifyListeners();
   }
 
-  Future<void> _loadMonth() async {
-    final plan = await _expensesRepository.fetchMonth(_month);
-    _monthSummary = plan?.summary;
+  Future<void> _loadYear({required bool showLoading}) async {
+    final displayYear = _stripYear;
+    if (showLoading) {
+      _alertsSection = const DashboardSectionState(isLoading: true);
+      _stripSection = const DashboardSectionState(isLoading: true);
+      notifyListeners();
+    }
+    try {
+      final current = await _expensesRepository.fetchYearSummary(_now.year);
+      _alerts = _alertsFrom(current);
+      _alertsSection = const DashboardSectionState();
+      if (displayYear == _now.year) {
+        _yearMonths = current.months;
+        _stripSection = const DashboardSectionState();
+      }
+    } on ApiFailure catch (failure) {
+      _alertsSection = DashboardSectionState(errorMessage: failure.message);
+      if (displayYear == _now.year) {
+        _stripSection = DashboardSectionState(errorMessage: failure.message);
+      }
+    }
+    notifyListeners();
+
+    if (displayYear != _now.year) {
+      await _loadStrip(showLoading: false);
+    }
+  }
+
+  Future<void> _loadStrip({bool showLoading = true}) async {
+    if (showLoading) {
+      _stripSection = const DashboardSectionState(isLoading: true);
+      notifyListeners();
+    }
+    try {
+      final display = await _expensesRepository.fetchYearSummary(_stripYear);
+      _yearMonths = display.months;
+      _stripSection = const DashboardSectionState();
+    } on ApiFailure catch (failure) {
+      _stripSection = DashboardSectionState(errorMessage: failure.message);
+    }
+    notifyListeners();
+  }
+
+  Future<void> _loadEvents({bool showLoading = true}) async {
+    if (showLoading) {
+      _eventsSection = const DashboardSectionState(isLoading: true);
+      notifyListeners();
+    }
+    try {
+      _upcomingEvents = await _eventsRepository.fetchEvents(
+        from: today,
+        to: today.add(const Duration(days: _upcomingDays)),
+      );
+      _eventsSection = const DashboardSectionState();
+    } on ApiFailure catch (failure) {
+      _eventsSection = DashboardSectionState(errorMessage: failure.message);
+    }
+    notifyListeners();
+  }
+
+  Future<void> _loadGoals({bool showLoading = true}) async {
+    if (showLoading) {
+      _goalsSection = const DashboardSectionState(isLoading: true);
+      notifyListeners();
+    }
+    await _goals.load();
+    _readGoals();
+    final message = _goals.errorMessage;
+    _goalsSection = message == null
+        ? const DashboardSectionState()
+        : DashboardSectionState(errorMessage: message);
+    notifyListeners();
   }
 
   /// Steps the goals panel back a year and reloads it.
@@ -205,8 +397,10 @@ class DashboardViewModel extends ChangeNotifier {
     if (!canGoToPreviousGoalsYear) {
       return;
     }
+    _goalsYearSelected = true;
     _goalsYear--;
-    await _reloadGoals();
+    _replaceGoals();
+    await _loadGoals();
   }
 
   /// Steps the goals panel forward a year and reloads it.
@@ -214,27 +408,31 @@ class DashboardViewModel extends ChangeNotifier {
     if (!canGoToNextGoalsYear) {
       return;
     }
+    _goalsYearSelected = true;
     _goalsYear++;
-    await _reloadGoals();
+    _replaceGoals();
+    await _loadGoals();
   }
 
-  Future<void> _reloadGoals() async {
+  void _replaceGoals() {
     _goals.dispose();
     _goals = GoalsViewModel(
       goalsRepository: _goalsRepository,
       year: _goalsYear,
     );
-    await _goals.load();
-    _readGoals();
-    notifyListeners();
   }
 
   void _readGoals() => _goalsList = _goals.goals;
 
-  /// The alerts implied by the year's month statuses: the current month left
-  /// open or uncreated, and the next month not created yet.
+  int get _stripYear {
+    final year = int.tryParse(_month.split('-').first);
+    return year ?? _now.year;
+  }
+
+  /// The alerts implied by the current year's month statuses: the current
+  /// month left open or uncreated, and the next month not created yet.
   List<DashboardAlert> _alertsFrom(ExpenseYearSummary summary) {
-    final current = MonthKey.current();
+    final current = MonthKey.of(_now.year, _now.month);
     final next = MonthKey.shift(current, 1);
     final alerts = <DashboardAlert>[];
     for (final month in summary.months) {

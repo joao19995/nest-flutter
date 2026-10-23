@@ -81,6 +81,11 @@ abstract final class AppSizes {
   /// Minimum height of an interactive button.
   static const double buttonHeight = 40;
 
+  /// Minimum touch target. Wider controls (e.g. the year strip) may be
+  /// narrower than this because twelve months do not fit on a phone at 48 dp
+  /// each; the vertical target still meets the guideline.
+  static const double minTouchTarget = 48;
+
   /// Height of a single day row in the calendar grid. The width is derived
   /// from the available space, never fixed, so the seven columns never
   /// overflow a narrow phone.
