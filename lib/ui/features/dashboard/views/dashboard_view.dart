@@ -168,7 +168,7 @@ class _DashboardContent extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
         if (viewModel.alerts.isNotEmpty) ...[
-          _AttentionCard(alerts: viewModel.alerts),
+          _AttentionCard(alerts: viewModel.alerts, onOpenMonth: onOpenMonth),
           const SizedBox(height: AppSpacing.lg),
         ],
         _DashboardSection(
@@ -243,37 +243,59 @@ class _GreetingHeader extends StatelessWidget {
   }
 }
 
-/// The warning strip listing the months that need attention.
+/// The actionable warnings listing the months that need attention.
 class _AttentionCard extends StatelessWidget {
-  const _AttentionCard({required this.alerts});
+  const _AttentionCard({required this.alerts, required this.onOpenMonth});
 
-  final List<String> alerts;
+  final List<DashboardAlert> alerts;
+  final ValueChanged<String>? onOpenMonth;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.warning_amber_rounded,
-                size: AppSizes.iconLarge,
-                color: context.colors.over,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              const Text('Atenção', style: AppTextStyles.sectionHeading),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          for (final alert in alerts)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Text('• $alert', style: AppTextStyles.body),
-            ),
+          for (var index = 0; index < alerts.length; index++) ...[
+            if (index > 0) const SizedBox(height: AppSpacing.sm),
+            _AlertRow(alert: alerts[index], onOpenMonth: onOpenMonth),
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// One actionable alert: warning icon, message and a chip that opens the month.
+class _AlertRow extends StatelessWidget {
+  const _AlertRow({required this.alert, required this.onOpenMonth});
+
+  final DashboardAlert alert;
+  final ValueChanged<String>? onOpenMonth;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final onOpenMonth = this.onOpenMonth;
+    final toClose = alert.kind == DashboardAlertKind.toClose;
+    return Row(
+      children: [
+        Icon(
+          Icons.warning_amber_rounded,
+          size: AppSizes.iconLarge,
+          color: toClose ? colors.over : colors.primary,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(child: Text(alert.message, style: AppTextStyles.body)),
+        const SizedBox(width: AppSpacing.sm),
+        AppChip(
+          label: toClose ? 'Fechar' : 'Criar',
+          style: toClose
+              ? AppBadgeStyles.destructive(colors)
+              : AppBadgeStyles.open(colors),
+          onTap: onOpenMonth == null ? null : () => onOpenMonth(alert.month),
+        ),
+      ],
     );
   }
 }

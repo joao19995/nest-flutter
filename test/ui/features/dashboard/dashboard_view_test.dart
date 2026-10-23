@@ -112,6 +112,21 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('opens the alert month from the action chip', (tester) async {
+    setPhoneSize(tester);
+    String? opened;
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(_client(month)),
+        DashboardView(onOpenMonth: (value) => opened = value),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Fechar'));
+    expect(opened, month);
+  });
+
   testWidgets('opens the month when the hero is tapped', (tester) async {
     setPhoneSize(tester);
     String? opened;

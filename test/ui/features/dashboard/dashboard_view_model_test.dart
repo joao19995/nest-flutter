@@ -156,10 +156,14 @@ void main() {
     expect(viewModel.isLoading, isFalse);
     expect(viewModel.errorMessage, isNull);
     expect(viewModel.greeting, 'Boa tarde');
-    expect(viewModel.alerts, [
-      'Outubro por fechar',
-      'Novembro ainda não criado',
-    ]);
+    final alerts = viewModel.alerts;
+    expect(alerts, hasLength(2));
+    expect(alerts.first.message, 'Outubro por fechar');
+    expect(alerts.first.month, '2026-10');
+    expect(alerts.first.kind, DashboardAlertKind.toClose);
+    expect(alerts.last.message, 'Novembro ainda não criado');
+    expect(alerts.last.month, '2026-11');
+    expect(alerts.last.kind, DashboardAlertKind.toCreate);
     expect(viewModel.upcomingEvents, hasLength(2));
     expect(viewModel.upcomingEvents.first.title, 'Consulta');
 

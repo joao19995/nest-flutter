@@ -9,6 +9,32 @@ import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/app_formatters.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 
+/// The action a dashboard alert invites.
+enum DashboardAlertKind {
+  /// The month exists but is still open.
+  toClose,
+
+  /// The month has not been created yet.
+  toCreate,
+}
+
+/// A month that needs attention, with the action that resolves it.
+class DashboardAlert {
+  const DashboardAlert({
+    required this.message,
+    required this.month,
+    required this.kind,
+  });
+
+  /// The sentence shown in the dashboard.
+  final String message;
+
+  /// The month to open, formatted `YYYY-MM`.
+  final String month;
+
+  final DashboardAlertKind kind;
+}
+
 /// Presentation state for the dashboard: the household's at-a-glance summary.
 ///
 /// Reads run sequentially — the API shares a single database connection, so
@@ -54,13 +80,13 @@ class DashboardViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  List<String> _alerts = const [];
+  List<DashboardAlert> _alerts = const [];
   List<CalendarEvent> _upcomingEvents = const [];
   List<GoalSummary> _goalsList = const [];
   ExpenseMonthSummary? _monthSummary;
 
   /// Warnings worth surfacing at the top of the dashboard.
-  List<String> get alerts => _alerts;
+  List<DashboardAlert> get alerts => _alerts;
 
   /// The events happening today and over the next few days, earliest first.
   List<CalendarEvent> get upcomingEvents => _upcomingEvents;
@@ -202,20 +228,38 @@ class DashboardViewModel extends ChangeNotifier {
 
   /// The alerts implied by the year's month statuses: the current month left
   /// open or uncreated, and the next month not created yet.
-  List<String> _alertsFrom(ExpenseYearSummary summary) {
+  List<DashboardAlert> _alertsFrom(ExpenseYearSummary summary) {
     final current = MonthKey.current();
     final next = MonthKey.shift(current, 1);
-    final alerts = <String>[];
+    final alerts = <DashboardAlert>[];
     for (final month in summary.months) {
       final name = AppFormatters.monthName(month.month);
       if (month.month == current && month.status == ExpenseMonthStatus.open) {
-        alerts.add('$name por fechar');
+        alerts.add(
+          DashboardAlert(
+            message: '$name por fechar',
+            month: month.month,
+            kind: DashboardAlertKind.toClose,
+          ),
+        );
       } else if (month.month == current &&
           month.status == ExpenseMonthStatus.missing) {
-        alerts.add('$name ainda não criado');
+        alerts.add(
+          DashboardAlert(
+            message: '$name ainda não criado',
+            month: month.month,
+            kind: DashboardAlertKind.toCreate,
+          ),
+        );
       } else if (month.month == next &&
           month.status == ExpenseMonthStatus.missing) {
-        alerts.add('$name ainda não criado');
+        alerts.add(
+          DashboardAlert(
+            message: '$name ainda não criado',
+            month: month.month,
+            kind: DashboardAlertKind.toCreate,
+          ),
+        );
       }
     }
     return alerts;
