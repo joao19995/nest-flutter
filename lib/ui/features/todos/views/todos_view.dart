@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nest/domain/models/todo_list.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
@@ -361,7 +364,14 @@ class _ListBody extends StatelessWidget {
               final item = items[index];
               final row = Dismissible(
                 key: ValueKey('${item.id}-dismiss'),
-                direction: DismissDirection.endToStart,
+                confirmDismiss: (direction) async {
+                  if (direction == DismissDirection.startToEnd) {
+                    unawaited(HapticFeedback.selectionClick());
+                    await viewModel.toggleItem(list, item);
+                    return false;
+                  }
+                  return true;
+                },
                 onDismissed: (_) {
                   viewModel.deleteItem(list, item);
                   showAppSnackBar(
@@ -371,7 +381,7 @@ class _ListBody extends StatelessWidget {
                     onAction: () => viewModel.restoreItem(list, item),
                   );
                 },
-                background: const DismissBackground(
+                background: const DismissCompleteBackground(
                   alignment: Alignment.centerLeft,
                 ),
                 secondaryBackground: const DismissBackground(

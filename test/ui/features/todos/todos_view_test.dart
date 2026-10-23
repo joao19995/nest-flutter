@@ -125,6 +125,47 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('swiping a task right marks it done without removing it', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    String? patchedPath;
+    String? deletedPath;
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/todo-lists' && request.method == 'GET') {
+        return jsonResponse(_lists());
+      }
+      if (request.method == 'PATCH') {
+        patchedPath = request.url.path;
+        return jsonResponse(const {
+          'id': 'i2',
+          'listId': 'l1',
+          'text': 'Pagar renda',
+          'done': true,
+          'position': 2000,
+        });
+      }
+      if (request.method == 'DELETE') {
+        deletedPath = request.url.path;
+      }
+      return jsonResponse(<Object>[], status: 404);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const TodosView()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.fling(find.text('Pagar renda'), const Offset(400, 0), 1000);
+    await tester.pumpAndSettle();
+
+    expect(patchedPath, '/api/todo-lists/l1/items/i2');
+    expect(deletedPath, isNull);
+    expect(find.text('Pagar renda'), findsOneWidget);
+    expect(find.text('2/2 concluídas'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('swiping a task deletes it and offers undo', (tester) async {
     setPhoneSize(tester);
     String? deletedPath;

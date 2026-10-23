@@ -92,7 +92,10 @@ class _AppShellState extends State<AppShell> {
       _selected = _NavDestination.financas;
     });
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => MonthDetailView(month: month)),
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            MonthDetailView(month: month, heroTagPrefix: 'dashboard-month'),
+      ),
     );
   }
 

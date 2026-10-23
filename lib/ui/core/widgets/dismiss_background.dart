@@ -27,3 +27,27 @@ class DismissBackground extends StatelessWidget {
     );
   }
 }
+
+/// The green affordance revealed when a row is swiped towards completion.
+class DismissCompleteBackground extends StatelessWidget {
+  const DismissCompleteBackground({super.key, required this.alignment});
+
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: context.colors.mintSoft,
+        borderRadius: AppRadius.smAll,
+      ),
+      child: Icon(
+        Icons.check,
+        size: AppSizes.iconLarge,
+        color: context.colors.primaryDark,
+      ),
+    );
+  }
+}

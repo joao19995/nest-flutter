@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/ui/core/month_key.dart';
@@ -88,6 +89,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Despesa do mês'), findsOneWidget);
+    final hero = tester.widget<Hero>(find.byType(Hero));
+    expect(hero.tag, 'dashboard-month-$month');
     expect(find.text(AppFormatters.currency(500)), findsOneWidget);
     expect(find.text(AppFormatters.percentage(50)), findsOneWidget);
     expect(find.text('Sem plano'), findsNothing);

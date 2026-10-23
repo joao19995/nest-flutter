@@ -349,9 +349,10 @@ class _DayCell extends StatelessWidget {
       circleColor = null;
       numberColor = inMonth ? colors.ink : colors.faint;
     }
+    final past = day.isBefore(viewModel.today);
     final dotColor = isSelected
         ? colors.surface
-        : (inMonth ? colors.primary : colors.faint);
+        : (inMonth && !past ? colors.primary : colors.faint);
 
     return Material(
       type: MaterialType.transparency,
@@ -428,7 +429,7 @@ class _AgendaCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            _countLabel(events.length),
+            _countLabel(events),
             style: AppTextStyles.bodyMuted(context.colors),
           ),
           if (actionError != null) ...[
@@ -474,11 +475,14 @@ class _AgendaCard extends StatelessWidget {
     );
   }
 
-  static String _countLabel(int count) {
-    if (count == 0) {
+  static String _countLabel(List<CalendarEvent> events) {
+    if (events.isEmpty) {
       return 'Sem eventos';
     }
-    return count == 1 ? '1 evento' : '$count eventos';
+    final count = events.length;
+    final label = count == 1 ? '1 evento' : '$count eventos';
+    final next = AppFormatters.time(events.first.startsAt);
+    return '$label · próximo às $next';
   }
 }
 

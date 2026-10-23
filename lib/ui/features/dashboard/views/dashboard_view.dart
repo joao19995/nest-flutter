@@ -560,66 +560,74 @@ class _DashboardMonthHero extends StatelessWidget {
     final progress = hasPlan
         ? (summary.progressPct / 100).clamp(0.0, 1.0)
         : 0.0;
-    final hero = HeroPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Despesa do mês',
-                  style: AppTextStyles.navSection(
-                    context.colors,
-                  ).copyWith(color: AppColors.onHeroMuted),
+    final hero = Hero(
+      tag: 'dashboard-month-$month',
+      flightShuttleBuilder: heroSurfaceShuttle,
+      child: HeroPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Despesa do mês',
+                    style: AppTextStyles.navSection(
+                      context.colors,
+                    ).copyWith(color: AppColors.onHeroMuted),
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              AppPeriodStepper(
-                label: AppFormatters.monthShort(month),
-                onPrevious: canGoToPrevious ? onPrevious : null,
-                onNext: canGoToNext ? onNext : null,
-                previousTooltip: 'Mês anterior',
-                nextTooltip: 'Mês seguinte',
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: AnimatedAmount(
-                    value: summary?.actual ?? 0,
-                    style: AppTextStyles.statDisplay.copyWith(
-                      color: AppColors.onHero,
+                const SizedBox(width: AppSpacing.md),
+                AppPeriodStepper(
+                  label: AppFormatters.monthShort(month),
+                  onPrevious: canGoToPrevious ? onPrevious : null,
+                  onNext: canGoToNext ? onNext : null,
+                  previousTooltip: 'Mês anterior',
+                  nextTooltip: 'Mês seguinte',
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: AnimatedAmount(
+                      value: summary?.actual ?? 0,
+                      style: AppTextStyles.statDisplay.copyWith(
+                        color: AppColors.onHero,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              AppProgressRing(
-                progress: progress,
-                color: summary?.over == true
-                    ? AppColors.overOnDark
-                    : AppColors.mint,
-                label: hasPlan
-                    ? AppFormatters.percentage(summary.progressPct.round())
-                    : null,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (hasPlan)
-            HeroDeviationPill(diff: diff, diffPct: diffPct, over: summary.over)
-          else
-            const HeroDeltaPill(
-              label: 'Sem plano',
-              color: AppColors.onHeroMuted,
+                const SizedBox(width: AppSpacing.md),
+                AppProgressRing(
+                  progress: progress,
+                  color: summary?.over == true
+                      ? AppColors.overOnDark
+                      : AppColors.mint,
+                  label: hasPlan
+                      ? AppFormatters.percentage(summary.progressPct.round())
+                      : null,
+                ),
+              ],
             ),
-        ],
+            const SizedBox(height: AppSpacing.sm),
+            if (hasPlan)
+              HeroDeviationPill(
+                diff: diff,
+                diffPct: diffPct,
+                over: summary.over,
+              )
+            else
+              const HeroDeltaPill(
+                label: 'Sem plano',
+                color: AppColors.onHeroMuted,
+              ),
+          ],
+        ),
       ),
     );
     if (onOpenMonth == null) {

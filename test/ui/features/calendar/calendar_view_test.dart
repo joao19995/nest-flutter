@@ -75,7 +75,10 @@ void main() {
     await tester.tap(find.text('${day.day}'));
     await tester.pumpAndSettle();
 
-    expect(find.text('1 evento'), findsOneWidget);
+    expect(
+      find.text('1 evento · próximo às ${AppFormatters.time(day)}'),
+      findsOneWidget,
+    );
     expect(find.text('Consulta'), findsOneWidget);
   });
 }
