@@ -87,6 +87,8 @@ class _GoalsCatalogViewState extends State<GoalsCatalogView>
                 onRetry: viewModel.load,
                 emptyMessage: 'Ainda não há objetivos.',
                 emptyIcon: Icons.flag_outlined,
+                emptyActionLabel: 'Novo objetivo',
+                onEmptyAction: () => _openForm(null),
                 child: _CatalogContent(
                   viewModel: viewModel,
                   onEdit: _openForm,

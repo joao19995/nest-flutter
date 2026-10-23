@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:nest/ui/core/theme/theme.dart';
-import 'package:nest/ui/core/widgets/app_button.dart';
 import 'package:nest/ui/core/widgets/app_empty_state.dart';
 import 'package:nest/ui/core/widgets/app_skeleton.dart';
 
@@ -16,6 +15,8 @@ class AsyncView extends StatelessWidget {
     required this.child,
     this.emptyMessage = 'Sem dados.',
     this.emptyIcon = Icons.inbox_outlined,
+    this.emptyActionLabel,
+    this.onEmptyAction,
   });
 
   final bool isLoading;
@@ -26,6 +27,12 @@ class AsyncView extends StatelessWidget {
   final String emptyMessage;
   final IconData emptyIcon;
 
+  /// The optional label of the empty state's action button.
+  final String? emptyActionLabel;
+
+  /// Called when the empty state's action button is pressed.
+  final VoidCallback? onEmptyAction;
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -33,19 +40,21 @@ class AsyncView extends StatelessWidget {
     }
     final error = errorMessage;
     if (error != null) {
-      return _StateMessage(
+      return AppEmptyState(
         icon: Icons.error_outline,
         title: 'Não foi possível carregar',
         message: error,
-        action: AppButton(
-          label: 'Tentar de novo',
-          icon: Icons.refresh,
-          onPressed: onRetry,
-        ),
+        actionLabel: 'Tentar de novo',
+        onAction: onRetry,
       );
     }
     if (isEmpty) {
-      return AppEmptyState(icon: emptyIcon, title: emptyMessage);
+      return AppEmptyState(
+        icon: emptyIcon,
+        title: emptyMessage,
+        actionLabel: emptyActionLabel,
+        onAction: onEmptyAction,
+      );
     }
     return child;
   }
@@ -70,55 +79,6 @@ class _LoadingSkeleton extends StatelessWidget {
         SizedBox(height: AppSpacing.sm),
         AppSkeleton(width: AppSizes.skeletonShortWidth),
       ],
-    );
-  }
-}
-
-class _StateMessage extends StatelessWidget {
-  const _StateMessage({
-    required this.icon,
-    required this.title,
-    this.message,
-    this.action,
-  });
-
-  final IconData icon;
-  final String title;
-  final String? message;
-  final Widget? action;
-
-  @override
-  Widget build(BuildContext context) {
-    final message = this.message;
-    final action = this.action;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: AppSizes.iconDisplay, color: context.colors.faint),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.sectionHeading,
-            ),
-            if (message != null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodyMuted(context.colors),
-              ),
-            ],
-            if (action != null) ...[
-              const SizedBox(height: AppSpacing.lg),
-              action,
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

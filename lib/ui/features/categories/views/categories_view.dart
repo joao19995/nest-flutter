@@ -101,6 +101,8 @@ class _CategoriesViewState extends State<CategoriesView>
                 onRetry: viewModel.load,
                 emptyMessage: 'Ainda não há categorias.',
                 emptyIcon: Icons.category_outlined,
+                emptyActionLabel: 'Nova categoria',
+                onEmptyAction: () => _openForm(null),
                 child: _CategoriesContent(
                   viewModel: viewModel,
                   onEdit: _openForm,

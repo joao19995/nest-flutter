@@ -108,6 +108,8 @@ class _AccountsViewState extends State<AccountsView>
                 onRetry: viewModel.load,
                 emptyMessage: 'Ainda não há contas.',
                 emptyIcon: Icons.account_balance_outlined,
+                emptyActionLabel: 'Nova conta',
+                onEmptyAction: () => _openForm(null),
                 child: _AccountsContent(
                   viewModel: viewModel,
                   onEdit: _openForm,

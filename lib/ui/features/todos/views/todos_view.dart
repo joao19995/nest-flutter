@@ -141,6 +141,8 @@ class _TodosViewState extends State<TodosView> {
             onRetry: viewModel.load,
             emptyMessage: 'Ainda não há listas.',
             emptyIcon: Icons.checklist_outlined,
+            emptyActionLabel: 'Criar lista',
+            onEmptyAction: _createList,
             child: _TodosContent(viewModel: viewModel),
           ),
         ),

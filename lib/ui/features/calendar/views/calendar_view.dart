@@ -446,6 +446,8 @@ class _AgendaCard extends StatelessWidget {
             onRetry: viewModel.load,
             emptyMessage: 'Nada agendado para este dia.',
             emptyIcon: Icons.event_busy_outlined,
+            emptyActionLabel: 'Adicionar evento',
+            onEmptyAction: onCreate,
             child: Column(
               children: [
                 for (final event in events)

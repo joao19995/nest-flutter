@@ -46,7 +46,7 @@ void main() {
       expect(retried, isTrue);
     });
 
-    testWidgets('shows the empty state', (tester) async {
+    testWidgets('shows the empty state without an action', (tester) async {
       await tester.pumpWidget(
         _wrap(
           AsyncView(
@@ -62,6 +62,28 @@ void main() {
 
       expect(find.text('Vazio'), findsOneWidget);
       expect(find.text('data'), findsNothing);
+      expect(find.text('Criar'), findsNothing);
+    });
+
+    testWidgets('shows and fires the empty action', (tester) async {
+      var acted = false;
+      await tester.pumpWidget(
+        _wrap(
+          AsyncView(
+            isLoading: false,
+            errorMessage: null,
+            isEmpty: true,
+            onRetry: () {},
+            emptyMessage: 'Vazio',
+            emptyActionLabel: 'Criar',
+            onEmptyAction: () => acted = true,
+            child: const Text('data'),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Criar'));
+      expect(acted, isTrue);
     });
 
     testWidgets('shows the child when data is present', (tester) async {
