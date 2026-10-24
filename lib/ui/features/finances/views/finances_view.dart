@@ -78,7 +78,7 @@ class _FinancesViewState extends State<FinancesView> {
         actions: [
           AppButton.icon(
             icon: Icons.lock_outlined,
-            tooltip: 'Fechar mês',
+            tooltip: 'Fechar mês atual',
             onPressed: _openCloseWizard,
           ),
         ],

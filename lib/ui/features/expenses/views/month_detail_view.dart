@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:nest/domain/models/category.dart';
 import 'package:nest/domain/models/month_settlement.dart';
@@ -9,6 +7,7 @@ import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/expenses/view_models/month_detail_view_model.dart';
+import 'package:nest/ui/features/finances/views/close_month_wizard_view.dart';
 
 /// The detail of a single month: its planned vs. actual spend and, once the
 /// month is closed, the contributions snapshot.
@@ -217,14 +216,15 @@ class _EntriesCard extends StatelessWidget {
   }
 
   Future<void> _confirmClose(BuildContext context) async {
-    unawaited(viewModel.loadSettlementPreview());
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => _CloseMonthDialog(viewModel: viewModel, plan: plan),
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CloseMonthWizardView(month: plan.month),
+      ),
     );
-    if (confirmed ?? false) {
-      await viewModel.closeMonth();
+    if (!context.mounted) {
+      return;
     }
+    await viewModel.load();
   }
 }
 
@@ -522,221 +522,6 @@ class _EntryAmount extends StatelessWidget {
               onPressed: () => onFill(entry.id),
             ),
           ),
-        ],
-      ],
-    );
-  }
-}
-
-/// The review shown before the irreversible close: totals, biggest deviations
-/// and the transfers the server would record, all without committing anything.
-class _CloseMonthDialog extends StatelessWidget {
-  const _CloseMonthDialog({required this.viewModel, required this.plan});
-
-  final MonthDetailViewModel viewModel;
-  final MonthlyPlan plan;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return ListenableBuilder(
-      listenable: viewModel,
-      builder: (context, _) {
-        final loading = viewModel.isPreviewLoading;
-        final error = viewModel.previewError;
-        return AlertDialog(
-          title: Text('Fechar ${AppFormatters.monthName(plan.month)}?'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Depois de fechado não pode ser alterado.',
-                  style: AppTextStyles.bodyMuted(colors),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                _CloseSummary(plan: plan),
-                const SizedBox(height: AppSpacing.lg),
-                const Text(
-                  'Contribuições',
-                  style: AppTextStyles.sectionHeading,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                if (loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (error != null)
-                  AppErrorBanner(
-                    message:
-                        'Não foi possível pré-visualizar as contribuições. '
-                        '$error',
-                  )
-                else
-                  _PreviewContributions(
-                    settlement: viewModel.settlementPreview,
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            AppButton(
-              label: 'Cancelar',
-              variant: AppButtonVariant.ghost,
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-            AppButton(
-              label: 'Fechar mês',
-              variant: AppButtonVariant.destructive,
-              isLoading: loading,
-              onPressed: loading ? null : () => Navigator.of(context).pop(true),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// Planned vs. real totals and the lines that moved the most.
-class _CloseSummary extends StatelessWidget {
-  const _CloseSummary({required this.plan});
-
-  static const int _topCount = 3;
-  static const double _epsilon = 0.005;
-
-  final MonthlyPlan plan;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final diff = plan.actual - plan.planned;
-    final deviations =
-        plan.entries
-            .where((entry) => (entry.actual - entry.planned).abs() > _epsilon)
-            .toList(growable: false)
-          ..sort(
-            (a, b) => (b.actual - b.planned).abs().compareTo(
-              (a.actual - a.planned).abs(),
-            ),
-          );
-    final top = deviations.take(_topCount).toList(growable: false);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SummaryRow(
-          label: 'Planeado',
-          value: AppFormatters.currency(plan.planned),
-          color: colors.ink,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        _SummaryRow(
-          label: 'Real',
-          value: AppFormatters.currency(plan.actual),
-          color: colors.ink,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        _SummaryRow(
-          label: 'Desvio',
-          value: AppFormatters.signedCurrency(diff),
-          color: plan.isOver ? colors.over : colors.primary,
-        ),
-        if (top.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.md),
-          Text('Maiores desvios', style: AppTextStyles.label(colors)),
-          const SizedBox(height: AppSpacing.xs),
-          for (final entry in top) _DeviationRow(entry: entry),
-        ],
-      ],
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Row(
-      children: [
-        Expanded(child: Text(label, style: AppTextStyles.bodyMuted(colors))),
-        Text(value, style: AppTextStyles.label(colors).copyWith(color: color)),
-      ],
-    );
-  }
-}
-
-class _DeviationRow extends StatelessWidget {
-  const _DeviationRow({required this.entry});
-
-  final MonthlyPlanEntry entry;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final diff = entry.actual - entry.planned;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              entry.categoryName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.small(colors).copyWith(color: colors.ink),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text(
-            AppFormatters.signedCurrency(diff),
-            style: AppTextStyles.label(
-              colors,
-            ).copyWith(color: diff > 0 ? colors.over : colors.primary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreviewContributions extends StatelessWidget {
-  const _PreviewContributions({required this.settlement});
-
-  final MonthSettlement? settlement;
-
-  @override
-  Widget build(BuildContext context) {
-    final settlement = this.settlement;
-    if (settlement == null) {
-      return Text(
-        'Sem pré-visualização.',
-        style: AppTextStyles.bodyMuted(context.colors),
-      );
-    }
-    if (settlement.status != SettlementStatus.ok) {
-      return Text(
-        settlement.message ?? 'Sem rendimento registado.',
-        style: AppTextStyles.bodyMuted(context.colors),
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var index = 0; index < settlement.people.length; index++) ...[
-          if (index > 0) const SizedBox(height: AppSpacing.md),
-          _ContributionRow(person: settlement.people[index]),
         ],
       ],
     );

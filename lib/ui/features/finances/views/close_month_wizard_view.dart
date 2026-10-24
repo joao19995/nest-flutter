@@ -13,10 +13,18 @@ import 'package:nest/ui/features/goals/goal_icons.dart';
 /// The month-end assistant: review and close Despesas, then Objetivos, then
 /// see the combined final transfers.
 class CloseMonthWizardView extends StatefulWidget {
-  const CloseMonthWizardView({super.key, required this.month});
+  const CloseMonthWizardView({
+    super.key,
+    required this.month,
+    this.startStep = 0,
+  }) : assert(startStep == 0 || startStep == 1);
 
   /// The month to close, formatted `YYYY-MM`.
   final String month;
+
+  /// The step to open on. Objetivos can jump straight to its review when the
+  /// expenses month is already closed; otherwise the expenses step wins.
+  final int startStep;
 
   @override
   State<CloseMonthWizardView> createState() => _CloseMonthWizardViewState();
@@ -25,6 +33,12 @@ class CloseMonthWizardView extends StatefulWidget {
 class _CloseMonthWizardViewState extends State<CloseMonthWizardView>
     with ViewModelState<CloseMonthWizardView, CloseMonthWizardViewModel> {
   int _step = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _step = widget.startStep;
+  }
 
   @override
   CloseMonthWizardViewModel createViewModel() {
@@ -57,43 +71,48 @@ class _CloseMonthWizardViewState extends State<CloseMonthWizardView>
               ),
               child: ListenableBuilder(
                 listenable: viewModel,
-                builder: (context, _) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _WizardSteps(
-                      current: _step,
-                      expensesDone: viewModel.expensesClosed,
-                      goalsDone: viewModel.goalsClosed,
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    switch (_step) {
-                      0 => _ExpensesStep(
-                        viewModel: viewModel,
-                        onNext: () {
-                          if (mounted) {
-                            setState(() => _step = 1);
-                          }
-                        },
+                builder: (context, _) {
+                  final effectiveStep = _step > 0 && !viewModel.expensesClosed
+                      ? 0
+                      : _step;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _WizardSteps(
+                        current: effectiveStep,
+                        expensesDone: viewModel.expensesClosed,
+                        goalsDone: viewModel.goalsClosed,
                       ),
-                      1 => _GoalsStep(
-                        viewModel: viewModel,
-                        onNext: () {
-                          if (mounted) {
-                            setState(() => _step = 2);
-                          }
-                        },
-                      ),
-                      _ => _FinalStep(
-                        viewModel: viewModel,
-                        onDone: () {
-                          if (mounted) {
-                            Navigator.of(context).pop();
-                          }
-                        },
-                      ),
-                    },
-                  ],
-                ),
+                      const SizedBox(height: AppSpacing.xl),
+                      switch (effectiveStep) {
+                        0 => _ExpensesStep(
+                          viewModel: viewModel,
+                          onNext: () {
+                            if (mounted) {
+                              setState(() => _step = 1);
+                            }
+                          },
+                        ),
+                        1 => _GoalsStep(
+                          viewModel: viewModel,
+                          onNext: () {
+                            if (mounted) {
+                              setState(() => _step = 2);
+                            }
+                          },
+                        ),
+                        _ => _FinalStep(
+                          viewModel: viewModel,
+                          onDone: () {
+                            if (mounted) {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                        ),
+                      },
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -436,6 +455,8 @@ class _FinalStep extends StatelessWidget {
           quotas: quotas,
           goalsReserved: goals.reserved,
         ),
+        const SizedBox(height: AppSpacing.lg),
+        _FinalPeopleSummary(settlement: settlement, quotas: quotas),
         const SizedBox(height: AppSpacing.lg),
         _SettlementSection(
           settlement: settlement,
@@ -1048,6 +1069,138 @@ class _FinalSummary extends StatelessWidget {
               style: AppTextStyles.helper(colors),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PersonFinal {
+  _PersonFinal(this.name);
+
+  final String name;
+  double toJoint = 0;
+  double fromJoint = 0;
+  double toGoals = 0;
+}
+
+class _FinalPeopleSummary extends StatelessWidget {
+  const _FinalPeopleSummary({required this.settlement, required this.quotas});
+
+  final MonthSettlement? settlement;
+  final List<GoalMonthQuota> quotas;
+
+  @override
+  Widget build(BuildContext context) {
+    final people = <String, _PersonFinal>{};
+    final settlement = this.settlement;
+    if (settlement != null && settlement.status == SettlementStatus.ok) {
+      for (final person in settlement.people) {
+        final key = person.personId.isNotEmpty
+            ? person.personId
+            : person.personName;
+        final entry = people.putIfAbsent(
+          key,
+          () => _PersonFinal(person.personName),
+        );
+        entry.toJoint += person.transferToJoint;
+        entry.fromJoint += person.transferToPerson;
+      }
+    }
+    for (final quota in quotas) {
+      final key = quota.personId.isNotEmpty ? quota.personId : quota.name;
+      final entry = people.putIfAbsent(key, () => _PersonFinal(quota.name));
+      entry.toGoals += quota.amount;
+    }
+    final rows = people.values.toList(growable: false)
+      ..sort((a, b) => a.name.compareTo(b.name));
+    if (rows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Resumo por pessoa', style: AppTextStyles.sectionHeading),
+          const SizedBox(height: AppSpacing.md),
+          for (var index = 0; index < rows.length; index++) ...[
+            if (index > 0) const SizedBox(height: AppSpacing.md),
+            _PersonFinalRow(person: rows[index]),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PersonFinalRow extends StatelessWidget {
+  const _PersonFinalRow({required this.person});
+
+  final _PersonFinal person;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final lines = <Widget>[
+      if (person.toJoint > 0.005)
+        _MoneyLine(
+          label: 'Para a conjunta',
+          value: person.toJoint,
+          color: colors.ink,
+        ),
+      if (person.fromJoint > 0.005)
+        _MoneyLine(
+          label: 'A receber da conjunta',
+          value: person.fromJoint,
+          color: colors.ink,
+        ),
+      if (person.toGoals > 0.005)
+        _MoneyLine(
+          label: 'Para objetivos',
+          value: person.toGoals,
+          color: colors.ink,
+        ),
+    ];
+    if (lines.isEmpty) {
+      lines.add(Text('Está certo', style: AppTextStyles.small(colors)));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          person.name,
+          style: AppTextStyles.label(colors).copyWith(color: colors.ink),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        for (final line in lines) line,
+      ],
+    );
+  }
+}
+
+class _MoneyLine extends StatelessWidget {
+  const _MoneyLine({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final double value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: AppTextStyles.small(colors))),
+          Text(
+            AppFormatters.currency(value),
+            style: AppTextStyles.label(colors).copyWith(color: color),
+          ),
         ],
       ),
     );

@@ -36,6 +36,7 @@ void main() {
           'jointSurplus': 12.5,
           'people': [
             {
+              'personId': 'p1',
               'personName': 'João',
               'income': 2500,
               'quota': 235,
@@ -78,6 +79,7 @@ void main() {
       expect(settlement?.status, SettlementStatus.ok);
       expect(settlement?.jointSurplus, 12.5);
       expect(settlement?.people, hasLength(1));
+      expect(settlement?.people.first.personId, 'p1');
       expect(settlement?.people.first.transfersToJoint, isTrue);
     });
 

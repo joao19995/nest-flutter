@@ -18,9 +18,6 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
   }) : _goalsRepository = goalsRepository,
        _month = month;
 
-  /// The tolerance under which an amount is treated as zero.
-  static const double _epsilon = 0.005;
-
   final GoalsRepository _goalsRepository;
 
   final String _month;
@@ -179,56 +176,20 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
     }
   }
 
-  /// Saves untouched reserved amounts, distributes what is missing and closes
-  /// the month. The reserved defaults to the planned value per goal.
+  /// Closes the month with the server's atomic close.
   ///
-  /// When [preview] is given, its server-computed defaulted lines and
-  /// adjustment decision drive the close, so the dialog's numbers are what
-  /// actually happens.
-  Future<void> closeMonth({GoalClosePreview? preview}) async {
-    final initial = _view;
-    final startPlan = initial?.plan;
-    if (initial == null || startPlan == null || startPlan.closed || _isBusy) {
+  /// The server recalculates the plan from the template when needed, fills
+  /// untouched lines with the final planned amount and closes in the same
+  /// transaction. The client no longer writes each line first.
+  Future<void> closeMonth() async {
+    final plan = _view?.plan;
+    if (plan == null || plan.closed || _isBusy) {
       return;
     }
     _isBusy = true;
     _actionError = null;
     notifyListeners();
     try {
-      if (preview != null) {
-        for (final item in preview.defaulted) {
-          _view = await _goalsRepository.updateGoalAllocation(
-            _month,
-            item.goalId,
-            item.amount,
-          );
-        }
-        if (preview.adjustedFromTemplate) {
-          await _goalsRepository.adjustGoalPlanFromTemplate(_month);
-        }
-      } else {
-        var view = initial;
-        for (final allocation in startPlan.allocations) {
-          if (allocation.actual <= _epsilon && allocation.planned > 0) {
-            view = await _goalsRepository.updateGoalAllocation(
-              _month,
-              allocation.goalId,
-              allocation.planned,
-            );
-          }
-        }
-        final current = view.plan;
-        if (current != null) {
-          final plannedTotal = current.allocations.fold<double>(
-            0,
-            (sum, item) => sum + item.planned,
-          );
-          if ((current.availableAmount - plannedTotal).abs() > _epsilon) {
-            await _goalsRepository.adjustGoalPlanFromTemplate(_month);
-          }
-        }
-        _view = view;
-      }
       _view = await _goalsRepository.closeGoalPlan(_month);
       _closePreview = null;
     } on ApiFailure catch (failure) {

@@ -1,13 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:nest/domain/models/goal_close_preview.dart';
 import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/goal_year.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
+import 'package:nest/ui/features/finances/views/close_month_wizard_view.dart';
 import 'package:nest/ui/features/goals/goal_icons.dart';
 import 'package:nest/ui/features/goals/view_models/goal_month_detail_view_model.dart';
 
@@ -235,14 +233,15 @@ class _GoalsCard extends StatelessWidget {
   }
 
   Future<void> _confirmClose(BuildContext context) async {
-    unawaited(viewModel.loadClosePreview());
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => _CloseMonthDialog(viewModel: viewModel, plan: plan),
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CloseMonthWizardView(month: plan.month, startStep: 1),
+      ),
     );
-    if (confirmed ?? false) {
-      await viewModel.closeMonth(preview: viewModel.closePreview);
+    if (!context.mounted) {
+      return;
     }
+    await viewModel.load();
   }
 }
 
@@ -519,252 +518,6 @@ class _TransferRow extends StatelessWidget {
             ],
         ],
       ),
-    );
-  }
-}
-
-/// The review shown before the goals month is closed: available, planned,
-/// effective reserved, what is left to allocate and the transfers.
-class _CloseMonthDialog extends StatelessWidget {
-  const _CloseMonthDialog({required this.viewModel, required this.plan});
-
-  final GoalMonthDetailViewModel viewModel;
-  final GoalPlan plan;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return ListenableBuilder(
-      listenable: viewModel,
-      builder: (context, _) {
-        final preview = viewModel.closePreview;
-        final loading = viewModel.isPreviewLoading;
-        final error = viewModel.previewError;
-        final available = preview?.availableAmount ?? viewModel.available;
-        final planned = preview?.plannedTotal ?? viewModel.planned;
-        final reserved = preview?.reservedTotal ?? viewModel.reserved;
-        final unallocated = preview?.unallocated ?? viewModel.unallocated;
-        final transfers = preview?.quotas ?? viewModel.transfers;
-        return AlertDialog(
-          title: Text(
-            'Guardar e fechar ${AppFormatters.monthName(plan.month)}?',
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'O planeado e o reservado ficam imutáveis.',
-                  style: AppTextStyles.bodyMuted(colors),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                _GoalCloseSummaryRow(
-                  label: 'Disponível',
-                  value: AppFormatters.currency(available),
-                  color: colors.ink,
-                ),
-                _GoalCloseSummaryRow(
-                  label: preview?.adjustedFromTemplate ?? false
-                      ? 'Planeado final'
-                      : 'Planeado',
-                  value: AppFormatters.currency(planned),
-                  color: colors.ink,
-                ),
-                _GoalCloseSummaryRow(
-                  label: 'Reservado',
-                  value: AppFormatters.currency(reserved),
-                  color: colors.ink,
-                ),
-                _GoalCloseSummaryRow(
-                  label: unallocated < -0.005 ? 'A mais' : 'Por alocar',
-                  value: AppFormatters.currency(unallocated.abs()),
-                  color: unallocated.abs() > 0.005
-                      ? colors.over
-                      : colors.primary,
-                ),
-                if (preview != null &&
-                    (preview.availableAmount - plan.availableAmount).abs() >
-                        0.005) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'O disponível atual difere do valor fixado na criação '
-                    '(${AppFormatters.currency(plan.availableAmount)}).',
-                    style: AppTextStyles.helper(colors),
-                  ),
-                ],
-                if (loading) ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  const Center(child: CircularProgressIndicator()),
-                ] else if (error != null) ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  AppErrorBanner(
-                    message: 'Não foi possível pré-visualizar o fecho. $error',
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'Podes fechar mesmo assim; os números são os atuais.',
-                    style: AppTextStyles.helper(colors),
-                  ),
-                ] else if (preview != null) ...[
-                  if (preview.adjustedFromTemplate) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'O servidor vai redistribuir o planeado pela tabela.',
-                      style: AppTextStyles.helper(colors),
-                    ),
-                    if (preview.affectedFutureMonths.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Também recalcula: '
-                        '${preview.affectedFutureMonths.map(AppFormatters.monthShort).join(', ')}.',
-                        style: AppTextStyles.helper(colors),
-                      ),
-                    ],
-                  ],
-                  if (preview.defaulted.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Assumem o planeado',
-                      style: AppTextStyles.label(colors),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    for (final item in preview.defaulted)
-                      _DefaultedGoalRow(item: item),
-                  ],
-                ],
-                const SizedBox(height: AppSpacing.lg),
-                const Text(
-                  'Transferências',
-                  style: AppTextStyles.sectionHeading,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                if (!loading)
-                  _PreviewTransfers(
-                    transfers: transfers,
-                    iconKeyByGoal: viewModel.iconKeyByGoal,
-                    reserved: reserved,
-                    hasIncome:
-                        (viewModel.funding?.incomeNormal ?? 0) +
-                            (viewModel.funding?.bonus ?? 0) >
-                        0.005,
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            AppButton(
-              label: 'Cancelar',
-              variant: AppButtonVariant.ghost,
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-            AppButton(
-              label: 'Guardar e fechar',
-              variant: AppButtonVariant.destructive,
-              isLoading: loading,
-              onPressed: loading ? null : () => Navigator.of(context).pop(true),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _GoalCloseSummaryRow extends StatelessWidget {
-  const _GoalCloseSummaryRow({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: AppTextStyles.bodyMuted(colors))),
-          Text(
-            value,
-            style: AppTextStyles.label(colors).copyWith(color: color),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DefaultedGoalRow extends StatelessWidget {
-  const _DefaultedGoalRow({required this.item});
-
-  final GoalClosePreviewDefaulted item;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              item.goalName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.small(colors).copyWith(color: colors.ink),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text(
-            AppFormatters.currency(item.amount),
-            style: AppTextStyles.label(colors).copyWith(color: colors.ink),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreviewTransfers extends StatelessWidget {
-  const _PreviewTransfers({
-    required this.transfers,
-    required this.iconKeyByGoal,
-    required this.reserved,
-    required this.hasIncome,
-  });
-
-  final List<GoalMonthQuota> transfers;
-  final Map<String, String?> iconKeyByGoal;
-  final double reserved;
-  final bool hasIncome;
-
-  @override
-  Widget build(BuildContext context) {
-    if (transfers.isEmpty) {
-      final message = reserved <= 0.005
-          ? 'Sem valores reservados neste mês: nada a transferir.'
-          : !hasIncome
-          ? 'Sem rendimento configurado neste mês: não há quotas a transferir.'
-          : 'Sem transferências neste mês.';
-      return Text(message, style: AppTextStyles.bodyMuted(context.colors));
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var index = 0; index < transfers.length; index++) ...[
-          if (index > 0) const SizedBox(height: AppSpacing.md),
-          _TransferRow(
-            transfer: transfers[index],
-            iconKeyByGoal: iconKeyByGoal,
-          ),
-        ],
-      ],
     );
   }
 }

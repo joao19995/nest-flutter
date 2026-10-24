@@ -10,6 +10,7 @@ enum SettlementStatus {
 /// One person's settlement within a closed month.
 class MonthSettlementPerson {
   const MonthSettlementPerson({
+    required this.personId,
     required this.personName,
     required this.income,
     required this.quota,
@@ -17,6 +18,9 @@ class MonthSettlementPerson {
     required this.transferToJoint,
     required this.transferToPerson,
   });
+
+  /// The person's id, used to merge expenses and goals transfers.
+  final String personId;
 
   final String personName;
 

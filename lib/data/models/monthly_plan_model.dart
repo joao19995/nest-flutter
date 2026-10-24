@@ -154,6 +154,7 @@ class MonthSettlementModel {
 /// API-facing representation of a [MonthSettlementPerson], with JSON mapping.
 class MonthSettlementPersonModel {
   const MonthSettlementPersonModel({
+    required this.personId,
     required this.personName,
     required this.income,
     required this.quota,
@@ -164,6 +165,7 @@ class MonthSettlementPersonModel {
 
   factory MonthSettlementPersonModel.fromJson(Map<String, dynamic> json) =>
       MonthSettlementPersonModel(
+        personId: json['personId'] as String? ?? '',
         personName: json['personName'] as String,
         income: (json['income'] as num).toDouble(),
         quota: (json['quota'] as num).toDouble(),
@@ -172,6 +174,7 @@ class MonthSettlementPersonModel {
         transferToPerson: (json['transferToPerson'] as num).toDouble(),
       );
 
+  final String personId;
   final String personName;
   final double income;
   final double quota;
@@ -180,6 +183,7 @@ class MonthSettlementPersonModel {
   final double transferToPerson;
 
   MonthSettlementPerson toDomain() => MonthSettlementPerson(
+    personId: personId,
     personName: personName,
     income: income,
     quota: quota,

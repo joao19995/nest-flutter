@@ -231,30 +231,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('reviews the totals and transfers before closing', (
-    tester,
-  ) async {
+  testWidgets('opens the close wizard from the month detail', (tester) async {
     setPhoneSize(tester);
-    final client = MockClient((request) async {
-      if (request.url.path == '/api/months/2026-02/settlement-preview') {
-        return jsonResponse(const {
-          'status': 'ok',
-          'contributionRequired': 450,
-          'jointSurplus': 0,
-          'people': [
-            {
-              'personName': 'João',
-              'income': 2500,
-              'quota': 225,
-              'personalActual': 0,
-              'transferToJoint': 225,
-              'transferToPerson': 0,
-            },
-          ],
-        });
-      }
-      return jsonResponse(_openMonth());
-    });
+    final client = MockClient((request) async => jsonResponse(_openMonth()));
 
     await tester.pumpWidget(
       wrapWithDependencies(
@@ -267,64 +246,7 @@ void main() {
     await tester.tap(find.text('Fechar mês'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.text('Planeado'), findsOneWidget);
-    expect(find.text('Real'), findsOneWidget);
-    expect(find.text('Desvio'), findsOneWidget);
-    expect(find.text('Contribuições'), findsOneWidget);
-    expect(find.text('João'), findsOneWidget);
-    expect(find.byType(AppTransferFlow), findsOneWidget);
-
-    await tester.tap(find.text('Cancelar'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('confirms the close from the review', (tester) async {
-    setPhoneSize(tester);
-    final requests = <http.Request>[];
-    final client = MockClient((request) async {
-      requests.add(request);
-      if (request.url.path == '/api/months/2026-02/settlement-preview') {
-        return jsonResponse(const {
-          'status': 'ok',
-          'contributionRequired': 450,
-          'jointSurplus': 0,
-          'people': <Object>[],
-        });
-      }
-      return jsonResponse(_openMonth());
-    });
-
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(client),
-        const MonthDetailView(month: '2026-02'),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Fechar mês'));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.text('Fechar mês'),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(
-      requests.any(
-        (request) =>
-            request.method == 'POST' &&
-            request.url.path == '/api/months/2026-02/close',
-      ),
-      isTrue,
-    );
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Fechar Fevereiro'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -155,119 +155,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('reviews the close with totals and transfers', (tester) async {
-    setPhoneSize(tester);
-    final client = MockClient((request) async {
-      if (request.url.path == '/api/goals') {
-        return jsonResponse(_goals());
-      }
-      if (request.url.path.endsWith('/close-preview')) {
-        return jsonResponse(_closePreview());
-      }
-      return jsonResponse(_monthView(closed: false));
-    });
-
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(client),
-        const GoalMonthDetailView(month: '2026-01'),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Fechar mês'));
-    await tester.pumpAndSettle();
-
-    final dialog = find.byType(AlertDialog);
-    expect(dialog, findsOneWidget);
-    expect(
-      find.descendant(of: dialog, matching: find.text('Disponível')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: dialog, matching: find.text('Reservado')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: dialog, matching: find.text('Por alocar')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: dialog, matching: find.text('Assumem o planeado')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: dialog, matching: find.text('Transferências')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: dialog, matching: find.byType(AppTransferFlow)),
-      findsNWidgets(3),
-    );
-
-    await tester.tap(find.text('Cancelar'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('shows the template adjustment before closing', (tester) async {
-    setPhoneSize(tester);
-    final client = MockClient((request) async {
-      if (request.url.path == '/api/goals') {
-        return jsonResponse(_goals());
-      }
-      if (request.url.path.endsWith('/close-preview')) {
-        return jsonResponse({
-          ..._closePreview(),
-          'adjustedFromTemplate': true,
-          'affectedFutureMonths': ['2026-02'],
-          'unallocated': 100,
-        });
-      }
-      return jsonResponse(_monthView(closed: false));
-    });
-
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(client),
-        const GoalMonthDetailView(month: '2026-01'),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Fechar mês'));
-    await tester.pumpAndSettle();
-
-    final dialog = find.byType(AlertDialog);
-    expect(
-      find.descendant(of: dialog, matching: find.text('Planeado final')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: dialog,
-        matching: find.text(
-          'O servidor vai redistribuir o planeado pela tabela.',
-        ),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: dialog,
-        matching: find.text('Também recalcula: Fev.'),
-      ),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.text('Cancelar'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets('creates a missing month', (tester) async {
     setPhoneSize(tester);
     await tester.pumpWidget(
@@ -288,29 +175,21 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('edits the reserved value and closes the month', (tester) async {
+  testWidgets('edits the reserved value', (tester) async {
     setPhoneSize(tester);
     final requests = <http.Request>[];
-    var closed = false;
     final client = MockClient((request) async {
       requests.add(request);
       if (request.url.path == '/api/goals') {
         return jsonResponse(_goals());
       }
-      if (request.url.path.endsWith('/close-preview')) {
-        return jsonResponse(_closePreview());
-      }
       if (request.method == 'GET') {
-        return jsonResponse(_monthView(closed: closed, actual1: 0, actual2: 0));
+        return jsonResponse(_monthView(closed: false, actual1: 0, actual2: 0));
       }
       if (request.method == 'PATCH') {
         return jsonResponse(
           _monthView(closed: false, actual1: 500, actual2: 0),
         );
-      }
-      if (request.method == 'POST' && request.url.path.endsWith('/close')) {
-        closed = true;
-        return jsonResponse(_monthView());
       }
       return jsonResponse(<Object>[], status: 404);
     });
@@ -331,17 +210,33 @@ void main() {
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
     expect(requests.any((request) => request.method == 'PATCH'), isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opens the close wizard from the month detail', (tester) async {
+    setPhoneSize(tester);
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/goals') {
+        return jsonResponse(_goals());
+      }
+      if (request.url.path.startsWith('/api/months/')) {
+        return jsonResponse(const {'error': 'Não existe.'}, status: 404);
+      }
+      return jsonResponse(_monthView(closed: false));
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        const GoalMonthDetailView(month: '2026-01'),
+      ),
+    );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Fechar mês'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Guardar e fechar'));
-    await tester.pumpAndSettle();
 
-    expect(find.text('Fechado'), findsOneWidget);
-    expect(
-      requests.any((request) => request.url.path.endsWith('/close')),
-      isTrue,
-    );
+    expect(find.text('Fechar Janeiro'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

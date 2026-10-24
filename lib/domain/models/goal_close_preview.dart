@@ -37,8 +37,7 @@ class GoalClosePreview {
   /// The planned total after the optional template adjustment, in euros.
   final double plannedTotal;
 
-  /// The total that will be stored as reserved (before the adjustment), in
-  /// euros.
+  /// The total that will be stored as reserved by the atomic close, in euros.
   final double reservedTotal;
 
   /// What is left to allocate: [availableAmount] minus [plannedTotal].
@@ -53,6 +52,6 @@ class GoalClosePreview {
   /// The goals that will assume their planned amount.
   final List<GoalClosePreviewDefaulted> defaulted;
 
-  /// Who transfers what, computed over the pre-adjustment reserved total.
+  /// Who transfers what, computed over the reserved total the close stores.
   final List<GoalMonthQuota> quotas;
 }

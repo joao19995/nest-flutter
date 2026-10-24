@@ -214,45 +214,29 @@ void main() {
     expect(viewModel.isBusy, isFalse);
   });
 
-  test(
-    'closeMonth fills untouched goals then closes and adopts the view',
-    () async {
-      final writes = <String>[];
-      final client = MockClient((request) async {
-        if (_isGoalsRequest(request)) {
-          return jsonResponse(_goals());
-        }
-        if (request.method == 'GET') {
-          return jsonResponse(_view(a1: 0, a2: 0));
-        }
-        writes.add('${request.method} ${request.url.path}');
-        if (request.url.path.endsWith('/close')) {
-          return jsonResponse(_view(closed: true));
-        }
-        if (request.url.path.endsWith('/adjust')) {
-          return jsonResponse(const <String, dynamic>{});
-        }
-        return jsonResponse(_view());
-      });
+  test('closeMonth posts the atomic close and adopts the view', () async {
+    final writes = <String>[];
+    final client = MockClient((request) async {
+      if (_isGoalsRequest(request)) {
+        return jsonResponse(_goals());
+      }
+      if (request.method == 'GET') {
+        return jsonResponse(_view(a1: 0, a2: 0));
+      }
+      writes.add('${request.method} ${request.url.path}');
+      if (request.url.path.endsWith('/close')) {
+        return jsonResponse(_view(closed: true));
+      }
+      return jsonResponse(_view());
+    });
 
-      final viewModel = _viewModel(client);
-      await viewModel.load();
-      await viewModel.closeMonth();
+    final viewModel = _viewModel(client);
+    await viewModel.load();
+    await viewModel.closeMonth();
 
-      expect(
-        writes.where((call) => call.startsWith('PATCH')).length,
-        2,
-        reason: 'both untouched goals default to their planned amount',
-      );
-      expect(writes, contains('POST /api/goal-plan/2026-01/close'));
-      expect(
-        writes.any((call) => call.contains('/adjust')),
-        isFalse,
-        reason: 'the plan is already fully allocated',
-      );
-      expect(viewModel.plan?.closed, isTrue);
-    },
-  );
+    expect(writes, ['POST /api/goal-plan/2026-01/close']);
+    expect(viewModel.plan?.closed, isTrue);
+  });
 
   test('loadClosePreview exposes the projected close', () async {
     final client = MockClient((request) async {
@@ -296,42 +280,36 @@ void main() {
     expect(viewModel.isPreviewLoading, isFalse);
   });
 
-  test('closeMonth follows the preview defaults and adjustment', () async {
-    final writes = <String>[];
-    final client = MockClient((request) async {
-      if (_isGoalsRequest(request)) {
-        return jsonResponse(_goals());
-      }
-      if (request.url.path.endsWith('/close-preview')) {
-        return jsonResponse(_closePreview(adjusted: true));
-      }
-      if (request.method == 'GET') {
-        return jsonResponse(_view(a1: 0, a2: 0));
-      }
-      writes.add('${request.method} ${request.url.path}');
-      if (request.url.path.endsWith('/adjust')) {
-        return jsonResponse(const <String, dynamic>{});
-      }
-      if (request.url.path.endsWith('/close')) {
-        return jsonResponse(_view(closed: true));
-      }
-      return jsonResponse(_view());
-    });
+  test(
+    'the close ignores a loaded preview and makes no extra writes',
+    () async {
+      final writes = <String>[];
+      final client = MockClient((request) async {
+        if (_isGoalsRequest(request)) {
+          return jsonResponse(_goals());
+        }
+        if (request.url.path.endsWith('/close-preview')) {
+          return jsonResponse(_closePreview(adjusted: true));
+        }
+        if (request.method == 'GET') {
+          return jsonResponse(_view(a1: 0, a2: 0));
+        }
+        writes.add('${request.method} ${request.url.path}');
+        if (request.url.path.endsWith('/close')) {
+          return jsonResponse(_view(closed: true));
+        }
+        return jsonResponse(_view());
+      });
 
-    final viewModel = _viewModel(client);
-    await viewModel.load();
-    await viewModel.loadClosePreview();
-    await viewModel.closeMonth(preview: viewModel.closePreview);
+      final viewModel = _viewModel(client);
+      await viewModel.load();
+      await viewModel.loadClosePreview();
+      await viewModel.closeMonth();
 
-    expect(
-      writes.where((call) => call.startsWith('PATCH')).length,
-      2,
-      reason: 'the preview lists both untouched goals',
-    );
-    expect(writes, contains('POST /api/goal-plan/adjust'));
-    expect(writes, contains('POST /api/goal-plan/2026-01/close'));
-    expect(viewModel.plan?.closed, isTrue);
-  });
+      expect(writes, ['POST /api/goal-plan/2026-01/close']);
+      expect(viewModel.plan?.closed, isTrue);
+    },
+  );
 
   test('a failed write records the action error', () async {
     final client = MockClient((request) async {

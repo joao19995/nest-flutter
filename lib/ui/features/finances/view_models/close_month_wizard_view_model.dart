@@ -94,7 +94,7 @@ class CloseMonthWizardViewModel extends ChangeNotifier {
 
   /// Closes the goals month; true when it actually ended up closed.
   Future<bool> closeGoals() async {
-    await goals.closeMonth(preview: goals.closePreview);
+    await goals.closeMonth();
     return goals.actionError == null && goalsClosed;
   }
 

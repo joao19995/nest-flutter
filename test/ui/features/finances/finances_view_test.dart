@@ -77,7 +77,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Fechar mês'));
+    await tester.tap(find.byTooltip('Fechar mês atual'));
     await tester.pumpAndSettle();
 
     expect(

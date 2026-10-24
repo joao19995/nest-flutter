@@ -14,6 +14,7 @@ Map<String, dynamic> _settlement() => <String, dynamic>{
   'jointSurplus': 0,
   'people': [
     {
+      'personId': 'p1',
       'personName': 'João',
       'income': 2500,
       'quota': 300,
@@ -22,6 +23,7 @@ Map<String, dynamic> _settlement() => <String, dynamic>{
       'transferToPerson': 320,
     },
     {
+      'personId': 'p2',
       'personName': 'Nathalia',
       'income': 2000,
       'quota': 300,
@@ -202,12 +204,51 @@ void main() {
 
     expect(find.text('Transferências finais'), findsOneWidget);
     expect(find.text('Resumo final'), findsOneWidget);
+    expect(find.text('Resumo por pessoa'), findsOneWidget);
     expect(find.text('Para a conta conjunta'), findsOneWidget);
+    expect(find.text('Da conta conjunta'), findsOneWidget);
     expect(find.text('Para os objetivos'), findsOneWidget);
+    expect(find.text('Para a conjunta'), findsOneWidget);
+    expect(find.text('A receber da conjunta'), findsOneWidget);
     expect(find.text(AppFormatters.currency(300)), findsWidgets);
     expect(find.text(AppFormatters.currency(320)), findsWidgets);
     expect(find.text(AppFormatters.currency(1000)), findsWidgets);
     expect(find.text('Concluir'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opens directly on goals when expenses are already closed', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    final client = MockClient((request) async {
+      final path = request.url.path;
+      if (path == '/api/months/$_month') {
+        return jsonResponse(_expenseMonth(closed: true, withSettlement: true));
+      }
+      if (path == '/api/goal-plan/$_month/close-preview') {
+        return jsonResponse(_closePreview());
+      }
+      if (path == '/api/goal-plan/$_month') {
+        return jsonResponse(_goalMonth());
+      }
+      if (path == '/api/goals') {
+        return jsonResponse(_goals());
+      }
+      return jsonResponse(const {'error': 'not found'}, status: 404);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        const CloseMonthWizardView(month: _month, startStep: 1),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fechar objetivos'), findsOneWidget);
+    expect(find.text('Disponível'), findsOneWidget);
+    expect(find.text('Fechar despesas'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
