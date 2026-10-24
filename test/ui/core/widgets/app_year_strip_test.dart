@@ -17,6 +17,8 @@ ExpenseMonthSummary _month(String month, ExpenseMonthStatus status) =>
       actual: 0,
       progressPct: 0,
       over: false,
+      filledEntries: 0,
+      totalEntries: 0,
     );
 
 List<ExpenseMonthSummary> _months() => [

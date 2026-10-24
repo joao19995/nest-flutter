@@ -190,7 +190,12 @@ class _DashboardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final alertsError = viewModel.alertsSection.errorMessage;
-    final stripError = viewModel.stripSection.errorMessage;
+    final ritual = viewModel.ritual;
+    // The hero owns the displayed month; the attention card only carries the
+    // other months (e.g. the next one still to create).
+    final alerts = viewModel.alerts
+        .where((alert) => alert.month != viewModel.month)
+        .toList(growable: false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -206,6 +211,7 @@ class _DashboardContent extends StatelessWidget {
             child: _DashboardMonthHero(
               month: viewModel.month,
               summary: viewModel.monthSummary,
+              ritual: ritual,
               state: viewModel.monthSection,
               canGoToPrevious: viewModel.canGoToPreviousMonth,
               canGoToNext: viewModel.canGoToNextMonth,
@@ -213,30 +219,17 @@ class _DashboardContent extends StatelessWidget {
               onNext: _showNextMonth,
               onRetry: viewModel.retryMonth,
               onOpenMonth: onOpenMonth,
+              onCloseMonth: onCloseMonth,
             ),
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
-        if (stripError != null && stripError != alertsError)
-          _InlineError(message: stripError, onRetry: viewModel.retryStrip)
-        else if (viewModel.stripSection.isLoading)
-          const _StripSkeleton()
-        else if (viewModel.yearMonths.isNotEmpty)
-          AppYearStrip(
-            months: viewModel.yearMonths,
-            currentMonth: viewModel.month,
-            onTap: (month) {
-              onOpenMonth?.call(month);
-            },
-          ),
+        const SizedBox(height: AppSpacing.lg),
         if (alertsError != null) ...[
-          const SizedBox(height: AppSpacing.lg),
           _InlineError(message: alertsError, onRetry: viewModel.retryAlerts),
           const SizedBox(height: AppSpacing.lg),
-        ] else if (viewModel.alerts.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.lg),
+        ] else if (alerts.isNotEmpty) ...[
           _AttentionCard(
-            alerts: viewModel.alerts,
+            alerts: alerts,
             onOpenMonth: onOpenMonth,
             onCloseMonth: onCloseMonth,
           ),
@@ -372,16 +365,6 @@ class _ListSkeleton extends StatelessWidget {
         ],
       ],
     );
-  }
-}
-
-/// A pulsing bar standing in for the year strip while it loads.
-class _StripSkeleton extends StatelessWidget {
-  const _StripSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AppSkeleton(height: AppSizes.minTouchTarget);
   }
 }
 
@@ -769,11 +752,12 @@ class _GoalRow extends StatelessWidget {
   }
 }
 
-/// This month's spending against the plan, as the dashboard's dark hero.
+/// The month's close at a glance, as the dashboard's dark hero.
 class _DashboardMonthHero extends StatelessWidget {
   const _DashboardMonthHero({
     required this.month,
     required this.summary,
+    required this.ritual,
     required this.state,
     required this.canGoToPrevious,
     required this.canGoToNext,
@@ -781,10 +765,12 @@ class _DashboardMonthHero extends StatelessWidget {
     required this.onNext,
     required this.onRetry,
     required this.onOpenMonth,
+    required this.onCloseMonth,
   });
 
   final String month;
   final ExpenseMonthSummary? summary;
+  final DashboardRitual? ritual;
   final DashboardSectionState state;
   final bool canGoToPrevious;
   final bool canGoToNext;
@@ -792,6 +778,7 @@ class _DashboardMonthHero extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onRetry;
   final ValueChanged<String>? onOpenMonth;
+  final ValueChanged<String> onCloseMonth;
 
   @override
   Widget build(BuildContext context) {
@@ -808,7 +795,7 @@ class _DashboardMonthHero extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Despesa do mês',
+                    'Balanço do mês',
                     style: AppTextStyles.navSection(
                       context.colors,
                     ).copyWith(color: AppColors.onHeroMuted),
@@ -829,7 +816,13 @@ class _DashboardMonthHero extends StatelessWidget {
             else if (error != null)
               _HeroError(message: error, onRetry: onRetry)
             else
-              _HeroSummaryBody(summary: summary),
+              _HeroBalanceBody(
+                month: month,
+                summary: summary,
+                ritual: ritual,
+                onOpenMonth: onOpenMonth,
+                onCloseMonth: onCloseMonth,
+              ),
           ],
         ),
       ),
@@ -849,24 +842,48 @@ class _DashboardMonthHero extends StatelessWidget {
   }
 }
 
-/// The hero's amount, ring and deviation, once its summary has loaded.
-class _HeroSummaryBody extends StatelessWidget {
-  const _HeroSummaryBody({required this.summary});
+/// The hero's two categories, their totals and the close action.
+class _HeroBalanceBody extends StatelessWidget {
+  const _HeroBalanceBody({
+    required this.month,
+    required this.summary,
+    required this.ritual,
+    required this.onOpenMonth,
+    required this.onCloseMonth,
+  });
 
+  final String month;
   final ExpenseMonthSummary? summary;
+  final DashboardRitual? ritual;
+  final ValueChanged<String>? onOpenMonth;
+  final ValueChanged<String> onCloseMonth;
 
   @override
   Widget build(BuildContext context) {
-    final summary = this.summary;
-    final hasPlan =
-        summary != null && summary.status != ExpenseMonthStatus.missing;
-    final diff = summary == null ? 0.0 : summary.actual - summary.planned;
-    final diffPct = summary == null || summary.planned <= 0
-        ? 0.0
-        : diff / summary.planned * 100;
-    final progress = hasPlan
-        ? (summary.progressPct / 100).clamp(0.0, 1.0)
+    final status = summary?.status ?? ExpenseMonthStatus.missing;
+    final closed = ritual?.isClosed ?? status == ExpenseMonthStatus.closed;
+    final missing = ritual?.isMissing ?? status == ExpenseMonthStatus.missing;
+    final monthName = AppFormatters.monthName(month);
+    final filled = summary?.filledEntries ?? 0;
+    final total = summary?.totalEntries ?? 0;
+    final progress = status == ExpenseMonthStatus.closed
+        ? (summary?.progressPct ?? 0) / 100
+        : total > 0
+        ? filled / total
         : 0.0;
+    final ringLabel = status == ExpenseMonthStatus.closed
+        ? AppFormatters.percentage((summary?.progressPct ?? 0).round())
+        : status == ExpenseMonthStatus.open && total > 0
+        ? AppFormatters.percentage((filled / total * 100).round())
+        : null;
+    final goalsStatus = ritual?.goalsStatus;
+    final goalsReserved = ritual?.goalsReserved ?? 0;
+    final goalsPlanned = ritual?.goalsPlanned ?? 0;
+    final onOpen = onOpenMonth;
+    final onPressed = closed
+        ? (onOpen == null ? null : () => onOpen(month))
+        : () => onCloseMonth(month);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -874,34 +891,112 @@ class _HeroSummaryBody extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: AnimatedAmount(
-                  value: summary?.actual ?? 0,
-                  style: AppTextStyles.statDisplay.copyWith(
-                    color: AppColors.onHero,
-                  ),
+              child: Text(
+                closed
+                    ? '$monthName fechado'
+                    : missing
+                    ? '$monthName por criar'
+                    : '$monthName por fechar',
+                style: AppTextStyles.sectionHeading.copyWith(
+                  color: AppColors.onHero,
                 ),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
             AppProgressRing(
-              progress: progress,
-              color: summary?.over == true
-                  ? AppColors.overOnDark
-                  : AppColors.mint,
-              label: hasPlan
-                  ? AppFormatters.percentage(summary.progressPct.round())
-                  : null,
+              progress: progress.clamp(0.0, 1.0),
+              label: ringLabel,
             ),
           ],
         ),
+        const SizedBox(height: AppSpacing.md),
+        _HeroLine(
+          label: 'Despesas',
+          value: status == ExpenseMonthStatus.missing
+              ? '—'
+              : AppFormatters.currency(summary?.actual ?? 0),
+          percent: _percent(summary?.actual ?? 0, summary?.planned ?? 0),
+          percentColor: (summary?.over ?? false)
+              ? AppColors.overOnDark
+              : AppColors.mint,
+        ),
         const SizedBox(height: AppSpacing.sm),
-        if (hasPlan)
-          HeroDeviationPill(diff: diff, diffPct: diffPct, over: summary.over)
-        else
-          const HeroDeltaPill(label: 'Sem plano', color: AppColors.onHeroMuted),
+        _HeroLine(
+          label: 'Objetivos',
+          value:
+              goalsStatus == null || goalsStatus == ExpenseMonthStatus.missing
+              ? '—'
+              : AppFormatters.currency(goalsReserved),
+          percent: _percent(goalsReserved, goalsPlanned),
+          percentColor: goalsReserved < goalsPlanned
+              ? AppColors.overOnDark
+              : AppColors.mint,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AppButton(
+          label: closed
+              ? 'Ver resumo'
+              : missing
+              ? 'Começar'
+              : 'Continuar',
+          icon: closed ? Icons.receipt_long_outlined : Icons.lock_outline,
+          variant: AppButtonVariant.secondary,
+          isFullWidth: true,
+          onPressed: onPressed,
+        ),
+      ],
+    );
+  }
+}
+
+double? _percent(double actual, double planned) {
+  if (planned <= 0.005) {
+    return null;
+  }
+  return (actual - planned) / planned * 100;
+}
+
+class _HeroLine extends StatelessWidget {
+  const _HeroLine({
+    required this.label,
+    required this.value,
+    required this.percent,
+    required this.percentColor,
+  });
+
+  final String label;
+  final String value;
+  final double? percent;
+  final Color percentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final percent = this.percent;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: AppTextStyles.navSection(
+              colors,
+            ).copyWith(color: AppColors.onHeroMuted),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          value,
+          style: AppTextStyles.sectionHeading.copyWith(color: AppColors.onHero),
+        ),
+        if (percent != null) ...[
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            percent > 0
+                ? '+${AppFormatters.percentage(percent.round())}'
+                : AppFormatters.percentage(percent.round()),
+            style: AppTextStyles.small(colors).copyWith(color: percentColor),
+          ),
+        ],
       ],
     );
   }

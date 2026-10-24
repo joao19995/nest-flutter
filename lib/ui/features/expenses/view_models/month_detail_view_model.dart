@@ -46,12 +46,11 @@ class MonthDetailViewModel extends ChangeNotifier {
   bool _isPreviewLoading = false;
   bool get isPreviewLoading => _isPreviewLoading;
 
-  /// How many lines of the month have a real amount entered.
-  int get filledEntries =>
-      _plan?.entries.where((entry) => entry.actualSet).length ?? 0;
+  /// How many lines of the month have a real amount entered (server rule).
+  int get filledEntries => _plan?.summary.filledEntries ?? 0;
 
-  /// How many lines the month has.
-  int get totalEntries => _plan?.entries.length ?? 0;
+  /// How many lines the month has (server rule).
+  int get totalEntries => _plan?.summary.totalEntries ?? 0;
 
   /// Whether at least one fixed line still has no real amount entered.
   bool get hasFixedToFill {

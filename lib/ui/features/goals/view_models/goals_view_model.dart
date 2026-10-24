@@ -11,9 +11,11 @@ class GoalMonthSummary {
   const GoalMonthSummary({
     required this.month,
     required this.reserved,
+    required this.planned,
     required this.available,
     required this.fundedCount,
     required this.hasPlan,
+    required this.closed,
   });
 
   /// The month, formatted `YYYY-MM`.
@@ -21,6 +23,9 @@ class GoalMonthSummary {
 
   /// The amount reserved for goals in the month, in euros.
   final double reserved;
+
+  /// The amount planned for goals in the month, in euros.
+  final double planned;
 
   /// The amount available for goals in the month, in euros.
   final double available;
@@ -30,6 +35,9 @@ class GoalMonthSummary {
 
   /// False when the month has no saved plan yet.
   final bool hasPlan;
+
+  /// True once the month is closed.
+  final bool closed;
 }
 
 /// A goal's total across the year.
@@ -147,9 +155,16 @@ class GoalsViewModel extends ChangeNotifier {
         GoalMonthSummary(
           month: key,
           reserved: plan?.reserved ?? 0,
+          planned:
+              plan?.allocations.fold<double>(
+                0,
+                (sum, item) => sum + item.planned,
+              ) ??
+              0,
           available: availableByMonth[key] ?? 0,
           fundedCount: plan?.fundedCount ?? 0,
           hasPlan: plan != null,
+          closed: plan?.closed ?? false,
         ),
       );
     }

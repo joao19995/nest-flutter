@@ -30,6 +30,8 @@ void main() {
             'actual': 1200.25,
             'progressPct': 100,
             'over': true,
+            'filledEntries': 8,
+            'totalEntries': 8,
           },
           {
             'month': '2026-02',
@@ -38,6 +40,8 @@ void main() {
             'actual': 1000.5,
             'progressPct': 50,
             'over': false,
+            'filledEntries': 3,
+            'totalEntries': 8,
           },
           {
             'month': '2026-03',
@@ -80,8 +84,12 @@ void main() {
       expect(january.status, ExpenseMonthStatus.closed);
       expect(january.actual, 1200.25);
       expect(january.over, isTrue);
+      expect(january.filledEntries, 8);
+      expect(january.totalEntries, 8);
 
       expect(summary.months[1].status, ExpenseMonthStatus.open);
+      expect(summary.months[1].filledEntries, 3);
+      expect(summary.months[1].totalEntries, 8);
       expect(summary.months[2].status, ExpenseMonthStatus.missing);
     });
 

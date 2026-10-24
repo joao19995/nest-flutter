@@ -83,17 +83,37 @@ class ExpenseMonthSummaryModel {
     required this.actual,
     required this.progressPct,
     required this.over,
+    required this.filledEntries,
+    required this.totalEntries,
   });
 
-  factory ExpenseMonthSummaryModel.fromJson(Map<String, dynamic> json) =>
-      ExpenseMonthSummaryModel(
-        month: json['month'] as String,
-        status: _statusFromJson(json['status']),
-        planned: (json['planned'] as num).toDouble(),
-        actual: (json['actual'] as num).toDouble(),
-        progressPct: (json['progressPct'] as num).toDouble(),
-        over: json['over'] as bool,
-      );
+  /// Builds a summary from the API payload.
+  ///
+  /// [filledFallback]/[totalFallback] keep the counters working until
+  /// `ExpenseMonthSummary` exposes `filledEntries`/`totalEntries`; whenever the
+  /// API sends them, the API values win.
+  factory ExpenseMonthSummaryModel.fromJson(
+    Map<String, dynamic> json, {
+    int filledFallback = 0,
+    int totalFallback = 0,
+  }) {
+    final hasCounts =
+        json['filledEntries'] != null && json['totalEntries'] != null;
+    return ExpenseMonthSummaryModel(
+      month: json['month'] as String,
+      status: _statusFromJson(json['status']),
+      planned: (json['planned'] as num).toDouble(),
+      actual: (json['actual'] as num).toDouble(),
+      progressPct: (json['progressPct'] as num).toDouble(),
+      over: json['over'] as bool,
+      filledEntries: hasCounts
+          ? (json['filledEntries']! as num).toInt()
+          : filledFallback,
+      totalEntries: hasCounts
+          ? (json['totalEntries']! as num).toInt()
+          : totalFallback,
+    );
+  }
 
   /// A zeroed summary, used when a payload omits it.
   factory ExpenseMonthSummaryModel.empty(String month) =>
@@ -104,6 +124,8 @@ class ExpenseMonthSummaryModel {
         actual: 0,
         progressPct: 0,
         over: false,
+        filledEntries: 0,
+        totalEntries: 0,
       );
 
   final String month;
@@ -112,6 +134,8 @@ class ExpenseMonthSummaryModel {
   final double actual;
   final double progressPct;
   final bool over;
+  final int filledEntries;
+  final int totalEntries;
 
   static ExpenseMonthStatus _statusFromJson(Object? value) => switch (value) {
     'open' => ExpenseMonthStatus.open,
@@ -126,5 +150,7 @@ class ExpenseMonthSummaryModel {
     actual: actual,
     progressPct: progressPct,
     over: over,
+    filledEntries: filledEntries,
+    totalEntries: totalEntries,
   );
 }

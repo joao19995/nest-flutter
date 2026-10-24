@@ -25,6 +25,8 @@ Map<String, dynamic> _yearSummary(int year, String month) => {
       'actual': 500,
       'progressPct': 50,
       'over': false,
+      'filledEntries': 5,
+      'totalEntries': 10,
     },
   ],
 };
@@ -48,6 +50,8 @@ Map<String, dynamic> _month(String month) => {
     'actual': 500,
     'progressPct': 50,
     'over': false,
+    'filledEntries': 5,
+    'totalEntries': 10,
   },
 };
 
@@ -97,11 +101,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Despesa do mês'), findsOneWidget);
+    expect(find.text('Balanço do mês'), findsOneWidget);
+    expect(
+      find.text('${AppFormatters.monthName(month)} por fechar'),
+      findsOneWidget,
+    );
+    expect(find.text('Despesas'), findsOneWidget);
+    expect(find.text('Objetivos'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('Continuar'), findsOneWidget);
     final hero = tester.widget<Hero>(find.byType(Hero));
     expect(hero.tag, 'dashboard-month-$month');
-    expect(find.text(AppFormatters.currency(500)), findsOneWidget);
+    expect(find.textContaining(AppFormatters.currency(500)), findsOneWidget);
     expect(find.text(AppFormatters.percentage(50)), findsOneWidget);
+    expect(find.text('-50%'), findsOneWidget);
     expect(find.text('Sem plano'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -120,7 +133,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(AppFormatters.monthShort(previous)), findsOneWidget);
-    expect(find.text('Sem plano'), findsOneWidget);
+    expect(find.text('—'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 
@@ -135,7 +148,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Fechar'));
+    await tester.tap(find.text('Continuar'));
     await tester.pumpAndSettle();
 
     expect(opened, isNull);
@@ -158,7 +171,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Despesa do mês'));
+    await tester.tap(find.text('Balanço do mês'));
     expect(opened, month);
   });
 
@@ -172,8 +185,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Despesa do mês'), findsOneWidget);
-    expect(find.text(AppFormatters.currency(500)), findsOneWidget);
+    expect(find.text('Balanço do mês'), findsOneWidget);
+    expect(find.textContaining(AppFormatters.currency(500)), findsOneWidget);
     expect(find.text('Eventos indisponíveis'), findsOneWidget);
     expect(find.text('Tentar de novo'), findsOneWidget);
   });

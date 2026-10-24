@@ -49,6 +49,11 @@ Rules:
   by their View from `DependenciesScope.of(context)`.
 - Views use `ListenableBuilder`; they contain no business logic.
 - Repositories return domain models, never raw JSON.
+- The API owns business aggregates and derived domain state (totals, quotas,
+  statuses, counts that encode a rule, cross-month sums). If a screen needs a
+  new one, request the API change; do not fan out extra GETs or reimplement the
+  rule in Flutter. Deriving presentation from data already in the payload
+  (format, sort, filter) is fine.
 - No DI package: the graph is small and built in `config/dependencies.dart`.
 
 ## 3. Design Tokens

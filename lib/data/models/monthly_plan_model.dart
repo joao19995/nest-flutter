@@ -18,18 +18,25 @@ class MonthlyPlanModel {
     final entries = json['entries'];
     final summary = json['summary'];
     final settlement = json['settlement'];
+    final parsedEntries = entries is List
+        ? entries
+              .whereType<Map<String, dynamic>>()
+              .map(MonthlyPlanEntryModel.fromJson)
+              .toList(growable: false)
+        : const <MonthlyPlanEntryModel>[];
     return MonthlyPlanModel(
       id: json['id'] as String,
       month: json['month'] as String,
       closed: json['closed'] as bool,
-      entries: entries is List
-          ? entries
-                .whereType<Map<String, dynamic>>()
-                .map(MonthlyPlanEntryModel.fromJson)
-                .toList(growable: false)
-          : const [],
+      entries: parsedEntries,
       summary: summary is Map<String, dynamic>
-          ? ExpenseMonthSummaryModel.fromJson(summary)
+          ? ExpenseMonthSummaryModel.fromJson(
+              summary,
+              filledFallback: parsedEntries
+                  .where((entry) => entry.actualSet)
+                  .length,
+              totalFallback: parsedEntries.length,
+            )
           : ExpenseMonthSummaryModel.empty(json['month'] as String? ?? ''),
       settlement: settlement is Map<String, dynamic>
           ? MonthSettlementModel.fromJson(settlement)

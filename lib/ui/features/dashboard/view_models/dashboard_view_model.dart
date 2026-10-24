@@ -5,6 +5,7 @@ import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/calendar_event.dart';
 import 'package:nest/domain/models/expense_year_summary.dart';
+import 'package:nest/domain/models/goal_template.dart';
 import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/app_formatters.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
@@ -47,6 +48,49 @@ class DashboardSectionState {
 
   /// The failure to surface in the section, or null.
   final String? errorMessage;
+}
+
+/// The state of one month's closing ritual.
+class DashboardRitual {
+  const DashboardRitual({
+    required this.month,
+    required this.expensesStatus,
+    required this.filledEntries,
+    required this.totalEntries,
+    required this.goalsStatus,
+    required this.goalsReserved,
+    required this.goalsPlanned,
+  });
+
+  /// The month, formatted `YYYY-MM`.
+  final String month;
+
+  final ExpenseMonthStatus expensesStatus;
+
+  /// Lines already filled in the month (server rule).
+  final int filledEntries;
+
+  /// Lines the month has (server rule).
+  final int totalEntries;
+
+  /// The goals month status; null while its plan data is not loaded.
+  final ExpenseMonthStatus? goalsStatus;
+
+  /// The amount reserved for goals in the month, in euros.
+  final double goalsReserved;
+
+  /// The amount planned for goals in the month, in euros.
+  final double goalsPlanned;
+
+  /// True when both areas are closed (or goals have no plan to close).
+  bool get isClosed =>
+      expensesStatus == ExpenseMonthStatus.closed &&
+      (goalsStatus == null || goalsStatus == ExpenseMonthStatus.closed);
+
+  /// True when the month has nothing to close yet.
+  bool get isMissing =>
+      expensesStatus == ExpenseMonthStatus.missing &&
+      (goalsStatus == null || goalsStatus == ExpenseMonthStatus.missing);
 }
 
 /// Presentation state for the dashboard: the household's at-a-glance summary.
@@ -165,11 +209,50 @@ class DashboardViewModel extends ChangeNotifier {
   /// The events happening today and over the next few days, earliest first.
   List<CalendarEvent> get upcomingEvents => _upcomingEvents;
 
-  /// The goals ordered by reserved amount, most funded first.
+  /// The goals ordered by timeline, priority and what is still missing.
   List<GoalSummary> get goals => _goalsList;
 
   /// The selected year's twelve months, for the year strip.
   List<ExpenseMonthSummary> get yearMonths => _yearMonths;
+
+  /// The goals month matching [month], when its year is loaded.
+  GoalMonthSummary? get goalMonth {
+    final year = int.tryParse(_month.split('-').first);
+    if (year == null || year != _goalsYear) {
+      return null;
+    }
+    for (final month in _goals.months) {
+      if (month.month == _month) {
+        return month;
+      }
+    }
+    return null;
+  }
+
+  /// The month's closing state: expenses, goals and their totals. Null while
+  /// the month data is loading.
+  DashboardRitual? get ritual {
+    final expense = _monthSummary ?? _stripMonth;
+    if (expense == null && _monthSection.isLoading) {
+      return null;
+    }
+    final goal = goalMonth;
+    return DashboardRitual(
+      month: _month,
+      expensesStatus: expense?.status ?? ExpenseMonthStatus.missing,
+      filledEntries: expense?.filledEntries ?? 0,
+      totalEntries: expense?.totalEntries ?? 0,
+      goalsStatus: goal == null
+          ? null
+          : !goal.hasPlan
+          ? ExpenseMonthStatus.missing
+          : goal.closed
+          ? ExpenseMonthStatus.closed
+          : ExpenseMonthStatus.open,
+      goalsReserved: goal?.reserved ?? 0,
+      goalsPlanned: goal?.planned ?? 0,
+    );
+  }
 
   /// The month shown in the header hero, formatted `YYYY-MM`.
   String get month => _month;
@@ -422,7 +505,52 @@ class DashboardViewModel extends ChangeNotifier {
     );
   }
 
-  void _readGoals() => _goalsList = _goals.goals;
+  void _readGoals() {
+    final goals = [..._goals.goals];
+    goals.sort(_compareGoals);
+    _goalsList = goals;
+  }
+
+  int _compareGoals(GoalSummary a, GoalSummary b) {
+    final target = (a.hasTarget ? 0 : 1) - (b.hasTarget ? 0 : 1);
+    if (target != 0) return target;
+    final timeline = _timelineRank(
+      a.timeline,
+    ).compareTo(_timelineRank(b.timeline));
+    if (timeline != 0) return timeline;
+    final priority = _priorityRank(
+      a.priority,
+    ).compareTo(_priorityRank(b.priority));
+    if (priority != 0) return priority;
+    final missing = b.missing.compareTo(a.missing);
+    if (missing != 0) return missing;
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  }
+
+  int _timelineRank(GoalTimeline? timeline) => switch (timeline) {
+    GoalTimeline.t1 => 0,
+    GoalTimeline.t2 => 1,
+    GoalTimeline.t3 => 2,
+    GoalTimeline.t4 => 3,
+    GoalTimeline.annual => 4,
+    null => 5,
+  };
+
+  int _priorityRank(GoalPriority? priority) => switch (priority) {
+    GoalPriority.grande => 0,
+    GoalPriority.pequeno => 1,
+    GoalPriority.niceToHave => 2,
+    null => 3,
+  };
+
+  ExpenseMonthSummary? get _stripMonth {
+    for (final month in _yearMonths) {
+      if (month.month == _month) {
+        return month;
+      }
+    }
+    return null;
+  }
 
   int get _stripYear {
     final year = int.tryParse(_month.split('-').first);

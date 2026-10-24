@@ -18,6 +18,8 @@ MonthlyPlan _expensePlan({MonthSettlement? settlement}) => MonthlyPlan(
     actual: 1000,
     progressPct: 100,
     over: false,
+    filledEntries: 0,
+    totalEntries: 0,
   ),
   settlement: settlement,
 );

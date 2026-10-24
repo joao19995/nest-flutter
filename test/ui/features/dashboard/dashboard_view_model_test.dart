@@ -4,6 +4,7 @@ import 'package:nest/data/repositories/events_repository.dart';
 import 'package:nest/data/repositories/expenses_repository.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
+import 'package:nest/domain/models/expense_year_summary.dart';
 import 'package:nest/ui/features/dashboard/view_models/dashboard_view_model.dart';
 
 import '../../../support/test_helpers.dart';
@@ -26,6 +27,8 @@ Map<String, dynamic> _yearSummary() => const {
       'actual': 500,
       'progressPct': 50,
       'over': false,
+      'filledEntries': 5,
+      'totalEntries': 10,
     },
     {
       'month': '2026-11',
@@ -34,6 +37,8 @@ Map<String, dynamic> _yearSummary() => const {
       'actual': 0,
       'progressPct': 0,
       'over': false,
+      'filledEntries': 0,
+      'totalEntries': 0,
     },
   ],
 };
@@ -111,6 +116,8 @@ Map<String, dynamic> _month() => const {
     'actual': 1240,
     'progressPct': 82.67,
     'over': false,
+    'filledEntries': 5,
+    'totalEntries': 10,
   },
 };
 
@@ -221,6 +228,18 @@ void main() {
     expect(viewModel.yearMonths, hasLength(2));
     expect(viewModel.yearMonths.first.month, '2026-10');
     expect(viewModel.yearMonths.last.month, '2026-11');
+
+    final ritual = viewModel.ritual;
+    expect(ritual, isNotNull);
+    expect(ritual?.month, '2026-10');
+    expect(ritual?.expensesStatus, ExpenseMonthStatus.open);
+    expect(ritual?.filledEntries, 5);
+    expect(ritual?.totalEntries, 10);
+    expect(ritual?.goalsStatus, ExpenseMonthStatus.missing);
+    expect(ritual?.goalsReserved, 0);
+    expect(ritual?.goalsPlanned, 0);
+    expect(ritual?.isClosed, isFalse);
+    expect(ritual?.isMissing, isFalse);
   });
 
   test('steps the header month and clears the summary when missing', () async {
@@ -276,6 +295,85 @@ void main() {
 
     expect(viewModel.greeting, 'Bom dia');
     expect(viewModel.today, DateTime(2026, 10, 19));
+  });
+
+  test('orders goals by timeline, priority and missing amount', () async {
+    final client = MockClient((request) async {
+      switch (request.url.path) {
+        case '/api/months/summary':
+          return jsonResponse(_yearSummary());
+        case '/api/events':
+          return jsonResponse(const <Object>[]);
+        case '/api/goal-plan':
+          return jsonResponse(const {
+            'plans': [
+              {
+                'id': 'p1',
+                'month': '2026-01',
+                'availableAmount': 2000,
+                'closed': true,
+                'allocations': [
+                  {
+                    'goalId': 'g1',
+                    'goalName': 'Viagem',
+                    'planned': 1000,
+                    'actual': 100,
+                  },
+                  {
+                    'goalId': 'g2',
+                    'goalName': 'Carro',
+                    'planned': 1000,
+                    'actual': 900,
+                  },
+                ],
+              },
+            ],
+            'funding': {
+              'year': 2026,
+              'annualTotal': 2000,
+              'months': <Object>[],
+            },
+          });
+        case '/api/goals':
+          return jsonResponse(_goals());
+        case '/api/goal-templates/applicable':
+          return jsonResponse(const {
+            'template': {
+              'id': 't1',
+              'validFrom': '2026-01',
+              'annualTotal': 2000,
+              'entries': [
+                {
+                  'goalId': 'g2',
+                  'percentage': 50,
+                  'budget': 1000,
+                  'timeline': 'T4',
+                  'priority': 'NICE_TO_HAVE',
+                },
+                {
+                  'goalId': 'g1',
+                  'percentage': 50,
+                  'budget': 1000,
+                  'timeline': 'T1',
+                  'priority': 'GRANDE',
+                },
+              ],
+            },
+          });
+        case '/api/months/2026-10':
+          return jsonResponse(_month());
+        default:
+          return jsonResponse(const <Object>[], status: 404);
+      }
+    });
+    final viewModel = _viewModel(client);
+
+    await viewModel.load();
+
+    expect(viewModel.goals.map((goal) => goal.name).toList(), [
+      'Viagem',
+      'Carro',
+    ]);
   });
 
   test('loads the year strip for the displayed month year', () async {

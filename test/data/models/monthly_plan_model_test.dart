@@ -64,6 +64,9 @@ void main() {
       expect(plan.planned, 470);
       expect(plan.actual, 491.94);
       expect(plan.isOver, isTrue);
+      // Transitional fallback: the API summary has no counters yet.
+      expect(plan.summary.filledEntries, 2);
+      expect(plan.summary.totalEntries, 2);
 
       final casa = plan.entries.first;
       expect(casa.categoryName, 'Casa');
@@ -139,6 +142,39 @@ void main() {
       expect(plan.entries[0].actualSet, isTrue);
       expect(plan.entries[1].actualSet, isFalse);
       expect(plan.entries[2].actualSet, isTrue);
+    });
+
+    test('prefers the server entry counters when present', () {
+      final plan = MonthlyPlanModel.fromJson(<String, dynamic>{
+        'id': 'm5',
+        'month': '2026-05',
+        'templateId': 't1',
+        'closed': false,
+        'entries': [
+          {
+            'id': 'e1',
+            'categoryName': 'Renda',
+            'categoryType': 'FIXED',
+            'accountName': 'Conjunta',
+            'planned': 800,
+            'actual': 0,
+          },
+        ],
+        'summary': {
+          'month': '2026-05',
+          'status': 'open',
+          'planned': 800,
+          'actual': 0,
+          'progressPct': 0,
+          'over': false,
+          'filledEntries': 0,
+          'totalEntries': 4,
+        },
+        'settlement': null,
+      }).toDomain();
+
+      expect(plan.summary.filledEntries, 0);
+      expect(plan.summary.totalEntries, 4);
     });
 
     test('maps a no-income settlement', () {

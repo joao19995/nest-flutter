@@ -21,6 +21,8 @@ class ExpenseMonthSummary {
     required this.actual,
     required this.progressPct,
     required this.over,
+    required this.filledEntries,
+    required this.totalEntries,
   });
 
   /// The month, formatted `YYYY-MM`.
@@ -40,6 +42,12 @@ class ExpenseMonthSummary {
 
   /// True when the actual spend exceeded the planned amount.
   final bool over;
+
+  /// How many lines already have a real amount entered (server rule).
+  final int filledEntries;
+
+  /// How many lines the month has (server rule).
+  final int totalEntries;
 }
 
 /// The annual expense panorama for a given year.
