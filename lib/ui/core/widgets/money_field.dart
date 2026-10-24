@@ -15,6 +15,7 @@ class MoneyField extends StatefulWidget {
     required this.value,
     required this.originalValue,
     required this.onSave,
+    this.isLast = false,
   });
 
   /// The amount shown in the field.
@@ -24,6 +25,10 @@ class MoneyField extends StatefulWidget {
   final double originalValue;
 
   final ValueChanged<double> onSave;
+
+  /// Whether this is the last editable amount: the keyboard action becomes
+  /// "done" instead of moving to the next field.
+  final bool isLast;
 
   @override
   State<MoneyField> createState() => _MoneyFieldState();
@@ -46,7 +51,8 @@ class _MoneyFieldState extends State<MoneyField>
   @override
   void didUpdateWidget(covariant MoneyField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_focusNode.hasFocus && widget.value != oldWidget.value) {
+    if (widget.value != oldWidget.value &&
+        _parse(_controller.text) != widget.value) {
       _controller.text = _format(widget.value);
     }
   }
@@ -67,9 +73,7 @@ class _MoneyFieldState extends State<MoneyField>
   }
 
   void _save() {
-    final parsed = double.tryParse(
-      _controller.text.trim().replaceAll(',', '.'),
-    );
+    final parsed = _parse(_controller.text);
     if (parsed == null || parsed < 0) {
       _controller.text = _format(widget.originalValue);
       return;
@@ -81,6 +85,9 @@ class _MoneyFieldState extends State<MoneyField>
     HapticFeedback.selectionClick();
     _tick.forward(from: 0);
   }
+
+  static double? _parse(String text) =>
+      double.tryParse(text.trim().replaceAll(',', '.'));
 
   static String _format(double value) =>
       value.toStringAsFixed(2).replaceAll('.', ',');
@@ -99,8 +106,9 @@ class _MoneyFieldState extends State<MoneyField>
             focusNode: _focusNode,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textAlign: TextAlign.end,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _save(),
+            textInputAction: widget.isLast
+                ? TextInputAction.done
+                : TextInputAction.next,
             decoration: const InputDecoration(
               isDense: true,
               suffixText: '€',

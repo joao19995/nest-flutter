@@ -90,6 +90,22 @@ Map<String, dynamic> _openMonth({double actual = 0}) => <String, dynamic>{
   'settlement': null,
 };
 
+Map<String, dynamic> _twoEntryMonth() {
+  final month = _openMonth();
+  final entries = month['entries']! as List<dynamic>;
+  entries.add({
+    'id': 'e2',
+    'categoryName': 'Luz',
+    'categoryType': 'VARIABLE',
+    'accountName': 'Joao',
+    'planned': 60,
+    'actual': 0,
+  });
+  final summary = month['summary']! as Map<String, dynamic>;
+  summary['planned'] = 510;
+  return month;
+}
+
 String? _groupTotal(WidgetTester tester, String group) =>
     tester.widget<Text>(find.byKey(ValueKey('entry-group-total-$group'))).data;
 
@@ -142,8 +158,173 @@ void main() {
     expect(find.text('Fixas'), findsOneWidget);
     expect(find.text('Variáveis'), findsNothing);
     expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('0 de 1 preenchidas'), findsOneWidget);
+    expect(find.text('Em falta'), findsOneWidget);
+    expect(find.text('Preencher fixas'), findsOneWidget);
     expect(find.text('Fechar mês'), findsOneWidget);
     expect(find.text('Contribuições'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the keyboard advances through the categories', (tester) async {
+    setPhoneSize(tester);
+    final client = MockClient(
+      (request) async => jsonResponse(_twoEntryMonth()),
+    );
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        const MonthDetailView(month: '2026-02'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextField);
+    expect(fields, findsNWidgets(2));
+    await tester.tap(fields.first);
+    await tester.enterText(fields.first, '450');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pumpAndSettle();
+
+    final widgets = tester
+        .widgetList<TextField>(fields)
+        .toList(growable: false);
+    expect(widgets.first.textInputAction, TextInputAction.next);
+    expect(widgets.last.textInputAction, TextInputAction.done);
+    expect(widgets.first.focusNode?.hasFocus, isFalse);
+    expect(widgets.last.focusNode?.hasFocus, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('prefills the fixed lines with the planned amounts', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    final requests = <http.Request>[];
+    final client = MockClient((request) async {
+      requests.add(request);
+      if (request.method == 'PATCH') {
+        return jsonResponse(_openMonth(actual: 450));
+      }
+      return jsonResponse(_openMonth());
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        const MonthDetailView(month: '2026-02'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Preencher fixas'));
+    await tester.pumpAndSettle();
+
+    final patch = requests.singleWhere((request) => request.method == 'PATCH');
+    expect(patch.url.path, '/api/months/2026-02/entries');
+    expect(find.text('1 de 1 preenchidas'), findsOneWidget);
+    expect(find.text('Em falta'), findsNothing);
+    expect(find.text('Preencher fixas'), findsNothing);
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller?.text, '450,00');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reviews the totals and transfers before closing', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/months/2026-02/settlement-preview') {
+        return jsonResponse(const {
+          'status': 'ok',
+          'contributionRequired': 450,
+          'jointSurplus': 0,
+          'people': [
+            {
+              'personName': 'João',
+              'income': 2500,
+              'quota': 225,
+              'personalActual': 0,
+              'transferToJoint': 225,
+              'transferToPerson': 0,
+            },
+          ],
+        });
+      }
+      return jsonResponse(_openMonth());
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        const MonthDetailView(month: '2026-02'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Fechar mês'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Planeado'), findsOneWidget);
+    expect(find.text('Real'), findsOneWidget);
+    expect(find.text('Desvio'), findsOneWidget);
+    expect(find.text('Contribuições'), findsOneWidget);
+    expect(find.text('João'), findsOneWidget);
+    expect(find.byType(AppTransferFlow), findsOneWidget);
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('confirms the close from the review', (tester) async {
+    setPhoneSize(tester);
+    final requests = <http.Request>[];
+    final client = MockClient((request) async {
+      requests.add(request);
+      if (request.url.path == '/api/months/2026-02/settlement-preview') {
+        return jsonResponse(const {
+          'status': 'ok',
+          'contributionRequired': 450,
+          'jointSurplus': 0,
+          'people': <Object>[],
+        });
+      }
+      return jsonResponse(_openMonth());
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        const MonthDetailView(month: '2026-02'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Fechar mês'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Fechar mês'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      requests.any(
+        (request) =>
+            request.method == 'POST' &&
+            request.url.path == '/api/months/2026-02/close',
+      ),
+      isTrue,
+    );
+    expect(find.byType(AlertDialog), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

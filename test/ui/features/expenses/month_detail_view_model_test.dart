@@ -52,6 +52,42 @@ Map<String, dynamic> _month({
   'settlement': null,
 };
 
+Map<String, dynamic> _monthWithTwoFixedEntries() => <String, dynamic>{
+  'id': 'm2',
+  'month': '2026-02',
+  'templateId': 't1',
+  'closed': false,
+  'entries': [
+    {
+      'id': 'e1',
+      'categoryName': 'Renda',
+      'categoryType': 'FIXED',
+      'accountName': 'Conjunta',
+      'planned': 450,
+      'actual': 460,
+      'actualSet': true,
+    },
+    {
+      'id': 'e2',
+      'categoryName': 'Internet',
+      'categoryType': 'FIXED',
+      'accountName': 'Conjunta',
+      'planned': 30,
+      'actual': 0,
+      'actualSet': false,
+    },
+  ],
+  'summary': {
+    'month': '2026-02',
+    'status': 'open',
+    'planned': 480,
+    'actual': 460,
+    'progressPct': 95.83,
+    'over': false,
+  },
+  'settlement': null,
+};
+
 void main() {
   test('load exposes the plan', () async {
     final client = MockClient(
@@ -146,5 +182,120 @@ void main() {
 
     expect(viewModel.actionError, 'Não guardou.');
     expect(viewModel.isBusy, isFalse);
+  });
+
+  test('fillPlannedForFixed sends every fixed line in one request', () async {
+    String? path;
+    Object? body;
+    final client = MockClient((request) async {
+      if (request.method == 'PATCH') {
+        path = request.url.path;
+        body = jsonDecode(request.body);
+        return jsonResponse(_month(actual: 450));
+      }
+      return jsonResponse(_month());
+    });
+
+    final viewModel = _viewModel(client);
+    await viewModel.load();
+    await viewModel.fillPlannedForFixed();
+
+    expect(path, '/api/months/2026-02/entries');
+    expect((body as Map<String, dynamic>)['entries'], [
+      {'id': 'e1', 'actual': 450},
+    ]);
+    expect(viewModel.plan?.actual, 450);
+    expect(viewModel.isBusy, isFalse);
+  });
+
+  test('fillPlannedForFixed keeps already filled exceptions', () async {
+    Object? body;
+    final client = MockClient((request) async {
+      if (request.method == 'PATCH') {
+        body = jsonDecode(request.body);
+        return jsonResponse(_monthWithTwoFixedEntries());
+      }
+      return jsonResponse(_monthWithTwoFixedEntries());
+    });
+
+    final viewModel = _viewModel(client);
+    await viewModel.load();
+    await viewModel.fillPlannedForFixed();
+
+    expect((body as Map<String, dynamic>)['entries'], [
+      {'id': 'e2', 'actual': 30},
+    ]);
+  });
+
+  test('fillPlanned copies the planned amount of one line', () async {
+    String? path;
+    Object? body;
+    final client = MockClient((request) async {
+      if (request.method == 'PATCH') {
+        path = request.url.path;
+        body = jsonDecode(request.body);
+        return jsonResponse(_month(actual: 450));
+      }
+      return jsonResponse(_month());
+    });
+
+    final viewModel = _viewModel(client);
+    await viewModel.load();
+    await viewModel.fillPlanned('e1');
+
+    expect(path, '/api/months/2026-02/entries/e1');
+    expect((body as Map<String, dynamic>)['actual'], 450);
+    expect(viewModel.plan?.actual, 450);
+  });
+
+  test('loadSettlementPreview exposes the transfers before closing', () async {
+    String? path;
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/months/2026-02/settlement-preview') {
+        path = request.url.path;
+        return jsonResponse(const {
+          'status': 'ok',
+          'contributionRequired': 450,
+          'jointSurplus': 0,
+          'people': [
+            {
+              'personName': 'João',
+              'income': 2500,
+              'quota': 225,
+              'personalActual': 0,
+              'transferToJoint': 225,
+              'transferToPerson': 0,
+            },
+          ],
+        });
+      }
+      return jsonResponse(_month());
+    });
+
+    final viewModel = _viewModel(client);
+    await viewModel.load();
+    await viewModel.loadSettlementPreview();
+
+    expect(path, '/api/months/2026-02/settlement-preview');
+    expect(viewModel.isPreviewLoading, isFalse);
+    expect(viewModel.previewError, isNull);
+    expect(viewModel.settlementPreview?.people.single.personName, 'João');
+  });
+
+  test('a failed preview records the preview error', () async {
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/settlement-preview')) {
+        return jsonResponse(const {'error': 'Não calculou.'}, status: 500);
+      }
+      return jsonResponse(_month());
+    });
+
+    final viewModel = _viewModel(client);
+    await viewModel.load();
+    await viewModel.loadSettlementPreview();
+
+    expect(viewModel.previewError, 'Não calculou.');
+    expect(viewModel.settlementPreview, isNull);
+    expect(viewModel.isPreviewLoading, isFalse);
   });
 }

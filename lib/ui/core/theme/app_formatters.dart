@@ -70,6 +70,13 @@ abstract final class AppFormatters {
   /// Example: `12.9` → `"12,90 €"`.
   static String currency(num value) => _currency.format(value);
 
+  /// Formats a deviation, keeping the sign visible for positive values.
+  /// Example: `12.9` → `"+12,90 €"`, `-5` → `"-5,00 €"`.
+  static String signedCurrency(num value) {
+    final formatted = currency(value);
+    return value > 0 ? '+$formatted' : formatted;
+  }
+
   /// Formats a value already expressed as a percentage.
   /// Example: `25` → `"25%"`, `12.5` → `"12,5%"`.
   static String percentage(num value) => '${_percentage.format(value)}%';

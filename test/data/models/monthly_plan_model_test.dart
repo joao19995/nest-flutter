@@ -70,6 +70,7 @@ void main() {
       expect(casa.accountName, 'JoA�o');
       expect(casa.planned, 450);
       expect(casa.actual, 471.94);
+      expect(casa.actualSet, isTrue);
       expect(plan.entries.last.type, CategoryType.variable);
 
       final settlement = plan.settlement;
@@ -94,6 +95,48 @@ void main() {
       expect(plan.entries, isEmpty);
       expect(plan.isEmpty, isTrue);
       expect(plan.settlement, isNull);
+    });
+
+    test('maps actualSet and falls back to the stored amount', () {
+      final plan = MonthlyPlanModel.fromJson(<String, dynamic>{
+        'id': 'm4',
+        'month': '2026-04',
+        'templateId': 't1',
+        'closed': false,
+        'entries': [
+          {
+            'id': 'e1',
+            'categoryName': 'Renda',
+            'categoryType': 'FIXED',
+            'accountName': 'Conjunta',
+            'planned': 800,
+            'actual': 0,
+            'actualSet': true,
+          },
+          {
+            'id': 'e2',
+            'categoryName': 'Luz',
+            'categoryType': 'VARIABLE',
+            'accountName': 'Conjunta',
+            'planned': 60,
+            'actual': 0,
+            'actualSet': false,
+          },
+          {
+            'id': 'e3',
+            'categoryName': 'Água',
+            'categoryType': 'VARIABLE',
+            'accountName': 'Conjunta',
+            'planned': 30,
+            'actual': 30,
+          },
+        ],
+        'settlement': null,
+      }).toDomain();
+
+      expect(plan.entries[0].actualSet, isTrue);
+      expect(plan.entries[1].actualSet, isFalse);
+      expect(plan.entries[2].actualSet, isTrue);
     });
 
     test('maps a no-income settlement', () {

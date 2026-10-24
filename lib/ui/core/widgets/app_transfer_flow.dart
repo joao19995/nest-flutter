@@ -78,9 +78,7 @@ class AppTransferFlow extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(
-                        child: _Label(leftLabel, color: colors.ink),
-                      ),
+                      Expanded(child: _Label(leftLabel, color: colors.ink)),
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.xs,

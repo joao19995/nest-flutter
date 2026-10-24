@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:nest/data/repositories/expenses_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
+import 'package:nest/domain/models/category.dart';
+import 'package:nest/domain/models/month_settlement.dart';
 import 'package:nest/domain/models/monthly_plan.dart';
 
 /// Presentation state for a single month's expense detail.
@@ -33,6 +35,38 @@ class MonthDetailViewModel extends ChangeNotifier {
   String? _actionError;
   String? get actionError => _actionError;
 
+  /// The contributions calculated without closing the month, for review.
+  MonthSettlement? _settlementPreview;
+  MonthSettlement? get settlementPreview => _settlementPreview;
+
+  /// The last preview failure, shown inside the close dialog.
+  String? _previewError;
+  String? get previewError => _previewError;
+
+  bool _isPreviewLoading = false;
+  bool get isPreviewLoading => _isPreviewLoading;
+
+  /// How many lines of the month have a real amount entered.
+  int get filledEntries =>
+      _plan?.entries.where((entry) => entry.actualSet).length ?? 0;
+
+  /// How many lines the month has.
+  int get totalEntries => _plan?.entries.length ?? 0;
+
+  /// Whether at least one fixed line still has no real amount entered.
+  bool get hasFixedToFill {
+    final plan = _plan;
+    if (plan == null || plan.closed) {
+      return false;
+    }
+    for (final entry in plan.entries) {
+      if (entry.type == CategoryType.fixed && !entry.actualSet) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /// Loads the plan for the selected month.
   ///
   /// Ignoring a plan whose month is no longer selected keeps rapid month
@@ -41,6 +75,8 @@ class MonthDetailViewModel extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     _actionError = null;
+    _settlementPreview = null;
+    _previewError = null;
     notifyListeners();
     final month = _month;
     try {
@@ -71,6 +107,7 @@ class MonthDetailViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       _plan = await _expensesRepository.createMonth(_month);
+      _settlementPreview = null;
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
     } finally {
@@ -90,6 +127,7 @@ class MonthDetailViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       _plan = await _expensesRepository.closeMonth(_month);
+      _settlementPreview = null;
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
     } finally {
@@ -113,11 +151,78 @@ class MonthDetailViewModel extends ChangeNotifier {
         entryId,
         actual,
       );
+      _settlementPreview = null;
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
     } finally {
       _isBusy = false;
       notifyListeners();
+    }
+  }
+
+  /// Loads the contributions without closing the month, for the review dialog.
+  Future<void> loadSettlementPreview() async {
+    if (_isPreviewLoading) {
+      return;
+    }
+    _isPreviewLoading = true;
+    _previewError = null;
+    _settlementPreview = null;
+    notifyListeners();
+    try {
+      _settlementPreview = await _expensesRepository.fetchSettlementPreview(
+        _month,
+      );
+    } on ApiFailure catch (failure) {
+      _previewError = failure.message;
+    } finally {
+      _isPreviewLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Copies the planned amount into every fixed line still left empty.
+  ///
+  /// Lines already filled are never overwritten: an actual that differs from
+  /// the plan is an intentional exception.
+  Future<void> fillPlannedForFixed() async {
+    final plan = _plan;
+    if (plan == null || plan.closed || _isBusy) {
+      return;
+    }
+    final updates = <String, double>{
+      for (final entry in plan.entries)
+        if (entry.type == CategoryType.fixed && !entry.actualSet)
+          entry.id: entry.planned,
+    };
+    if (updates.isEmpty) {
+      return;
+    }
+    _isBusy = true;
+    _actionError = null;
+    notifyListeners();
+    try {
+      _plan = await _expensesRepository.updateEntriesActual(_month, updates);
+      _settlementPreview = null;
+    } on ApiFailure catch (failure) {
+      _actionError = failure.message;
+    } finally {
+      _isBusy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Copies the planned amount into the line [entryId].
+  Future<void> fillPlanned(String entryId) async {
+    final plan = _plan;
+    if (plan == null || plan.closed) {
+      return;
+    }
+    for (final entry in plan.entries) {
+      if (entry.id == entryId) {
+        await updateEntryActual(entryId, entry.planned);
+        return;
+      }
     }
   }
 }

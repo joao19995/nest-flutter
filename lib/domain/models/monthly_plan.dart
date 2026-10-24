@@ -11,6 +11,7 @@ class MonthlyPlanEntry {
     required this.accountName,
     required this.planned,
     required this.actual,
+    required this.actualSet,
     this.categoryIconKey,
   });
 
@@ -33,6 +34,9 @@ class MonthlyPlanEntry {
 
   /// The amount actually spent on the line, in euros.
   final double actual;
+
+  /// Whether [actual] has been entered. A `0` may mean "not filled in yet".
+  final bool actualSet;
 }
 
 /// A month of expenses: its planned lines, the server-derived summary and,
