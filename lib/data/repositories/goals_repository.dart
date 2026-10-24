@@ -177,13 +177,6 @@ class GoalsRepository {
     return mapJson(data, (json) => GoalMonthModel.fromJson(json).toDomain());
   }
 
-  /// Redistributes an open month's planned amounts from the applicable
-  /// template, so the month can be closed with a full allocation.
-  Future<void> adjustGoalPlanFromTemplate(String month) => _client.post(
-    '/api/goal-plan/adjust',
-    {'month': month, 'fromTemplate': true},
-  );
-
   /// Previews what closing [month] (`YYYY-MM`) would do, without writing.
   Future<GoalClosePreview> fetchGoalClosePreview(String month) async {
     final data = await _client.get('/api/goal-plan/$month/close-preview');
