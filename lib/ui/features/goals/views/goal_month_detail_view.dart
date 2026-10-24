@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:nest/domain/models/goal_close_preview.dart';
 import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/goal_year.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
@@ -130,16 +133,25 @@ class _Content extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
         ],
         _GoalsCard(
+          viewModel: viewModel,
           plan: plan,
           iconKeyByGoal: viewModel.iconKeyByGoal,
-          isBusy: viewModel.isBusy,
-          onSaveActual: viewModel.updateAllocationActual,
-          onClose: viewModel.closeMonth,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _FundingCard(
+          funding: viewModel.funding,
+          snapshot: plan.availableAmount,
+          closed: plan.closed,
         ),
         const SizedBox(height: AppSpacing.lg),
         _TransfersCard(
           transfers: viewModel.transfers,
           iconKeyByGoal: viewModel.iconKeyByGoal,
+          reserved: viewModel.reserved,
+          hasIncome:
+              (viewModel.funding?.incomeNormal ?? 0) +
+                  (viewModel.funding?.bonus ?? 0) >
+              0.005,
         ),
       ],
     );
@@ -148,27 +160,19 @@ class _Content extends StatelessWidget {
 
 class _GoalsCard extends StatelessWidget {
   const _GoalsCard({
+    required this.viewModel,
     required this.plan,
     required this.iconKeyByGoal,
-    required this.isBusy,
-    required this.onSaveActual,
-    required this.onClose,
   });
 
+  final GoalMonthDetailViewModel viewModel;
   final GoalPlan plan;
   final Map<String, String?> iconKeyByGoal;
-  final bool isBusy;
-  final void Function(String goalId, double actual) onSaveActual;
-  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
     final allocations = plan.allocations;
     final editable = !plan.closed;
-    final plannedTotal = allocations.fold<double>(
-      0,
-      (sum, item) => sum + item.planned,
-    );
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -183,11 +187,13 @@ class _GoalsCard extends StatelessWidget {
           else
             AppStagger(
               children: [
-                for (var index = 0; index < allocations.length; index++)
+                for (final allocation in allocations)
                   _GoalRow(
-                    allocation: allocations[index],
-                    iconKey: iconKeyByGoal[allocations[index].goalId],
-                    onSaveActual: editable ? onSaveActual : null,
+                    allocation: allocation,
+                    iconKey: iconKeyByGoal[allocation.goalId],
+                    onSaveActual: editable
+                        ? viewModel.updateAllocationActual
+                        : null,
                   ),
               ],
             ),
@@ -197,7 +203,7 @@ class _GoalsCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    _summaryLabel(plan, plannedTotal),
+                    _summaryLabel(viewModel),
                     style: AppTextStyles.small(context.colors),
                   ),
                 ),
@@ -205,7 +211,7 @@ class _GoalsCard extends StatelessWidget {
                 AppButton(
                   label: 'Fechar mês',
                   icon: Icons.lock_outlined,
-                  isLoading: isBusy,
+                  isLoading: viewModel.isBusy,
                   onPressed: () => _confirmClose(context),
                 ),
               ],
@@ -216,28 +222,147 @@ class _GoalsCard extends StatelessWidget {
     );
   }
 
-  static String _summaryLabel(GoalPlan plan, double plannedTotal) {
-    final missing = plan.availableAmount - plannedTotal;
+  static String _summaryLabel(GoalMonthDetailViewModel viewModel) {
+    final missing = viewModel.available - viewModel.planned;
     final status = missing > 0.005
         ? ' · falta ${AppFormatters.currency(missing)}'
         : missing < -0.005
         ? ' · a mais ${AppFormatters.currency(-missing)}'
         : ' · certo';
-    return 'Planeado ${AppFormatters.currency(plannedTotal)} '
-        'de ${AppFormatters.currency(plan.availableAmount)}$status · '
-        'Reservado ${AppFormatters.currency(plan.reserved)}';
+    return 'Planeado ${AppFormatters.currency(viewModel.planned)} '
+        'de ${AppFormatters.currency(viewModel.available)}$status · '
+        'Reservado ${AppFormatters.currency(viewModel.reserved)}';
   }
 
   Future<void> _confirmClose(BuildContext context) async {
-    final confirmed = await confirmAction(
-      context,
-      title: 'Guardar e fechar ${AppFormatters.monthName(plan.month)}?',
-      message: 'O planeado e o reservado ficam imutáveis.',
-      confirmLabel: 'Guardar e fechar',
+    unawaited(viewModel.loadClosePreview());
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _CloseMonthDialog(viewModel: viewModel, plan: plan),
     );
-    if (confirmed) {
-      onClose();
+    if (confirmed ?? false) {
+      await viewModel.closeMonth(preview: viewModel.closePreview);
     }
+  }
+}
+
+class _FundingCard extends StatelessWidget {
+  const _FundingCard({
+    required this.funding,
+    required this.snapshot,
+    required this.closed,
+  });
+
+  final MonthFunding? funding;
+  final double snapshot;
+  final bool closed;
+
+  static double _negate(double value) => value == 0 ? 0 : -value;
+
+  @override
+  Widget build(BuildContext context) {
+    final funding = this.funding;
+    if (funding == null) {
+      return const SizedBox.shrink();
+    }
+    final colors = context.colors;
+    final projectionDiffers = (funding.available - snapshot).abs() > 0.005;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Disponível para objetivos',
+            style: AppTextStyles.sectionHeading,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            AppFormatters.currency(snapshot),
+            key: const ValueKey('goal-funding-available'),
+            style: AppTextStyles.pageTitle.copyWith(color: colors.primary),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            closed
+                ? 'Valor fixado no fecho.'
+                : 'Valor fixado na criação do mês.',
+            style: AppTextStyles.bodyMuted(colors),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text('Como é calculado', style: AppTextStyles.label(colors)),
+          const SizedBox(height: AppSpacing.xs),
+          _FundingRow(label: 'Rendimento normal', value: funding.incomeNormal),
+          _FundingRow(label: 'Bónus (jun/dez)', value: funding.bonus),
+          _FundingRow(
+            label: 'Contribuição para despesas',
+            value: _negate(funding.contributionRequired),
+          ),
+          _FundingRow(
+            label: 'Quota diária',
+            value: _negate(funding.dailyAllowance),
+          ),
+          Divider(height: AppSpacing.lg, color: colors.lineSoft),
+          _FundingRow(
+            label: 'Projeção atual',
+            value: funding.available,
+            isTotal: true,
+          ),
+          if (projectionDiffers) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              closed
+                  ? 'A projeção atual já difere do valor fixado.'
+                  : 'A projeção atual difere do valor fixado; o fecho usa a '
+                        'projeção.',
+              style: AppTextStyles.helper(colors),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'O disponível nunca fica negativo; o bónus é somado no fim.',
+            style: AppTextStyles.helper(colors),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FundingRow extends StatelessWidget {
+  const _FundingRow({
+    required this.label,
+    required this.value,
+    this.isTotal = false,
+  });
+
+  final String label;
+  final double value;
+  final bool isTotal;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: isTotal
+                  ? AppTextStyles.label(colors).copyWith(color: colors.ink)
+                  : AppTextStyles.small(colors),
+            ),
+          ),
+          Text(
+            AppFormatters.currency(value),
+            style: AppTextStyles.label(
+              colors,
+            ).copyWith(color: isTotal ? colors.primary : colors.ink),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -316,13 +441,25 @@ class _GoalRow extends StatelessWidget {
 }
 
 class _TransfersCard extends StatelessWidget {
-  const _TransfersCard({required this.transfers, required this.iconKeyByGoal});
+  const _TransfersCard({
+    required this.transfers,
+    required this.iconKeyByGoal,
+    required this.reserved,
+    required this.hasIncome,
+  });
 
   final List<GoalMonthQuota> transfers;
   final Map<String, String?> iconKeyByGoal;
+  final double reserved;
+  final bool hasIncome;
 
   @override
   Widget build(BuildContext context) {
+    final emptyMessage = reserved <= 0.005
+        ? 'Sem valores reservados neste mês: nada a transferir.'
+        : !hasIncome
+        ? 'Sem rendimento configurado neste mês: não há quotas a transferir.'
+        : 'Sem transferências neste mês.';
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -330,10 +467,7 @@ class _TransfersCard extends StatelessWidget {
           const Text('Transferências', style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.lg),
           if (transfers.isEmpty)
-            Text(
-              'Sem valores reservados neste mês: nada a transferir.',
-              style: AppTextStyles.bodyMuted(context.colors),
-            )
+            Text(emptyMessage, style: AppTextStyles.bodyMuted(context.colors))
           else
             AppStagger(
               children: [
@@ -385,6 +519,252 @@ class _TransferRow extends StatelessWidget {
             ],
         ],
       ),
+    );
+  }
+}
+
+/// The review shown before the goals month is closed: available, planned,
+/// effective reserved, what is left to allocate and the transfers.
+class _CloseMonthDialog extends StatelessWidget {
+  const _CloseMonthDialog({required this.viewModel, required this.plan});
+
+  final GoalMonthDetailViewModel viewModel;
+  final GoalPlan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ListenableBuilder(
+      listenable: viewModel,
+      builder: (context, _) {
+        final preview = viewModel.closePreview;
+        final loading = viewModel.isPreviewLoading;
+        final error = viewModel.previewError;
+        final available = preview?.availableAmount ?? viewModel.available;
+        final planned = preview?.plannedTotal ?? viewModel.planned;
+        final reserved = preview?.reservedTotal ?? viewModel.reserved;
+        final unallocated = preview?.unallocated ?? viewModel.unallocated;
+        final transfers = preview?.quotas ?? viewModel.transfers;
+        return AlertDialog(
+          title: Text(
+            'Guardar e fechar ${AppFormatters.monthName(plan.month)}?',
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'O planeado e o reservado ficam imutáveis.',
+                  style: AppTextStyles.bodyMuted(colors),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _GoalCloseSummaryRow(
+                  label: 'Disponível',
+                  value: AppFormatters.currency(available),
+                  color: colors.ink,
+                ),
+                _GoalCloseSummaryRow(
+                  label: preview?.adjustedFromTemplate ?? false
+                      ? 'Planeado final'
+                      : 'Planeado',
+                  value: AppFormatters.currency(planned),
+                  color: colors.ink,
+                ),
+                _GoalCloseSummaryRow(
+                  label: 'Reservado',
+                  value: AppFormatters.currency(reserved),
+                  color: colors.ink,
+                ),
+                _GoalCloseSummaryRow(
+                  label: unallocated < -0.005 ? 'A mais' : 'Por alocar',
+                  value: AppFormatters.currency(unallocated.abs()),
+                  color: unallocated.abs() > 0.005
+                      ? colors.over
+                      : colors.primary,
+                ),
+                if (preview != null &&
+                    (preview.availableAmount - plan.availableAmount).abs() >
+                        0.005) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'O disponível atual difere do valor fixado na criação '
+                    '(${AppFormatters.currency(plan.availableAmount)}).',
+                    style: AppTextStyles.helper(colors),
+                  ),
+                ],
+                if (loading) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  const Center(child: CircularProgressIndicator()),
+                ] else if (error != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  AppErrorBanner(
+                    message: 'Não foi possível pré-visualizar o fecho. $error',
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Podes fechar mesmo assim; os números são os atuais.',
+                    style: AppTextStyles.helper(colors),
+                  ),
+                ] else if (preview != null) ...[
+                  if (preview.adjustedFromTemplate) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'O servidor vai redistribuir o planeado pela tabela.',
+                      style: AppTextStyles.helper(colors),
+                    ),
+                    if (preview.affectedFutureMonths.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Também recalcula: '
+                        '${preview.affectedFutureMonths.map(AppFormatters.monthShort).join(', ')}.',
+                        style: AppTextStyles.helper(colors),
+                      ),
+                    ],
+                  ],
+                  if (preview.defaulted.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Assumem o planeado',
+                      style: AppTextStyles.label(colors),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    for (final item in preview.defaulted)
+                      _DefaultedGoalRow(item: item),
+                  ],
+                ],
+                const SizedBox(height: AppSpacing.lg),
+                const Text(
+                  'Transferências',
+                  style: AppTextStyles.sectionHeading,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                if (!loading)
+                  _PreviewTransfers(
+                    transfers: transfers,
+                    iconKeyByGoal: viewModel.iconKeyByGoal,
+                    reserved: reserved,
+                    hasIncome:
+                        (viewModel.funding?.incomeNormal ?? 0) +
+                            (viewModel.funding?.bonus ?? 0) >
+                        0.005,
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            AppButton(
+              label: 'Cancelar',
+              variant: AppButtonVariant.ghost,
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            AppButton(
+              label: 'Guardar e fechar',
+              variant: AppButtonVariant.destructive,
+              isLoading: loading,
+              onPressed: loading ? null : () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _GoalCloseSummaryRow extends StatelessWidget {
+  const _GoalCloseSummaryRow({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: AppTextStyles.bodyMuted(colors))),
+          Text(
+            value,
+            style: AppTextStyles.label(colors).copyWith(color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DefaultedGoalRow extends StatelessWidget {
+  const _DefaultedGoalRow({required this.item});
+
+  final GoalClosePreviewDefaulted item;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              item.goalName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.small(colors).copyWith(color: colors.ink),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            AppFormatters.currency(item.amount),
+            style: AppTextStyles.label(colors).copyWith(color: colors.ink),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewTransfers extends StatelessWidget {
+  const _PreviewTransfers({
+    required this.transfers,
+    required this.iconKeyByGoal,
+    required this.reserved,
+    required this.hasIncome,
+  });
+
+  final List<GoalMonthQuota> transfers;
+  final Map<String, String?> iconKeyByGoal;
+  final double reserved;
+  final bool hasIncome;
+
+  @override
+  Widget build(BuildContext context) {
+    if (transfers.isEmpty) {
+      final message = reserved <= 0.005
+          ? 'Sem valores reservados neste mês: nada a transferir.'
+          : !hasIncome
+          ? 'Sem rendimento configurado neste mês: não há quotas a transferir.'
+          : 'Sem transferências neste mês.';
+      return Text(message, style: AppTextStyles.bodyMuted(context.colors));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var index = 0; index < transfers.length; index++) ...[
+          if (index > 0) const SizedBox(height: AppSpacing.md),
+          _TransferRow(
+            transfer: transfers[index],
+            iconKeyByGoal: iconKeyByGoal,
+          ),
+        ],
+      ],
     );
   }
 }

@@ -46,11 +46,30 @@ class GoalPlan {
   int get fundedCount => allocations.where((item) => item.actual > 0).length;
 }
 
-/// The money available for goals in one month.
+/// The money available for goals in one month, with its breakdown.
 class MonthFunding {
-  const MonthFunding({required this.month, required this.available});
+  const MonthFunding({
+    required this.month,
+    required this.incomeNormal,
+    required this.bonus,
+    required this.dailyAllowance,
+    required this.contributionRequired,
+    required this.available,
+  });
 
   final String month;
+
+  /// The household's normal income for the month, in euros.
+  final double incomeNormal;
+
+  /// The June/December bonus added on top, in euros.
+  final double bonus;
+
+  /// The daily-spending allowance kept aside, in euros.
+  final double dailyAllowance;
+
+  /// The planned expense contribution from the applicable template, in euros.
+  final double contributionRequired;
 
   /// The amount available for goals in the month, in euros.
   final double available;

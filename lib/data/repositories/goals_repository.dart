@@ -1,3 +1,4 @@
+import 'package:nest/data/models/goal_close_preview_model.dart';
 import 'package:nest/data/models/goal_model.dart';
 import 'package:nest/data/models/goal_month_model.dart';
 import 'package:nest/data/models/goal_template_model.dart';
@@ -6,6 +7,7 @@ import 'package:nest/data/models/json_mapper.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/goal.dart';
+import 'package:nest/domain/models/goal_close_preview.dart';
 import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/goal_template.dart';
 import 'package:nest/domain/models/goal_year.dart';
@@ -181,6 +183,15 @@ class GoalsRepository {
     '/api/goal-plan/adjust',
     {'month': month, 'fromTemplate': true},
   );
+
+  /// Previews what closing [month] (`YYYY-MM`) would do, without writing.
+  Future<GoalClosePreview> fetchGoalClosePreview(String month) async {
+    final data = await _client.get('/api/goal-plan/$month/close-preview');
+    return mapJson(
+      data,
+      (json) => GoalClosePreviewModel.fromJson(json).toDomain(),
+    );
+  }
 
   /// Closes [month] (`YYYY-MM`) and returns the frozen month view.
   Future<GoalMonthView> closeGoalPlan(String month) async {

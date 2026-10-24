@@ -8,6 +8,15 @@ Map<String, dynamic> _view({String? planId = 'p1', bool closed = true}) =>
       'planId': planId,
       'closed': closed,
       'availableAmount': 1000,
+      'funding': {
+        'month': '2026-01',
+        'incomeNormal': 2500,
+        'bonus': 0,
+        'dailyAllowance': 500,
+        'contributionRequired': 1000,
+        'available': 1000,
+      },
+      'totals': {'planned': 1000, 'actual': 1000, 'reserved': 1000},
       'allocations': [
         {
           'goalId': 'g1',
@@ -55,6 +64,12 @@ void main() {
       expect(plan?.fundedCount, 2);
       expect(plan?.allocations.first.goalName, 'Viagem');
       expect(view.availableAmount, 1000);
+      expect(view.funding?.incomeNormal, 2500);
+      expect(view.funding?.contributionRequired, 1000);
+      expect(view.funding?.available, 1000);
+      expect(view.totals.planned, 1000);
+      expect(view.totals.actual, 1000);
+      expect(view.totals.reserved, 1000);
 
       expect(view.quotas, hasLength(1));
       final quota = view.quotas.single;
@@ -82,6 +97,25 @@ void main() {
 
       expect(view.plan?.allocations, isEmpty);
       expect(view.quotas, isEmpty);
+      expect(view.funding, isNull);
+      expect(view.totals.reserved, 0);
+    });
+
+    test('derives the effective reserved total when totals are missing', () {
+      final view = GoalMonthModel.fromJson(const <String, dynamic>{
+        'month': '2026-02',
+        'planId': 'p2',
+        'closed': false,
+        'availableAmount': 1000,
+        'allocations': [
+          {'goalId': 'g1', 'goalName': 'Viagem', 'planned': 600, 'actual': 0},
+          {'goalId': 'g2', 'goalName': 'Carro', 'planned': 400, 'actual': 250},
+        ],
+      }).toDomain();
+
+      expect(view.totals.planned, 1000);
+      expect(view.totals.actual, 250);
+      expect(view.totals.reserved, 850);
     });
   });
 }

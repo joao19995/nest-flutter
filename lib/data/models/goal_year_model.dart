@@ -122,16 +122,39 @@ class GoalAllocationModel {
 
 /// API-facing representation of a [MonthFunding], with JSON mapping.
 class MonthFundingModel {
-  const MonthFundingModel({required this.month, required this.available});
+  const MonthFundingModel({
+    required this.month,
+    required this.incomeNormal,
+    required this.bonus,
+    required this.dailyAllowance,
+    required this.contributionRequired,
+    required this.available,
+  });
 
   factory MonthFundingModel.fromJson(Map<String, dynamic> json) =>
       MonthFundingModel(
-        month: json['month'] as String,
-        available: (json['available'] as num).toDouble(),
+        month: json['month'] as String? ?? '',
+        incomeNormal: (json['incomeNormal'] as num?)?.toDouble() ?? 0,
+        bonus: (json['bonus'] as num?)?.toDouble() ?? 0,
+        dailyAllowance: (json['dailyAllowance'] as num?)?.toDouble() ?? 0,
+        contributionRequired:
+            (json['contributionRequired'] as num?)?.toDouble() ?? 0,
+        available: (json['available'] as num?)?.toDouble() ?? 0,
       );
 
   final String month;
+  final double incomeNormal;
+  final double bonus;
+  final double dailyAllowance;
+  final double contributionRequired;
   final double available;
 
-  MonthFunding toDomain() => MonthFunding(month: month, available: available);
+  MonthFunding toDomain() => MonthFunding(
+    month: month,
+    incomeNormal: incomeNormal,
+    bonus: bonus,
+    dailyAllowance: dailyAllowance,
+    contributionRequired: contributionRequired,
+    available: available,
+  );
 }

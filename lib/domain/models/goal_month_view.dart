@@ -40,6 +40,25 @@ class GoalMonthQuota {
   final List<GoalMonthQuotaPart> parts;
 }
 
+/// The server-derived totals of a goals month.
+class GoalMonthTotals {
+  const GoalMonthTotals({
+    required this.planned,
+    required this.actual,
+    required this.reserved,
+  });
+
+  /// The total planned for the month, in euros.
+  final double planned;
+
+  /// The total actually stored as reserved, in euros.
+  final double actual;
+
+  /// The effective reserved total: the stored actual, falling back to the
+  /// planned amount on lines still left empty in an open month.
+  final double reserved;
+}
+
 /// The full goals month returned by `GET /api/goal-plan/{month}`: the saved
 /// plan, the available amount and the per-person quotas, all computed by the
 /// server so the client does not reimplement the domain.
@@ -47,6 +66,8 @@ class GoalMonthView {
   const GoalMonthView({
     required this.plan,
     required this.availableAmount,
+    required this.funding,
+    required this.totals,
     required this.quotas,
   });
 
@@ -56,6 +77,12 @@ class GoalMonthView {
   /// The month's available amount, in euros (the saved snapshot, or the
   /// projection when there is no plan yet).
   final double availableAmount;
+
+  /// The current funding projection and its breakdown, when the API sends it.
+  final MonthFunding? funding;
+
+  /// The server-derived month totals.
+  final GoalMonthTotals totals;
 
   /// Who transfers what towards the month's goals.
   final List<GoalMonthQuota> quotas;

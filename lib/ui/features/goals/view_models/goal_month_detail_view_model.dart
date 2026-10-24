@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/goal.dart';
+import 'package:nest/domain/models/goal_close_preview.dart';
 import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/goal_year.dart';
 
@@ -48,6 +49,23 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
   String? _actionError;
   String? get actionError => _actionError;
 
+  /// The current funding breakdown, with the available projection.
+  MonthFunding? get funding => _view?.funding;
+
+  /// The server-derived month totals, including the effective reserved.
+  GoalMonthTotals? get totals => _view?.totals;
+
+  /// The close preview, loaded without writing anything.
+  GoalClosePreview? _closePreview;
+  GoalClosePreview? get closePreview => _closePreview;
+
+  /// The last preview failure, shown inside the close dialog.
+  String? _previewError;
+  String? get previewError => _previewError;
+
+  bool _isPreviewLoading = false;
+  bool get isPreviewLoading => _isPreviewLoading;
+
   /// True when the month is created and still open for editing.
   bool get isOpen {
     final plan = _view?.plan;
@@ -55,24 +73,24 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
   }
 
   /// The month's total planned, in euros.
-  double get planned =>
-      _view?.plan?.allocations.fold<double>(
-        0,
-        (sum, item) => sum + item.planned,
-      ) ??
-      0;
+  double get planned => _view?.totals.planned ?? 0;
 
-  /// The month's total reserved, in euros.
-  double get reserved => _view?.plan?.reserved ?? 0;
+  /// The month's effective reserved total, in euros.
+  double get reserved => _view?.totals.reserved ?? 0;
 
   /// The month's available amount, in euros.
   double get available => _view?.availableAmount ?? 0;
+
+  /// What the current plan leaves to allocate, in euros.
+  double get unallocated => available - planned;
 
   /// Loads the month view (plan, available amount and quotas).
   Future<void> load() async {
     _isLoading = true;
     _errorMessage = null;
     _actionError = null;
+    _closePreview = null;
+    _previewError = null;
     notifyListeners();
     final month = _month;
     try {
@@ -107,6 +125,7 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       await _goalsRepository.createGoalPlan(_month);
+      _closePreview = null;
       _isBusy = false;
       await load();
     } on ApiFailure catch (failure) {
@@ -132,6 +151,7 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
         goalId,
         actual,
       );
+      _closePreview = null;
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
     } finally {
@@ -140,9 +160,32 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
     }
   }
 
+  /// Loads what closing the month would do, without writing anything.
+  Future<void> loadClosePreview() async {
+    if (_isPreviewLoading) {
+      return;
+    }
+    _isPreviewLoading = true;
+    _previewError = null;
+    _closePreview = null;
+    notifyListeners();
+    try {
+      _closePreview = await _goalsRepository.fetchGoalClosePreview(_month);
+    } on ApiFailure catch (failure) {
+      _previewError = failure.message;
+    } finally {
+      _isPreviewLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Saves untouched reserved amounts, distributes what is missing and closes
   /// the month. The reserved defaults to the planned value per goal.
-  Future<void> closeMonth() async {
+  ///
+  /// When [preview] is given, its server-computed defaulted lines and
+  /// adjustment decision drive the close, so the dialog's numbers are what
+  /// actually happens.
+  Future<void> closeMonth({GoalClosePreview? preview}) async {
     final initial = _view;
     final startPlan = initial?.plan;
     if (initial == null || startPlan == null || startPlan.closed || _isBusy) {
@@ -152,27 +195,42 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
     _actionError = null;
     notifyListeners();
     try {
-      var view = initial;
-      for (final allocation in startPlan.allocations) {
-        if (allocation.actual <= _epsilon && allocation.planned > 0) {
-          view = await _goalsRepository.updateGoalAllocation(
+      if (preview != null) {
+        for (final item in preview.defaulted) {
+          _view = await _goalsRepository.updateGoalAllocation(
             _month,
-            allocation.goalId,
-            allocation.planned,
+            item.goalId,
+            item.amount,
           );
         }
-      }
-      final current = view.plan;
-      if (current != null) {
-        final plannedTotal = current.allocations.fold<double>(
-          0,
-          (sum, item) => sum + item.planned,
-        );
-        if ((current.availableAmount - plannedTotal).abs() > _epsilon) {
+        if (preview.adjustedFromTemplate) {
           await _goalsRepository.adjustGoalPlanFromTemplate(_month);
         }
+      } else {
+        var view = initial;
+        for (final allocation in startPlan.allocations) {
+          if (allocation.actual <= _epsilon && allocation.planned > 0) {
+            view = await _goalsRepository.updateGoalAllocation(
+              _month,
+              allocation.goalId,
+              allocation.planned,
+            );
+          }
+        }
+        final current = view.plan;
+        if (current != null) {
+          final plannedTotal = current.allocations.fold<double>(
+            0,
+            (sum, item) => sum + item.planned,
+          );
+          if ((current.availableAmount - plannedTotal).abs() > _epsilon) {
+            await _goalsRepository.adjustGoalPlanFromTemplate(_month);
+          }
+        }
+        _view = view;
       }
       _view = await _goalsRepository.closeGoalPlan(_month);
+      _closePreview = null;
     } on ApiFailure catch (failure) {
       _actionError = failure.message;
     } finally {

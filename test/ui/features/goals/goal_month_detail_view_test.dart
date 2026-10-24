@@ -58,9 +58,33 @@ Map<String, dynamic> _monthView({
   'planId': 'p1',
   'closed': closed,
   'availableAmount': 1000,
+  'funding': {
+    'month': '2026-01',
+    'incomeNormal': 2500,
+    'bonus': 0,
+    'dailyAllowance': 500,
+    'contributionRequired': 1000,
+    'available': 1000,
+  },
+  'totals': {'planned': 1000, 'actual': actual1 + actual2, 'reserved': 1000},
   'allocations': [
     {'goalId': 'g1', 'goalName': 'Viagem', 'planned': 600, 'actual': actual1},
     {'goalId': 'g2', 'goalName': 'Carro', 'planned': 400, 'actual': actual2},
+  ],
+  'quotas': _quotas(),
+};
+
+Map<String, dynamic> _closePreview() => <String, dynamic>{
+  'month': '2026-01',
+  'availableAmount': 1000,
+  'plannedTotal': 1000,
+  'reservedTotal': 1000,
+  'unallocated': 0,
+  'adjustedFromTemplate': false,
+  'affectedFutureMonths': <Object>[],
+  'defaulted': [
+    {'goalId': 'g1', 'goalName': 'Viagem', 'amount': 600},
+    {'goalId': 'g2', 'goalName': 'Carro', 'amount': 400},
   ],
   'quotas': _quotas(),
 };
@@ -88,6 +112,9 @@ MockClient _client({bool created = false}) {
     if (request.url.path == '/api/goal-plan' && request.method == 'POST') {
       hasMonth = true;
       return jsonResponse(_plan(), status: 201);
+    }
+    if (request.url.path.endsWith('/close-preview')) {
+      return jsonResponse(_closePreview());
     }
     if (request.method == 'GET' &&
         request.url.path.startsWith('/api/goal-plan/')) {
@@ -120,7 +147,124 @@ void main() {
     expect(find.text('João'), findsNWidgets(2));
     expect(find.text('Nathalia'), findsOneWidget);
     expect(find.byType(AppTransferFlow), findsNWidgets(3));
+    expect(find.text('Disponível para objetivos'), findsOneWidget);
+    expect(find.text('Como é calculado'), findsOneWidget);
+    expect(find.text('Rendimento normal'), findsOneWidget);
+    expect(find.text('Projeção atual'), findsOneWidget);
     expect(find.text('Fechar mês'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reviews the close with totals and transfers', (tester) async {
+    setPhoneSize(tester);
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/goals') {
+        return jsonResponse(_goals());
+      }
+      if (request.url.path.endsWith('/close-preview')) {
+        return jsonResponse(_closePreview());
+      }
+      return jsonResponse(_monthView(closed: false));
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        const GoalMonthDetailView(month: '2026-01'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Fechar mês'));
+    await tester.pumpAndSettle();
+
+    final dialog = find.byType(AlertDialog);
+    expect(dialog, findsOneWidget);
+    expect(
+      find.descendant(of: dialog, matching: find.text('Disponível')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.text('Reservado')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.text('Por alocar')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.text('Assumem o planeado')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.text('Transferências')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.byType(AppTransferFlow)),
+      findsNWidgets(3),
+    );
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows the template adjustment before closing', (tester) async {
+    setPhoneSize(tester);
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/goals') {
+        return jsonResponse(_goals());
+      }
+      if (request.url.path.endsWith('/close-preview')) {
+        return jsonResponse({
+          ..._closePreview(),
+          'adjustedFromTemplate': true,
+          'affectedFutureMonths': ['2026-02'],
+          'unallocated': 100,
+        });
+      }
+      return jsonResponse(_monthView(closed: false));
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        const GoalMonthDetailView(month: '2026-01'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Fechar mês'));
+    await tester.pumpAndSettle();
+
+    final dialog = find.byType(AlertDialog);
+    expect(
+      find.descendant(of: dialog, matching: find.text('Planeado final')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: dialog,
+        matching: find.text(
+          'O servidor vai redistribuir o planeado pela tabela.',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: dialog,
+        matching: find.text('Também recalcula: Fev.'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -152,6 +296,9 @@ void main() {
       requests.add(request);
       if (request.url.path == '/api/goals') {
         return jsonResponse(_goals());
+      }
+      if (request.url.path.endsWith('/close-preview')) {
+        return jsonResponse(_closePreview());
       }
       if (request.method == 'GET') {
         return jsonResponse(_monthView(closed: closed, actual1: 0, actual2: 0));

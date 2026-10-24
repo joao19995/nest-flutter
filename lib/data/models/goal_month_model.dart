@@ -14,11 +14,15 @@ class GoalMonthModel {
     required this.planId,
     required this.closed,
     required this.availableAmount,
+    required this.funding,
+    required this.totals,
     required this.allocations,
     required this.quotas,
   });
 
   factory GoalMonthModel.fromJson(Map<String, dynamic> json) {
+    final funding = json['funding'];
+    final totals = json['totals'];
     final allocations = json['allocations'];
     final quotas = json['quotas'];
     return GoalMonthModel(
@@ -26,6 +30,12 @@ class GoalMonthModel {
       planId: json['planId'] as String?,
       closed: json['closed'] as bool? ?? false,
       availableAmount: (json['availableAmount'] as num?)?.toDouble() ?? 0,
+      funding: funding is Map<String, dynamic>
+          ? MonthFundingModel.fromJson(funding)
+          : null,
+      totals: totals is Map<String, dynamic>
+          ? GoalMonthTotalsModel.fromJson(totals)
+          : null,
       allocations: allocations is List
           ? allocations
                 .whereType<Map<String, dynamic>>()
@@ -45,11 +55,36 @@ class GoalMonthModel {
   final String? planId;
   final bool closed;
   final double availableAmount;
+  final MonthFundingModel? funding;
+  final GoalMonthTotalsModel? totals;
   final List<GoalAllocationModel> allocations;
   final List<GoalMonthQuotaModel> quotas;
 
   GoalMonthView toDomain() {
     final id = planId;
+    final domainAllocations = allocations
+        .map((allocation) => allocation.toDomain())
+        .toList(growable: false);
+    final domainTotals =
+        totals?.toDomain() ??
+        GoalMonthTotals(
+          planned: domainAllocations.fold<double>(
+            0,
+            (sum, allocation) => sum + allocation.planned,
+          ),
+          actual: domainAllocations.fold<double>(
+            0,
+            (sum, allocation) => sum + allocation.actual,
+          ),
+          reserved: domainAllocations.fold<double>(
+            0,
+            (sum, allocation) =>
+                sum +
+                (closed || allocation.actual > 0
+                    ? allocation.actual
+                    : allocation.planned),
+          ),
+        );
     return GoalMonthView(
       plan: id == null
           ? null
@@ -58,14 +93,37 @@ class GoalMonthModel {
               month: month,
               availableAmount: availableAmount,
               closed: closed,
-              allocations: allocations
-                  .map((allocation) => allocation.toDomain())
-                  .toList(growable: false),
+              allocations: domainAllocations,
             ),
       availableAmount: availableAmount,
+      funding: funding?.toDomain(),
+      totals: domainTotals,
       quotas: quotas.map((quota) => quota.toDomain()).toList(growable: false),
     );
   }
+}
+
+/// API-facing representation of a [GoalMonthTotals], with JSON mapping.
+class GoalMonthTotalsModel {
+  const GoalMonthTotalsModel({
+    required this.planned,
+    required this.actual,
+    required this.reserved,
+  });
+
+  factory GoalMonthTotalsModel.fromJson(Map<String, dynamic> json) =>
+      GoalMonthTotalsModel(
+        planned: (json['planned'] as num?)?.toDouble() ?? 0,
+        actual: (json['actual'] as num?)?.toDouble() ?? 0,
+        reserved: (json['reserved'] as num?)?.toDouble() ?? 0,
+      );
+
+  final double planned;
+  final double actual;
+  final double reserved;
+
+  GoalMonthTotals toDomain() =>
+      GoalMonthTotals(planned: planned, actual: actual, reserved: reserved);
 }
 
 /// API-facing representation of a [GoalMonthQuotaPart], with JSON mapping.

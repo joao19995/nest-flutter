@@ -151,6 +151,44 @@ void main() {
     expect(view.plan?.id, 'p1');
   });
 
+  test('fetchGoalClosePreview reads the preview endpoint', () async {
+    String? path;
+    final repository = _repository(
+      MockClient((request) async {
+        path = request.url.path;
+        return jsonResponse(const {
+          'month': '2026-01',
+          'availableAmount': 1000,
+          'plannedTotal': 900,
+          'reservedTotal': 950,
+          'unallocated': 100,
+          'adjustedFromTemplate': true,
+          'affectedFutureMonths': ['2026-02'],
+          'defaulted': [
+            {'goalId': 'g2', 'goalName': 'Carro', 'amount': 400},
+          ],
+          'quotas': [
+            {
+              'personId': 'p1',
+              'name': 'João',
+              'earning': 2500,
+              'share': 1,
+              'amount': 950,
+              'parts': <Object>[],
+            },
+          ],
+        });
+      }),
+    );
+
+    final preview = await repository.fetchGoalClosePreview('2026-01');
+
+    expect(path, '/api/goal-plan/2026-01/close-preview');
+    expect(preview.adjustedFromTemplate, isTrue);
+    expect(preview.defaulted.single.goalName, 'Carro');
+    expect(preview.quotas.single.amount, 950);
+  });
+
   test(
     'closeGoalPlan posts to the month close endpoint and maps the view',
     () async {
