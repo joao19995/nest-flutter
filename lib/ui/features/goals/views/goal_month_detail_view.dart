@@ -6,6 +6,7 @@ import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/finances/views/close_month_wizard_view.dart';
+import 'package:nest/ui/features/finances/views/month_transfers_view.dart';
 import 'package:nest/ui/features/goals/goal_icons.dart';
 import 'package:nest/ui/features/goals/view_models/goal_month_detail_view_model.dart';
 
@@ -150,6 +151,8 @@ class _Content extends StatelessWidget {
               (viewModel.funding?.incomeNormal ?? 0) +
                   (viewModel.funding?.bonus ?? 0) >
               0.005,
+          month: viewModel.month,
+          showTransfersLink: plan.closed,
         ),
       ],
     );
@@ -445,12 +448,16 @@ class _TransfersCard extends StatelessWidget {
     required this.iconKeyByGoal,
     required this.reserved,
     required this.hasIncome,
+    required this.month,
+    required this.showTransfersLink,
   });
 
   final List<GoalMonthQuota> transfers;
   final Map<String, String?> iconKeyByGoal;
   final double reserved;
   final bool hasIncome;
+  final String month;
+  final bool showTransfersLink;
 
   @override
   Widget build(BuildContext context) {
@@ -477,6 +484,22 @@ class _TransfersCard extends StatelessWidget {
                   ),
               ],
             ),
+          if (showTransfersLink) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: AppButton(
+                label: 'Resumo final',
+                icon: Icons.swap_horiz,
+                variant: AppButtonVariant.ghost,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => MonthTransfersView(month: month),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

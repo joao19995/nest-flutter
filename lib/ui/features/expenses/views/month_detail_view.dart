@@ -8,6 +8,7 @@ import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/expenses/view_models/month_detail_view_model.dart';
 import 'package:nest/ui/features/finances/views/close_month_wizard_view.dart';
+import 'package:nest/ui/features/finances/views/month_transfers_view.dart';
 
 /// The detail of a single month: its planned vs. actual spend and, once the
 /// month is closed, the contributions snapshot.
@@ -145,7 +146,7 @@ class _PlanContent extends StatelessWidget {
         _EntriesCard(viewModel: viewModel, plan: plan),
         if (plan.closed && settlement != null) ...[
           const SizedBox(height: AppSpacing.lg),
-          _ContributionsCard(settlement: settlement),
+          _ContributionsCard(settlement: settlement, month: plan.month),
         ],
       ],
     );
@@ -529,9 +530,10 @@ class _EntryAmount extends StatelessWidget {
 }
 
 class _ContributionsCard extends StatelessWidget {
-  const _ContributionsCard({required this.settlement});
+  const _ContributionsCard({required this.settlement, required this.month});
 
   final MonthSettlement settlement;
+  final String month;
 
   @override
   Widget build(BuildContext context) {
@@ -554,6 +556,20 @@ class _ContributionsCard extends StatelessWidget {
                   _ContributionRow(person: settlement.people[index]),
               ],
             ),
+          const SizedBox(height: AppSpacing.lg),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: AppButton(
+              label: 'Resumo final',
+              icon: Icons.swap_horiz,
+              variant: AppButtonVariant.ghost,
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => MonthTransfersView(month: month),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

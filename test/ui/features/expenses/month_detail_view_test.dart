@@ -133,6 +133,7 @@ void main() {
     expect(_groupTotal(tester, 'Fixas'), AppFormatters.currency(471.94));
     expect(_groupTotal(tester, 'Variáveis'), AppFormatters.currency(57.78));
     expect(find.text('Contribuições'), findsOneWidget);
+    expect(find.text('Resumo final'), findsOneWidget);
     expect(find.byType(AppTransferFlow), findsNWidgets(2));
     expect(find.text('Conjunta'), findsNWidgets(2));
     expect(find.text('Fechar mês'), findsNothing);

@@ -151,6 +151,7 @@ void main() {
     expect(find.text('Como é calculado'), findsOneWidget);
     expect(find.text('Rendimento normal'), findsOneWidget);
     expect(find.text('Projeção atual'), findsOneWidget);
+    expect(find.text('Resumo final'), findsOneWidget);
     expect(find.text('Fechar mês'), findsNothing);
     expect(tester.takeException(), isNull);
   });

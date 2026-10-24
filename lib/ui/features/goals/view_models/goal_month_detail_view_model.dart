@@ -32,6 +32,9 @@ class GoalMonthDetailViewModel extends ChangeNotifier {
   GoalMonthView? _view;
   Map<String, String?> _iconKeyByGoal = const {};
 
+  /// The full server view, used to build the definitive month transfers.
+  GoalMonthView? get view => _view;
+
   GoalPlan? get plan => _view?.plan;
 
   /// The catalogue's semantic icon keys, by goal id, for the month's rows.

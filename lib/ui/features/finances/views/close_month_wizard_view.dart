@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:nest/domain/models/goal_close_preview.dart';
 import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/month_settlement.dart';
+import 'package:nest/domain/models/month_transfers.dart';
 import 'package:nest/domain/models/monthly_plan.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/finances/view_models/close_month_wizard_view_model.dart';
+import 'package:nest/ui/features/finances/views/month_transfers_summary.dart';
 import 'package:nest/ui/features/goals/goal_icons.dart';
 
 /// The month-end assistant: review and close Despesas, then Objetivos, then
@@ -436,45 +438,24 @@ class _FinalStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settlement = viewModel.expenseSettlement;
-    final quotas = viewModel.goalTransfers;
-    final goals = viewModel.goals;
-    final bothClosed = viewModel.expensesClosed && viewModel.goalsClosed;
+    final transfers = MonthTransfers.fromMonths(
+      month: viewModel.month,
+      expenses: viewModel.expenses.plan,
+      goals: viewModel.goals.view,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _StepTitle(
           title: 'Transferências finais',
-          subtitle: bothClosed
+          subtitle: transfers.closed
               ? 'Os dois meses ficaram fechados.'
               : 'Ainda há um mês por fechar.',
         ),
         const SizedBox(height: AppSpacing.md),
-        _FinalSummary(
-          settlement: settlement,
-          quotas: quotas,
-          goalsReserved: goals.reserved,
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        _FinalPeopleSummary(settlement: settlement, quotas: quotas),
-        const SizedBox(height: AppSpacing.lg),
-        _SettlementSection(
-          settlement: settlement,
-          isLoading: false,
-          error: null,
-          closed: true,
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        _GoalTransfersSection(
-          transfers: quotas,
-          iconKeyByGoal: goals.iconKeyByGoal,
-          reserved: goals.reserved,
-          hasIncome:
-              (goals.funding?.incomeNormal ?? 0) + (goals.funding?.bonus ?? 0) >
-              0.005,
-          isLoading: false,
-          error: null,
-          closed: true,
+        MonthTransfersSummary(
+          transfers: transfers,
+          iconKeyByGoal: viewModel.goals.iconKeyByGoal,
         ),
         const SizedBox(height: AppSpacing.xl),
         AppButton(
@@ -1009,200 +990,6 @@ class _GoalTransferRow extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _FinalSummary extends StatelessWidget {
-  const _FinalSummary({
-    required this.settlement,
-    required this.quotas,
-    required this.goalsReserved,
-  });
-
-  final MonthSettlement? settlement;
-  final List<GoalMonthQuota> quotas;
-  final double goalsReserved;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final settlement = this.settlement;
-    var toJoint = 0.0;
-    var fromJoint = 0.0;
-    if (settlement != null && settlement.status == SettlementStatus.ok) {
-      for (final person in settlement.people) {
-        toJoint += person.transferToJoint;
-        fromJoint += person.transferToPerson;
-      }
-    }
-    final goalsTotal = quotas.fold<double>(
-      0,
-      (sum, quota) => sum + quota.amount,
-    );
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('Resumo final', style: AppTextStyles.sectionHeading),
-          const SizedBox(height: AppSpacing.md),
-          _WizardSummaryRow(
-            label: 'Para a conta conjunta',
-            value: AppFormatters.currency(toJoint),
-            color: colors.ink,
-          ),
-          _WizardSummaryRow(
-            label: 'Da conta conjunta',
-            value: AppFormatters.currency(fromJoint),
-            color: colors.ink,
-          ),
-          _WizardSummaryRow(
-            label: 'Para os objetivos',
-            value: AppFormatters.currency(goalsTotal),
-            color: colors.ink,
-          ),
-          if (goalsReserved > 0.005 && quotas.isEmpty) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Há ${AppFormatters.currency(goalsReserved)} reservados sem '
-              'rendimento configurado para calcular quotas.',
-              style: AppTextStyles.helper(colors),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PersonFinal {
-  _PersonFinal(this.name);
-
-  final String name;
-  double toJoint = 0;
-  double fromJoint = 0;
-  double toGoals = 0;
-}
-
-class _FinalPeopleSummary extends StatelessWidget {
-  const _FinalPeopleSummary({required this.settlement, required this.quotas});
-
-  final MonthSettlement? settlement;
-  final List<GoalMonthQuota> quotas;
-
-  @override
-  Widget build(BuildContext context) {
-    final people = <String, _PersonFinal>{};
-    final settlement = this.settlement;
-    if (settlement != null && settlement.status == SettlementStatus.ok) {
-      for (final person in settlement.people) {
-        final key = person.personId.isNotEmpty
-            ? person.personId
-            : person.personName;
-        final entry = people.putIfAbsent(
-          key,
-          () => _PersonFinal(person.personName),
-        );
-        entry.toJoint += person.transferToJoint;
-        entry.fromJoint += person.transferToPerson;
-      }
-    }
-    for (final quota in quotas) {
-      final key = quota.personId.isNotEmpty ? quota.personId : quota.name;
-      final entry = people.putIfAbsent(key, () => _PersonFinal(quota.name));
-      entry.toGoals += quota.amount;
-    }
-    final rows = people.values.toList(growable: false)
-      ..sort((a, b) => a.name.compareTo(b.name));
-    if (rows.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('Resumo por pessoa', style: AppTextStyles.sectionHeading),
-          const SizedBox(height: AppSpacing.md),
-          for (var index = 0; index < rows.length; index++) ...[
-            if (index > 0) const SizedBox(height: AppSpacing.md),
-            _PersonFinalRow(person: rows[index]),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PersonFinalRow extends StatelessWidget {
-  const _PersonFinalRow({required this.person});
-
-  final _PersonFinal person;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final lines = <Widget>[
-      if (person.toJoint > 0.005)
-        _MoneyLine(
-          label: 'Para a conjunta',
-          value: person.toJoint,
-          color: colors.ink,
-        ),
-      if (person.fromJoint > 0.005)
-        _MoneyLine(
-          label: 'A receber da conjunta',
-          value: person.fromJoint,
-          color: colors.ink,
-        ),
-      if (person.toGoals > 0.005)
-        _MoneyLine(
-          label: 'Para objetivos',
-          value: person.toGoals,
-          color: colors.ink,
-        ),
-    ];
-    if (lines.isEmpty) {
-      lines.add(Text('Está certo', style: AppTextStyles.small(colors)));
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          person.name,
-          style: AppTextStyles.label(colors).copyWith(color: colors.ink),
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        for (final line in lines) line,
-      ],
-    );
-  }
-}
-
-class _MoneyLine extends StatelessWidget {
-  const _MoneyLine({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final double value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: AppTextStyles.small(colors))),
-          Text(
-            AppFormatters.currency(value),
-            style: AppTextStyles.label(colors).copyWith(color: color),
-          ),
-        ],
-      ),
     );
   }
 }
