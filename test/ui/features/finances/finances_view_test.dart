@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
+import 'package:nest/ui/core/month_key.dart';
+import 'package:nest/ui/core/theme/app_formatters.dart';
 import 'package:nest/ui/features/finances/views/finances_view.dart';
 
 import '../../../support/test_helpers.dart';
@@ -56,6 +58,32 @@ void main() {
 
     expect(goalsLoaded, isTrue);
     expect(find.text('Objetivos do ano'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opens the close wizard from the app bar', (tester) async {
+    setPhoneSize(tester);
+    final year = DateTime.now().year;
+    final month = MonthKey.current();
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/months/summary') {
+        return jsonResponse(_yearSummary(year));
+      }
+      return jsonResponse(const <Object>[]);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const FinancesView()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Fechar mês'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Fechar ${AppFormatters.monthName(month)}'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

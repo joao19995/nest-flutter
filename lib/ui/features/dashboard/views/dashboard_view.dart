@@ -9,6 +9,7 @@ import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/dashboard/view_models/dashboard_view_model.dart';
+import 'package:nest/ui/features/finances/views/close_month_wizard_view.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 
 /// A to-do list's completion on the dashboard.
@@ -90,6 +91,17 @@ class _DashboardViewState extends State<DashboardView>
 
   void _onRefreshRequested() => viewModel.refresh();
 
+  Future<void> _openCloseWizard(String month) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CloseMonthWizardView(month: month),
+      ),
+    );
+    if (mounted) {
+      await viewModel.refresh();
+    }
+  }
+
   @override
   void didUpdateWidget(covariant DashboardView oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -132,6 +144,7 @@ class _DashboardViewState extends State<DashboardView>
                     onOpenCalendar: widget.onOpenCalendar,
                     onOpenGoals: widget.onOpenGoals,
                     onOpenMonth: widget.onOpenMonth,
+                    onCloseMonth: _openCloseWizard,
                   ),
                 ),
               ),
@@ -152,6 +165,7 @@ class _DashboardContent extends StatelessWidget {
     required this.onOpenCalendar,
     required this.onOpenGoals,
     required this.onOpenMonth,
+    required this.onCloseMonth,
   });
 
   final DashboardViewModel viewModel;
@@ -161,6 +175,7 @@ class _DashboardContent extends StatelessWidget {
   final VoidCallback? onOpenCalendar;
   final VoidCallback? onOpenGoals;
   final ValueChanged<String>? onOpenMonth;
+  final ValueChanged<String> onCloseMonth;
 
   void _showPreviousMonth() {
     unawaited(HapticFeedback.selectionClick());
@@ -220,7 +235,11 @@ class _DashboardContent extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
         ] else if (viewModel.alerts.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
-          _AttentionCard(alerts: viewModel.alerts, onOpenMonth: onOpenMonth),
+          _AttentionCard(
+            alerts: viewModel.alerts,
+            onOpenMonth: onOpenMonth,
+            onCloseMonth: onCloseMonth,
+          ),
           const SizedBox(height: AppSpacing.lg),
         ],
         _DashboardSection(
@@ -391,10 +410,15 @@ class _GreetingHeader extends StatelessWidget {
 
 /// The actionable warnings listing the months that need attention.
 class _AttentionCard extends StatelessWidget {
-  const _AttentionCard({required this.alerts, required this.onOpenMonth});
+  const _AttentionCard({
+    required this.alerts,
+    required this.onOpenMonth,
+    required this.onCloseMonth,
+  });
 
   final List<DashboardAlert> alerts;
   final ValueChanged<String>? onOpenMonth;
+  final ValueChanged<String> onCloseMonth;
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +428,11 @@ class _AttentionCard extends StatelessWidget {
         children: [
           for (var index = 0; index < alerts.length; index++) ...[
             if (index > 0) const SizedBox(height: AppSpacing.sm),
-            _AlertRow(alert: alerts[index], onOpenMonth: onOpenMonth),
+            _AlertRow(
+              alert: alerts[index],
+              onOpenMonth: onOpenMonth,
+              onCloseMonth: onCloseMonth,
+            ),
           ],
         ],
       ),
@@ -416,15 +444,20 @@ class _AttentionCard extends StatelessWidget {
 ///
 /// The whole row is the touch target; the chip is only a visual affordance.
 class _AlertRow extends StatelessWidget {
-  const _AlertRow({required this.alert, required this.onOpenMonth});
+  const _AlertRow({
+    required this.alert,
+    required this.onOpenMonth,
+    required this.onCloseMonth,
+  });
 
   final DashboardAlert alert;
   final ValueChanged<String>? onOpenMonth;
+  final ValueChanged<String> onCloseMonth;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final onOpenMonth = this.onOpenMonth;
+    final openMonth = onOpenMonth;
     final toClose = alert.kind == DashboardAlertKind.toClose;
     final row = Row(
       children: [
@@ -444,7 +477,12 @@ class _AlertRow extends StatelessWidget {
         ),
       ],
     );
-    if (onOpenMonth == null) {
+    final onTap = toClose
+        ? () => onCloseMonth(alert.month)
+        : openMonth == null
+        ? null
+        : () => openMonth(alert.month);
+    if (onTap == null) {
       return row;
     }
     return Semantics(
@@ -456,7 +494,7 @@ class _AlertRow extends StatelessWidget {
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          onTap: () => onOpenMonth(alert.month),
+          onTap: onTap,
           borderRadius: AppRadius.smAll,
           child: ConstrainedBox(
             constraints: const BoxConstraints(

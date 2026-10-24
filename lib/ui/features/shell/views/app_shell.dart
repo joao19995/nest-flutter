@@ -52,6 +52,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   /// Bumped when Início becomes visible again, so its view model can refresh.
   final ValueNotifier<int> _dashboardRefresh = ValueNotifier<int>(0);
 
+  /// Bumped when Finanças becomes visible again, so its month views reload.
+  final ValueNotifier<int> _financesRefresh = ValueNotifier<int>(0);
+
   _NavDestination _selected = _NavDestination.inicio;
 
   /// The section Finanças opens on, so the dashboard's goals card can deep-link
@@ -94,6 +97,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _dashboardRefresh.dispose();
+    _financesRefresh.dispose();
     _todosViewModel?.dispose();
     super.dispose();
   }
@@ -101,6 +105,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void _select(_NavDestination destination) {
     if (destination == _NavDestination.inicio) {
       _dashboardRefresh.value++;
+    }
+    if (destination == _NavDestination.financas) {
+      _financesRefresh.value++;
     }
     setState(() => _selected = destination);
   }
@@ -237,6 +244,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _NavDestination.financas => FinancesView(
         key: ValueKey(_financesSection),
         initialSection: _financesSection,
+        refreshSignal: _financesRefresh,
       ),
       _NavDestination.contas => const AccountsView(),
       _NavDestination.pessoas => const PeopleView(),

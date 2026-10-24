@@ -124,7 +124,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('opens the alert month from the action chip', (tester) async {
+  testWidgets('opens the close wizard from the action chip', (tester) async {
     setPhoneSize(tester);
     String? opened;
     await tester.pumpWidget(
@@ -136,7 +136,15 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Fechar'));
-    expect(opened, month);
+    await tester.pumpAndSettle();
+
+    expect(opened, isNull);
+    expect(
+      find.text('Fechar ${AppFormatters.monthName(month)}'),
+      findsOneWidget,
+    );
+    expect(find.text('Despesas'), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('opens the month when the hero is tapped', (tester) async {
