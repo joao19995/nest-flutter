@@ -23,11 +23,7 @@ void main() {
             'name': 'Casa',
             'planned': 900,
             'actual': 1200.25,
-            'overPlanStreak': {
-              'current': 2,
-              'longest': 3,
-              'suggestAdjustment': true,
-            },
+            'overPlanMonths': {'count': 3, 'suggestAdjustment': true},
           },
           {'name': 'Transporte', 'actual': 200},
         ],
@@ -80,15 +76,14 @@ void main() {
       expect(casa.categoryName, 'Casa');
       expect(casa.planned, 900);
       expect(casa.actual, 1200.25);
-      expect(casa.overPlanStreak?.current, 2);
-      expect(casa.overPlanStreak?.longest, 3);
-      expect(casa.overPlanStreak?.suggestAdjustment, isTrue);
+      expect(casa.overPlanMonths?.count, 3);
+      expect(casa.overPlanMonths?.suggestAdjustment, isTrue);
 
       final transporte = summary.byCategory.last;
       expect(transporte.categoryName, 'Transporte');
       expect(transporte.planned, 0);
       expect(transporte.actual, 200);
-      expect(transporte.overPlanStreak, isNull);
+      expect(transporte.overPlanMonths, isNull);
 
       expect(summary.months, hasLength(3));
 

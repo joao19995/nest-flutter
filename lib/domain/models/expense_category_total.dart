@@ -1,16 +1,12 @@
-/// How many settled months in a row a category spent above its plan.
-class ExpenseCategoryOverPlanStreak {
-  const ExpenseCategoryOverPlanStreak({
-    required this.current,
-    required this.longest,
+/// How the server reports a category's settled months above plan in a year.
+class ExpenseCategoryOverPlanMonths {
+  const ExpenseCategoryOverPlanMonths({
+    required this.count,
     required this.suggestAdjustment,
   });
 
-  /// Settled months above plan up to the last settled month of the year.
-  final int current;
-
-  /// The longest run of settled months above plan in the year.
-  final int longest;
+  /// Number of settled months in the year the category spent above plan.
+  final int count;
 
   /// True when the server says the template budget should be reviewed.
   final bool suggestAdjustment;
@@ -23,7 +19,7 @@ class ExpenseCategoryTotal {
     required this.planned,
     required this.actual,
     this.iconKey,
-    this.overPlanStreak,
+    this.overPlanMonths,
   });
 
   final String categoryName;
@@ -37,6 +33,6 @@ class ExpenseCategoryTotal {
   /// The amount actually spent in the year, in euros.
   final double actual;
 
-  /// The server's run of settled months spent above plan, when supplied.
-  final ExpenseCategoryOverPlanStreak? overPlanStreak;
+  /// The server's count of settled months spent above plan, when supplied.
+  final ExpenseCategoryOverPlanMonths? overPlanMonths;
 }

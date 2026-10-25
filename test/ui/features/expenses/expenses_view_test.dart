@@ -125,7 +125,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shows each category deviation and an adjustment suggestion', (
+  testWidgets('shows the share and flags the over-plan category inline', (
     tester,
   ) async {
     setPhoneSize(tester);
@@ -135,21 +135,13 @@ void main() {
           'name': 'Casa',
           'planned': 1000,
           'actual': 1150,
-          'overPlanStreak': {
-            'current': 3,
-            'longest': 3,
-            'suggestAdjustment': true,
-          },
+          'overPlanMonths': {'count': 3, 'suggestAdjustment': true},
         },
         {
           'name': 'Luz',
           'planned': 1000,
           'actual': 900,
-          'overPlanStreak': {
-            'current': 0,
-            'longest': 1,
-            'suggestAdjustment': false,
-          },
+          'overPlanMonths': {'count': 1, 'suggestAdjustment': false},
         },
         {'name': 'Extra', 'planned': 0, 'actual': 50},
       ];
@@ -165,12 +157,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('+15%'), findsOneWidget);
-    expect(find.text('acima do plano em média'), findsOneWidget);
-    expect(find.text('-10%'), findsOneWidget);
-    expect(find.text('abaixo do plano em média'), findsOneWidget);
-    expect(find.text('Casa ficou acima em 3 meses seguidos'), findsOneWidget);
-    expect(find.textContaining('Luz ficou acima'), findsNothing);
+    expect(find.textContaining('↑ acima em 3 meses'), findsOneWidget);
+    // Only Casa carries the flag; Luz has the counts but not the suggestion.
+    expect(find.textContaining('↑ acima em'), findsOneWidget);
+    expect(find.textContaining('↑ acima em 1 mês'), findsNothing);
     expect(find.text('Extra'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

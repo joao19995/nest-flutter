@@ -153,11 +153,6 @@ class _CategoryBreakdown extends StatelessWidget {
       ..sort((a, b) => b.actual.compareTo(a.actual));
     final total = sorted.fold<double>(0, (sum, item) => sum + item.actual);
     final top = sorted.take(_topCount).toList(growable: false);
-    final suggested = sorted
-        .where(
-          (category) => category.overPlanStreak?.suggestAdjustment ?? false,
-        )
-        .toList(growable: false);
     final donut = AppDonutChart(
       data: [
         for (final category in sorted)
@@ -179,81 +174,40 @@ class _CategoryBreakdown extends StatelessWidget {
         ],
       ],
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const AppSectionHeader(title: 'Por categoria'),
-              const SizedBox(height: AppSpacing.md),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth >= AppBreakpoints.sm) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        donut,
-                        const SizedBox(width: AppSpacing.xl),
-                        Expanded(child: list),
-                      ],
-                    );
-                  }
-                  return Column(
-                    children: [
-                      donut,
-                      const SizedBox(height: AppSpacing.lg),
-                      list,
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-        for (final category in suggested) ...[
-          const SizedBox(height: AppSpacing.md),
-          _AdjustmentSuggestionCard(category: category),
-        ],
-      ],
-    );
-  }
-}
-
-/// A non-interactive notice for categories that spent above their expected
-/// value for several settled months in a row.
-class _AdjustmentSuggestionCard extends StatelessWidget {
-  const _AdjustmentSuggestionCard({required this.category});
-
-  final ExpenseCategoryTotal category;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
     return AppCard(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(
-            Icons.trending_up,
-            size: AppSizes.iconMedium,
-            color: colors.primary,
+          const AppSectionHeader(title: 'Por categoria'),
+          const SizedBox(height: AppSpacing.md),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= AppBreakpoints.sm) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    donut,
+                    const SizedBox(width: AppSpacing.xl),
+                    Expanded(child: list),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  donut,
+                  const SizedBox(height: AppSpacing.lg),
+                  list,
+                ],
+              );
+            },
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(child: Text(_label(category), style: AppTextStyles.body)),
         ],
       ),
     );
   }
-
-  static String _label(ExpenseCategoryTotal category) {
-    final months = category.overPlanStreak?.longest ?? 0;
-    final unit = months == 1 ? '1 mês seguido' : '$months meses seguidos';
-    return '${category.categoryName} ficou acima em $unit';
-  }
 }
 
-/// One category row in the breakdown: icon, name, percentage and amount.
+/// One category row in the breakdown: icon, name, share and amount.
 class _CategoryTotalRow extends StatelessWidget {
   const _CategoryTotalRow({required this.category, required this.total});
 
@@ -264,10 +218,10 @@ class _CategoryTotalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final percentage = total > 0 ? category.actual / total * 100 : 0.0;
-    final planned = category.planned;
-    final deviation = planned > 0
-        ? (category.actual - planned) / planned * 100
-        : null;
+    final overPlanMonths = category.overPlanMonths;
+    final suggestsAdjustment = overPlanMonths?.suggestAdjustment ?? false;
+    final months = overPlanMonths?.count ?? 0;
+    final subtitleStyle = AppTextStyles.small(colors);
     return Row(
       children: [
         CategoryIcon(
@@ -289,14 +243,23 @@ class _CategoryTotalRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
-              Text(
-                AppFormatters.percentage(percentage),
-                style: AppTextStyles.small(colors),
+              Text.rich(
+                TextSpan(
+                  style: subtitleStyle,
+                  children: [
+                    TextSpan(
+                      text: '${AppFormatters.percentage(percentage)} do total',
+                    ),
+                    if (suggestsAdjustment)
+                      TextSpan(
+                        text: ' · ↑ acima em ${_monthsLabel(months)}',
+                        style: subtitleStyle.copyWith(color: colors.over),
+                      ),
+                  ],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              if (deviation != null) ...[
-                const SizedBox(height: AppSpacing.xs),
-                _DeviationLine(deviation: deviation),
-              ],
             ],
           ),
         ),
@@ -308,46 +271,10 @@ class _CategoryTotalRow extends StatelessWidget {
       ],
     );
   }
-}
 
-/// The category's average deviation from its plan, with a status badge.
-class _DeviationLine extends StatelessWidget {
-  const _DeviationLine({required this.deviation});
-
-  final double deviation;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final style = deviation > 0
-        ? AppBadgeStyles.destructive(colors)
-        : deviation < 0
-        ? AppBadgeStyles.open(colors)
-        : AppBadgeStyles.muted(colors);
-    final sign = deviation > 0 ? '+' : '';
-    return Wrap(
-      spacing: AppSpacing.xs,
-      runSpacing: AppSpacing.xs,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        AppBadge(
-          label: '$sign${AppFormatters.percentage(deviation)}',
-          style: style,
-        ),
-        Text(_sentence(deviation), style: AppTextStyles.small(colors)),
-      ],
-    );
-  }
-
-  static String _sentence(double deviation) {
-    if (deviation > 0) {
-      return 'acima do plano em média';
-    }
-    if (deviation < 0) {
-      return 'abaixo do plano em média';
-    }
-    return 'no plano em média';
-  }
+  /// "1 mês" for a single month, "N meses" otherwise.
+  static String _monthsLabel(int months) =>
+      months == 1 ? '1 mês' : '$months meses';
 }
 
 /// The expense configuration entry points: the categories and the monthly

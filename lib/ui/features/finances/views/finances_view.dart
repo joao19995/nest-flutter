@@ -102,7 +102,7 @@ class _FinancesViewState extends State<FinancesView> {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       // Icons make the segments too tight on phones and the
-                      // longest label wraps mid-word; drop them when narrow.
+                      // widest label wraps mid-word; drop them when narrow.
                       final showIcons =
                           constraints.maxWidth >= AppBreakpoints.sm;
                       return Align(

@@ -7,18 +7,18 @@ class ExpenseCategoryTotalModel {
     required this.planned,
     required this.actual,
     this.iconKey,
-    this.overPlanStreak,
+    this.overPlanMonths,
   });
 
   factory ExpenseCategoryTotalModel.fromJson(Map<String, dynamic> json) {
-    final streak = json['overPlanStreak'];
+    final overPlanMonths = json['overPlanMonths'];
     return ExpenseCategoryTotalModel(
       categoryName: json['name'] as String? ?? '',
       planned: (json['planned'] as num?)?.toDouble() ?? 0,
       actual: (json['actual'] as num?)?.toDouble() ?? 0,
       iconKey: json['iconKey'] as String?,
-      overPlanStreak: streak is Map<String, dynamic>
-          ? ExpenseCategoryOverPlanStreakModel.fromJson(streak)
+      overPlanMonths: overPlanMonths is Map<String, dynamic>
+          ? ExpenseCategoryOverPlanMonthsModel.fromJson(overPlanMonths)
           : null,
     );
   }
@@ -27,40 +27,36 @@ class ExpenseCategoryTotalModel {
   final double planned;
   final double actual;
   final String? iconKey;
-  final ExpenseCategoryOverPlanStreakModel? overPlanStreak;
+  final ExpenseCategoryOverPlanMonthsModel? overPlanMonths;
 
   ExpenseCategoryTotal toDomain() => ExpenseCategoryTotal(
     categoryName: categoryName,
     planned: planned,
     actual: actual,
     iconKey: iconKey,
-    overPlanStreak: overPlanStreak?.toDomain(),
+    overPlanMonths: overPlanMonths?.toDomain(),
   );
 }
 
-/// API-facing representation of an [ExpenseCategoryOverPlanStreak].
-class ExpenseCategoryOverPlanStreakModel {
-  const ExpenseCategoryOverPlanStreakModel({
-    required this.current,
-    required this.longest,
+/// API-facing representation of an [ExpenseCategoryOverPlanMonths].
+class ExpenseCategoryOverPlanMonthsModel {
+  const ExpenseCategoryOverPlanMonthsModel({
+    required this.count,
     required this.suggestAdjustment,
   });
 
-  factory ExpenseCategoryOverPlanStreakModel.fromJson(
+  factory ExpenseCategoryOverPlanMonthsModel.fromJson(
     Map<String, dynamic> json,
-  ) => ExpenseCategoryOverPlanStreakModel(
-    current: (json['current'] as num?)?.toInt() ?? 0,
-    longest: (json['longest'] as num?)?.toInt() ?? 0,
+  ) => ExpenseCategoryOverPlanMonthsModel(
+    count: (json['count'] as num?)?.toInt() ?? 0,
     suggestAdjustment: json['suggestAdjustment'] as bool? ?? false,
   );
 
-  final int current;
-  final int longest;
+  final int count;
   final bool suggestAdjustment;
 
-  ExpenseCategoryOverPlanStreak toDomain() => ExpenseCategoryOverPlanStreak(
-    current: current,
-    longest: longest,
+  ExpenseCategoryOverPlanMonths toDomain() => ExpenseCategoryOverPlanMonths(
+    count: count,
     suggestAdjustment: suggestAdjustment,
   );
 }
