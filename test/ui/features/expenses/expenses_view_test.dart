@@ -79,6 +79,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Despesa do ano'), findsOneWidget);
+    expect(find.text('Tendência mensal'), findsOneWidget);
+    expect(find.text('Real'), findsOneWidget);
+    expect(find.text('Planeado'), findsOneWidget);
     expect(find.text('Por mês'), findsOneWidget);
     expect(find.byType(AppMonthTile), findsNWidgets(2));
     // 'Jan' appears both in the chart and in its month tile.

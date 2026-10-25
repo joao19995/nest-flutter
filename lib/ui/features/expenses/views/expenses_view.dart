@@ -273,12 +273,12 @@ class _ExpensesTools extends StatelessWidget {
       tiles: [
         NavTile(
           icon: Icons.list_alt_outlined,
-          label: 'Catálogo',
+          label: 'Categorias',
           onTap: onOpenCategories,
         ),
         NavTile(
           icon: Icons.pie_chart_outline,
-          label: 'Distribuições',
+          label: 'Distribuição',
           onTap: onOpenTemplates,
         ),
       ],
@@ -362,21 +362,96 @@ class _ExpenseYearHero extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.lg),
-            AppBarChart(
-              bars: [
-                for (final month in summary.months)
-                  (
-                    label: AppFormatters.monthShort(month.month),
-                    value: month.actual,
-                    planned: month.planned,
-                    over: month.over,
-                    highlighted: month.month == highlightMonth,
-                  ),
-              ],
+            _MonthlyTrend(
+              months: summary.months,
+              highlightMonth: highlightMonth,
             ),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// The month-by-month evolution of real spend against the plan.
+///
+/// Reuses the shared [AppBarChart]: each bar is the real amount, the thin line
+/// is the planned amount, and a caption explains the two marks.
+class _MonthlyTrend extends StatelessWidget {
+  const _MonthlyTrend({required this.months, required this.highlightMonth});
+
+  final List<ExpenseMonthSummary> months;
+  final String? highlightMonth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Tendência mensal',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.navSection(
+                  context.colors,
+                ).copyWith(color: AppColors.onHeroMuted),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            const _TrendLegend(),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        AppBarChart(
+          bars: [
+            for (final month in months)
+              (
+                label: AppFormatters.monthShort(month.month),
+                value: month.actual,
+                planned: month.planned,
+                over: month.over,
+                highlighted: month.month == highlightMonth,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Explains the two marks of the monthly trend: the real bar and the planned
+/// line.
+class _TrendLegend extends StatelessWidget {
+  const _TrendLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppTextStyles.badge.copyWith(color: AppColors.onHeroMuted);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: AppSizes.badgeDot,
+          height: AppSizes.badgeDot,
+          decoration: const BoxDecoration(
+            color: AppColors.onHero,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Text('Real', style: style),
+        const SizedBox(width: AppSpacing.sm),
+        Container(
+          width: AppSizes.barChartLegendLine,
+          height: AppSizes.barChartPlannedLine,
+          color: AppColors.onHeroMuted,
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Text('Planeado', style: style),
+      ],
     );
   }
 }

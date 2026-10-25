@@ -8,9 +8,11 @@ import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
+import 'package:nest/ui/features/expenses/views/month_detail_view.dart';
 import 'package:nest/ui/features/finances/view_models/close_month_wizard_view_model.dart';
 import 'package:nest/ui/features/finances/views/month_transfers_summary.dart';
 import 'package:nest/ui/features/goals/goal_icons.dart';
+import 'package:nest/ui/features/goals/views/goal_month_detail_view.dart';
 
 /// The month-end assistant: review and close Despesas, then Objetivos, then
 /// see the combined final transfers.
@@ -275,6 +277,16 @@ class _ExpensesStep extends StatelessWidget {
           AppErrorBanner(message: actionError),
         ],
         const SizedBox(height: AppSpacing.md),
+        if (!plan.closed) ...[
+          AppButton(
+            label: 'Editar despesas',
+            icon: Icons.edit_outlined,
+            variant: AppButtonVariant.secondary,
+            isFullWidth: true,
+            onPressed: () => _edit(context),
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
         _ExpenseReview(plan: plan),
         const SizedBox(height: AppSpacing.lg),
         _SettlementSection(
@@ -304,6 +316,17 @@ class _ExpensesStep extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  Future<void> _edit(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MonthDetailView(month: viewModel.month),
+      ),
+    );
+    if (context.mounted) {
+      await viewModel.retryExpenses();
+    }
   }
 
   Future<void> _close(BuildContext context) async {
@@ -377,6 +400,16 @@ class _GoalsStep extends StatelessWidget {
           AppErrorBanner(message: actionError),
         ],
         const SizedBox(height: AppSpacing.md),
+        if (!plan.closed) ...[
+          AppButton(
+            label: 'Editar objetivos',
+            icon: Icons.edit_outlined,
+            variant: AppButtonVariant.secondary,
+            isFullWidth: true,
+            onPressed: () => _edit(context),
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
         _GoalReview(viewModel: viewModel),
         const SizedBox(height: AppSpacing.lg),
         _GoalTransfersSection(
@@ -411,6 +444,17 @@ class _GoalsStep extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  Future<void> _edit(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => GoalMonthDetailView(month: viewModel.month),
+      ),
+    );
+    if (context.mounted) {
+      await viewModel.retryGoals();
+    }
   }
 
   Future<void> _close(BuildContext context) async {

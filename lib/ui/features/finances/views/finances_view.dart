@@ -9,7 +9,7 @@ import 'package:nest/ui/features/goals/views/goals_view.dart';
 /// The two faces of the month hosted under the Finanças tab.
 enum FinancesSection { expenses, goals }
 
-/// Finanças merges Despesas and Objectivos — the two are the same year view
+/// Finanças merges Despesas and Objetivos — the two are the same year view
 /// with a different lens — behind a segmented selector, so both live under a
 /// single primary destination.
 class FinancesView extends StatefulWidget {
@@ -19,7 +19,7 @@ class FinancesView extends StatefulWidget {
     this.refreshSignal,
   });
 
-  /// The section shown first. Lets callers deep-link straight to Objectivos.
+  /// The section shown first. Lets callers deep-link straight to Objetivos.
   final FinancesSection initialSection;
 
   /// Bumps the reload token when the caller wants fresh month data.
@@ -137,7 +137,7 @@ class _FinancesViewState extends State<FinancesView> {
                             ButtonSegment(
                               value: FinancesSection.goals,
                               label: const Text(
-                                'Objectivos',
+                                'Objetivos',
                                 maxLines: 1,
                                 softWrap: false,
                               ),

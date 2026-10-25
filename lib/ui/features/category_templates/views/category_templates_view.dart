@@ -98,7 +98,7 @@ class _CategoryTemplatesViewState extends State<CategoryTemplatesView>
       listenable: viewModel,
       builder: (context, _) => Scaffold(
         appBar: AppBar(
-          title: const Text('Distribuições'),
+          title: const Text('Distribuição'),
           actions: [
             AppButton.icon(
               icon: Icons.add,
@@ -121,7 +121,7 @@ class _CategoryTemplatesViewState extends State<CategoryTemplatesView>
                 errorMessage: viewModel.errorMessage,
                 isEmpty: viewModel.isEmpty,
                 onRetry: viewModel.load,
-                emptyMessage: 'Ainda não há distribuições.',
+                emptyMessage: 'Ainda não há distribuição.',
                 emptyIcon: Icons.pie_chart_outline,
                 child: TemplateVersionsList<CategoryTemplate>(
                   templates: viewModel.templates,

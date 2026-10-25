@@ -19,8 +19,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Distribuições'), findsOneWidget);
-    expect(find.text('Ainda não há distribuições.'), findsOneWidget);
+    expect(find.text('Distribuição'), findsOneWidget);
+    expect(find.text('Ainda não há distribuição.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -10,6 +10,7 @@ import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:nest/ui/features/finances/views/close_month_wizard_view.dart';
+import 'package:nest/ui/features/finances/views/month_transfers_view.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 
 /// A to-do list's completion on the dashboard.
@@ -102,6 +103,12 @@ class _DashboardViewState extends State<DashboardView>
     }
   }
 
+  void _openSummary(String month) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => MonthTransfersView(month: month)),
+    );
+  }
+
   @override
   void didUpdateWidget(covariant DashboardView oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -145,6 +152,7 @@ class _DashboardViewState extends State<DashboardView>
                     onOpenGoals: widget.onOpenGoals,
                     onOpenMonth: widget.onOpenMonth,
                     onCloseMonth: _openCloseWizard,
+                    onOpenSummary: _openSummary,
                   ),
                 ),
               ),
@@ -166,6 +174,7 @@ class _DashboardContent extends StatelessWidget {
     required this.onOpenGoals,
     required this.onOpenMonth,
     required this.onCloseMonth,
+    required this.onOpenSummary,
   });
 
   final DashboardViewModel viewModel;
@@ -176,6 +185,7 @@ class _DashboardContent extends StatelessWidget {
   final VoidCallback? onOpenGoals;
   final ValueChanged<String>? onOpenMonth;
   final ValueChanged<String> onCloseMonth;
+  final ValueChanged<String> onOpenSummary;
 
   void _showPreviousMonth() {
     unawaited(HapticFeedback.selectionClick());
@@ -218,7 +228,7 @@ class _DashboardContent extends StatelessWidget {
               onPrevious: _showPreviousMonth,
               onNext: _showNextMonth,
               onRetry: viewModel.retryMonth,
-              onOpenMonth: onOpenMonth,
+              onOpenSummary: onOpenSummary,
               onCloseMonth: onCloseMonth,
             ),
           ),
@@ -764,7 +774,7 @@ class _DashboardMonthHero extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
     required this.onRetry,
-    required this.onOpenMonth,
+    required this.onOpenSummary,
     required this.onCloseMonth,
   });
 
@@ -777,14 +787,13 @@ class _DashboardMonthHero extends StatelessWidget {
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onRetry;
-  final ValueChanged<String>? onOpenMonth;
+  final ValueChanged<String> onOpenSummary;
   final ValueChanged<String> onCloseMonth;
 
   @override
   Widget build(BuildContext context) {
-    final onOpenMonth = this.onOpenMonth;
     final error = state.errorMessage;
-    final hero = Hero(
+    return Hero(
       tag: 'dashboard-month-$month',
       flightShuttleBuilder: heroSurfaceShuttle,
       child: HeroPanel(
@@ -820,23 +829,11 @@ class _DashboardMonthHero extends StatelessWidget {
                 month: month,
                 summary: summary,
                 ritual: ritual,
-                onOpenMonth: onOpenMonth,
+                onOpenSummary: onOpenSummary,
                 onCloseMonth: onCloseMonth,
               ),
           ],
         ),
-      ),
-    );
-    if (onOpenMonth == null) {
-      return hero;
-    }
-    return Semantics(
-      button: true,
-      label: 'Abrir despesas de ${AppFormatters.monthName(month)}',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onOpenMonth(month),
-        child: hero,
       ),
     );
   }
@@ -848,14 +845,14 @@ class _HeroBalanceBody extends StatelessWidget {
     required this.month,
     required this.summary,
     required this.ritual,
-    required this.onOpenMonth,
+    required this.onOpenSummary,
     required this.onCloseMonth,
   });
 
   final String month;
   final ExpenseMonthSummary? summary;
   final DashboardRitual? ritual;
-  final ValueChanged<String>? onOpenMonth;
+  final ValueChanged<String> onOpenSummary;
   final ValueChanged<String> onCloseMonth;
 
   @override
@@ -879,9 +876,8 @@ class _HeroBalanceBody extends StatelessWidget {
     final goalsStatus = ritual?.goalsStatus;
     final goalsReserved = ritual?.goalsReserved ?? 0;
     final goalsPlanned = ritual?.goalsPlanned ?? 0;
-    final onOpen = onOpenMonth;
     final onPressed = closed
-        ? (onOpen == null ? null : () => onOpen(month))
+        ? () => onOpenSummary(month)
         : () => onCloseMonth(month);
 
     return Column(

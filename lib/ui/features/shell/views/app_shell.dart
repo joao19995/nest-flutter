@@ -58,7 +58,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   _NavDestination _selected = _NavDestination.inicio;
 
   /// The section Finanças opens on, so the dashboard's goals card can deep-link
-  /// straight to Objectivos.
+  /// straight to Objetivos.
   FinancesSection _financesSection = FinancesSection.expenses;
 
   @override
@@ -112,7 +112,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     setState(() => _selected = destination);
   }
 
-  /// Opens Finanças on the Objectivos section.
+  /// Opens Finanças on the Objetivos section.
   void _openGoals() {
     setState(() {
       _financesSection = FinancesSection.goals;

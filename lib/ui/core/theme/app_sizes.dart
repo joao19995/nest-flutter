@@ -124,6 +124,9 @@ abstract final class AppSizes {
   /// Thickness of the planned-value marker on a bar chart.
   static const double barChartPlannedLine = 2;
 
+  /// Width of the planned-value marker in the bar-chart legend.
+  static const double barChartLegendLine = 12;
+
   /// Width of an editable money field in the expense ledger.
   static const double moneyFieldWidth = 112;
 

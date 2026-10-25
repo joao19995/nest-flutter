@@ -4,15 +4,20 @@ import 'package:http/testing.dart';
 import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/dashboard/views/dashboard_view.dart';
+import 'package:nest/ui/features/finances/views/month_transfers_view.dart';
 
 import '../../../support/test_helpers.dart';
 
-Map<String, dynamic> _yearSummary(int year, String month) => {
+Map<String, dynamic> _yearSummary(
+  int year,
+  String month, {
+  bool closed = false,
+}) => {
   'year': year,
   'planned': 1000,
-  'actual': 500,
-  'diff': -500,
-  'diffPct': -50,
+  'actual': closed ? 1000 : 500,
+  'diff': closed ? 0 : -500,
+  'diffPct': closed ? 0 : -50,
   'over': false,
   'hasData': true,
   'remainingMonths': 2,
@@ -20,37 +25,53 @@ Map<String, dynamic> _yearSummary(int year, String month) => {
   'months': [
     {
       'month': month,
-      'status': 'open',
+      'status': closed ? 'closed' : 'open',
       'planned': 1000,
-      'actual': 500,
-      'progressPct': 50,
+      'actual': closed ? 1000 : 500,
+      'progressPct': closed ? 100 : 50,
       'over': false,
-      'filledEntries': 5,
+      'filledEntries': closed ? 10 : 5,
       'totalEntries': 10,
     },
   ],
 };
 
-Map<String, dynamic> _goalYear(int year) => {
-  'plans': <Object>[],
+Map<String, dynamic> _goalYear(int year, {String? closedMonth}) => {
+  'plans': [
+    if (closedMonth != null)
+      {
+        'id': 'p1',
+        'month': closedMonth,
+        'availableAmount': 1000,
+        'closed': true,
+        'allocations': [
+          {
+            'goalId': 'g1',
+            'goalName': 'Viagem',
+            'planned': 1000,
+            'actual': 1000,
+          },
+        ],
+      },
+  ],
   'funding': {'year': year, 'annualTotal': 0, 'months': <Object>[]},
 };
 
-Map<String, dynamic> _month(String month) => {
+Map<String, dynamic> _month(String month, {bool closed = false}) => {
   'id': 'm1',
   'month': month,
   'templateId': 't1',
-  'closed': false,
+  'closed': closed,
   'entries': <Object>[],
   'settlement': null,
   'summary': {
     'month': month,
-    'status': 'open',
+    'status': closed ? 'closed' : 'open',
     'planned': 1000,
-    'actual': 500,
-    'progressPct': 50,
+    'actual': closed ? 1000 : 500,
+    'progressPct': closed ? 100 : 50,
     'over': false,
-    'filledEntries': 5,
+    'filledEntries': closed ? 10 : 5,
     'totalEntries': 10,
   },
 };
@@ -59,11 +80,12 @@ MockClient _client(
   String month, {
   bool failEvents = false,
   List<Object>? events,
+  bool closed = false,
 }) {
   final year = int.parse(month.substring(0, 4));
   return MockClient((request) async {
     if (request.url.path == '/api/months/$month') {
-      return jsonResponse(_month(month));
+      return jsonResponse(_month(month, closed: closed));
     }
     if (failEvents && request.url.path == '/api/events') {
       return jsonResponse(const {
@@ -72,11 +94,13 @@ MockClient _client(
     }
     switch (request.url.path) {
       case '/api/months/summary':
-        return jsonResponse(_yearSummary(year, month));
+        return jsonResponse(_yearSummary(year, month, closed: closed));
       case '/api/events':
         return jsonResponse(events ?? const <Object>[]);
       case '/api/goal-plan':
-        return jsonResponse(_goalYear(year));
+        return jsonResponse(
+          _goalYear(year, closedMonth: closed ? month : null),
+        );
       case '/api/goals':
         return jsonResponse(const <Object>[]);
       case '/api/goal-templates/applicable':
@@ -160,7 +184,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('opens the month when the hero is tapped', (tester) async {
+  testWidgets('does not open the expenses when the hero is tapped', (
+    tester,
+  ) async {
     setPhoneSize(tester);
     String? opened;
     await tester.pumpWidget(
@@ -172,7 +198,25 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Balanço do mês'));
-    expect(opened, month);
+    expect(opened, isNull);
+  });
+
+  testWidgets('opens the final summary from a closed month', (tester) async {
+    setPhoneSize(tester);
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(_client(month, closed: true)),
+        const DashboardView(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ver resumo'), findsOneWidget);
+
+    await tester.tap(find.text('Ver resumo'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MonthTransfersView), findsOneWidget);
   });
 
   testWidgets('keeps the hero when the events section fails', (tester) async {

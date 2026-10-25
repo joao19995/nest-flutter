@@ -50,7 +50,7 @@ class _GoalsViewState extends State<GoalsView>
       return content;
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Objectivos')),
+      appBar: AppBar(title: const Text('Objetivos')),
       body: Padding(
         padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
         child: Align(

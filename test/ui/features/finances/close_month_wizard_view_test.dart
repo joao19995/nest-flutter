@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/features/expenses/views/month_detail_view.dart';
 import 'package:nest/ui/features/finances/views/close_month_wizard_view.dart';
+import 'package:nest/ui/features/goals/views/goal_month_detail_view.dart';
 
 import '../../../support/test_helpers.dart';
 
@@ -214,6 +216,61 @@ void main() {
     expect(find.text(AppFormatters.currency(320)), findsWidgets);
     expect(find.text(AppFormatters.currency(1000)), findsWidgets);
     expect(find.text('Concluir'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opens the expenses detail to enter the real amounts', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(_client()),
+        const CloseMonthWizardView(month: _month),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Editar despesas'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MonthDetailView), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opens the goals detail to set the reserved amounts', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    final client = MockClient((request) async {
+      final path = request.url.path;
+      if (path == '/api/months/$_month') {
+        return jsonResponse(_expenseMonth(closed: true, withSettlement: true));
+      }
+      if (path == '/api/goal-plan/$_month/close-preview') {
+        return jsonResponse(_closePreview());
+      }
+      if (path == '/api/goal-plan/$_month') {
+        return jsonResponse(_goalMonth());
+      }
+      if (path == '/api/goals') {
+        return jsonResponse(_goals());
+      }
+      return jsonResponse(const {'error': 'not found'}, status: 404);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        const CloseMonthWizardView(month: _month, startStep: 1),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Editar objetivos'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(GoalMonthDetailView), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

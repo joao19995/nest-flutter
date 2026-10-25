@@ -50,10 +50,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Despesas'), findsWidgets);
-    expect(find.text('Objectivos'), findsOneWidget);
+    expect(find.text('Objetivos'), findsOneWidget);
     expect(goalsLoaded, isFalse);
 
-    await tester.tap(find.text('Objectivos'));
+    await tester.tap(find.text('Objetivos'));
     await tester.pumpAndSettle();
 
     expect(goalsLoaded, isTrue);
