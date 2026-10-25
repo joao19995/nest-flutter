@@ -140,13 +140,16 @@ DashboardViewModel _viewModel(
   );
 }
 
-MockClient _client({bool failEvents = false}) => MockClient((request) async {
+MockClient _client({
+  bool failEvents = false,
+  Map<String, dynamic>? yearSummary,
+}) => MockClient((request) async {
   if (failEvents && request.url.path == '/api/events') {
     return jsonResponse(const {'error': 'Eventos indisponíveis'}, status: 500);
   }
   switch (request.url.path) {
     case '/api/months/summary':
-      return jsonResponse(_yearSummary());
+      return jsonResponse(yearSummary ?? _yearSummary());
     case '/api/events':
       return jsonResponse(_events());
     case '/api/goal-plan':
@@ -192,6 +195,33 @@ Map<String, dynamic> _yearSummaryFor(int year) => {
   ],
 };
 
+Map<String, dynamic> _monthEntry(String month, ExpenseMonthStatus status) => {
+  'month': month,
+  'status': status.name,
+  'planned': 0,
+  'actual': 0,
+  'progressPct': 0,
+  'over': false,
+  'filledEntries': 0,
+  'totalEntries': 0,
+};
+
+Map<String, dynamic> _summaryWith(
+  int year,
+  List<Map<String, dynamic>> months,
+) => {
+  'year': year,
+  'planned': 0,
+  'actual': 0,
+  'diff': 0,
+  'diffPct': 0,
+  'over': false,
+  'remainingMonths': 0,
+  'perRemainingMonth': 0,
+  'hasData': true,
+  'months': months,
+};
+
 void main() {
   test('aggregates alerts, events, goals and the month hero', () async {
     final viewModel = _viewModel(_client());
@@ -204,12 +234,17 @@ void main() {
     expect(viewModel.greeting, 'Boa tarde');
     final alerts = viewModel.alerts;
     expect(alerts, hasLength(2));
-    expect(alerts.first.message, 'Outubro por fechar');
+    expect(
+      alerts.first.message,
+      'O balanço de Outubro continua por fechar há 18 dias',
+    );
     expect(alerts.first.month, '2026-10');
     expect(alerts.first.kind, DashboardAlertKind.toClose);
+    expect(alerts.first.showInAttentionCard, isTrue);
     expect(alerts.last.message, 'Novembro ainda não criado');
     expect(alerts.last.month, '2026-11');
     expect(alerts.last.kind, DashboardAlertKind.toCreate);
+    expect(alerts.last.showInAttentionCard, isFalse);
     expect(viewModel.upcomingEvents, hasLength(2));
     expect(viewModel.upcomingEvents.first.title, 'Consulta');
 
@@ -409,5 +444,129 @@ void main() {
     expect(viewModel.yearMonths.first.month, '2025-01');
     expect(viewModel.stripSection.isLoading, isFalse);
     expect(requestedYears, contains('2025'));
+  });
+
+  test('reminds to close the previous open month on days 1-3', () async {
+    final viewModel = _viewModel(
+      _client(
+        yearSummary: _summaryWith(2026, [
+          _monthEntry('2026-02', ExpenseMonthStatus.open),
+          _monthEntry('2026-03', ExpenseMonthStatus.closed),
+        ]),
+      ),
+      now: DateTime(2026, 3, 3, 10),
+    );
+
+    await viewModel.load();
+
+    final alert = viewModel.alerts.single;
+    expect(alert.message, 'É altura de fazer o balanço de Fevereiro');
+    expect(alert.month, '2026-02');
+    expect(alert.kind, DashboardAlertKind.toClose);
+  });
+
+  test('reminds to create the previous missing month on days 1-3', () async {
+    final viewModel = _viewModel(
+      _client(
+        yearSummary: _summaryWith(2026, [
+          _monthEntry('2026-02', ExpenseMonthStatus.missing),
+          _monthEntry('2026-03', ExpenseMonthStatus.closed),
+        ]),
+      ),
+      now: DateTime(2026, 3, 1, 10),
+    );
+
+    await viewModel.load();
+
+    final alert = viewModel.alerts.single;
+    expect(alert.message, 'É altura de fazer o balanço de Fevereiro');
+    expect(alert.month, '2026-02');
+    expect(alert.kind, DashboardAlertKind.toCreate);
+  });
+
+  test('does not remind about the balance after day 3', () async {
+    final viewModel = _viewModel(
+      _client(
+        yearSummary: _summaryWith(2026, [
+          _monthEntry('2026-02', ExpenseMonthStatus.open),
+          _monthEntry('2026-03', ExpenseMonthStatus.closed),
+        ]),
+      ),
+      now: DateTime(2026, 3, 4, 10),
+    );
+
+    await viewModel.load();
+
+    expect(viewModel.alerts, isEmpty);
+  });
+
+  test('does not remind about a previous month already closed', () async {
+    final viewModel = _viewModel(
+      _client(
+        yearSummary: _summaryWith(2026, [
+          _monthEntry('2026-02', ExpenseMonthStatus.closed),
+          _monthEntry('2026-03', ExpenseMonthStatus.closed),
+        ]),
+      ),
+      now: DateTime(2026, 3, 2, 10),
+    );
+
+    await viewModel.load();
+
+    expect(viewModel.alerts, isEmpty);
+  });
+
+  test('reminds about the current open month after the threshold', () async {
+    final viewModel = _viewModel(
+      _client(
+        yearSummary: _summaryWith(2026, [
+          _monthEntry('2026-02', ExpenseMonthStatus.closed),
+          _monthEntry('2026-03', ExpenseMonthStatus.open),
+        ]),
+      ),
+      now: DateTime(2026, 3, 8, 10),
+    );
+
+    await viewModel.load();
+
+    final alert = viewModel.alerts.single;
+    expect(alert.message, 'O balanço de Março continua por fechar há 8 dias');
+    expect(alert.month, '2026-03');
+    expect(alert.kind, DashboardAlertKind.toClose);
+    expect(alert.showInAttentionCard, isTrue);
+  });
+
+  test('does not remind about the current month at the threshold', () async {
+    final viewModel = _viewModel(
+      _client(
+        yearSummary: _summaryWith(2026, [
+          _monthEntry('2026-02', ExpenseMonthStatus.closed),
+          _monthEntry('2026-03', ExpenseMonthStatus.open),
+        ]),
+      ),
+      now: DateTime(2026, 3, 7, 10),
+    );
+
+    await viewModel.load();
+
+    final alert = viewModel.alerts.single;
+    expect(alert.message, 'Março por fechar');
+    expect(alert.showInAttentionCard, isFalse);
+  });
+
+  test('does not remind about a current month already closed', () async {
+    final viewModel = _viewModel(
+      _client(
+        yearSummary: _summaryWith(2026, [
+          _monthEntry('2026-02', ExpenseMonthStatus.closed),
+          _monthEntry('2026-03', ExpenseMonthStatus.closed),
+        ]),
+      ),
+      now: DateTime(2026, 3, 10, 10),
+    );
+
+    await viewModel.load();
+
+    expect(viewModel.alerts, isEmpty);
   });
 }

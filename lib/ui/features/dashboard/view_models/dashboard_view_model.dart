@@ -25,6 +25,7 @@ class DashboardAlert {
     required this.message,
     required this.month,
     required this.kind,
+    this.showInAttentionCard = false,
   });
 
   /// The sentence shown in the dashboard.
@@ -34,6 +35,10 @@ class DashboardAlert {
   final String month;
 
   final DashboardAlertKind kind;
+
+  /// True to keep the alert in the attention card even when [month] is the one
+  /// already displayed by the hero.
+  final bool showInAttentionCard;
 }
 
 /// The loading/error state of one dashboard section.
@@ -136,6 +141,13 @@ class DashboardViewModel extends ChangeNotifier {
 
   /// How many days ahead the "Hoje e próximos" list looks.
   static const int _upcomingDays = 6;
+
+  /// Through this day of the month, an unsettled previous month is a prompt to
+  /// do last month's balance.
+  static const int _balanceReminderLastDay = 3;
+
+  /// After this day of the month, an open current month keeps nagging.
+  static const int _closingReminderAfterDay = 7;
 
   /// The earliest month the stepper can reach.
   static const String _minMonth = '2000-01';
@@ -558,19 +570,24 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   /// The alerts implied by the current year's month statuses: the current
-  /// month left open or uncreated, and the next month not created yet.
+  /// month left open or uncreated, the next month not created yet, and the two
+  /// periodic balance reminders.
   List<DashboardAlert> _alertsFrom(ExpenseYearSummary summary) {
     final current = MonthKey.of(_now.year, _now.month);
     final next = MonthKey.shift(current, 1);
+    final previous = MonthKey.shift(current, -1);
     final alerts = <DashboardAlert>[];
     for (final month in summary.months) {
       final name = AppFormatters.monthName(month.month);
       if (month.month == current && month.status == ExpenseMonthStatus.open) {
         alerts.add(
           DashboardAlert(
-            message: '$name por fechar',
+            message: _now.day > _closingReminderAfterDay
+                ? 'O balanço de $name continua por fechar há ${_now.day} dias'
+                : '$name por fechar',
             month: month.month,
             kind: DashboardAlertKind.toClose,
+            showInAttentionCard: _now.day > _closingReminderAfterDay,
           ),
         );
       } else if (month.month == current &&
@@ -593,7 +610,33 @@ class DashboardViewModel extends ChangeNotifier {
         );
       }
     }
+
+    if (_now.day <= _balanceReminderLastDay) {
+      final previousStatus = _statusOf(summary, previous);
+      if (previousStatus == ExpenseMonthStatus.open ||
+          previousStatus == ExpenseMonthStatus.missing) {
+        final name = AppFormatters.monthName(previous);
+        alerts.add(
+          DashboardAlert(
+            message: 'É altura de fazer o balanço de $name',
+            month: previous,
+            kind: previousStatus == ExpenseMonthStatus.open
+                ? DashboardAlertKind.toClose
+                : DashboardAlertKind.toCreate,
+          ),
+        );
+      }
+    }
     return alerts;
+  }
+
+  ExpenseMonthStatus? _statusOf(ExpenseYearSummary summary, String month) {
+    for (final candidate in summary.months) {
+      if (candidate.month == month) {
+        return candidate.status;
+      }
+    }
+    return null;
   }
 
   @override

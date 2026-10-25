@@ -202,9 +202,13 @@ class _DashboardContent extends StatelessWidget {
     final alertsError = viewModel.alertsSection.errorMessage;
     final ritual = viewModel.ritual;
     // The hero owns the displayed month; the attention card only carries the
-    // other months (e.g. the next one still to create).
+    // other months (e.g. the next one still to create) plus reminders that
+    // deliberately stay visible for the month already on screen.
     final alerts = viewModel.alerts
-        .where((alert) => alert.month != viewModel.month)
+        .where(
+          (alert) =>
+              alert.month != viewModel.month || alert.showInAttentionCard,
+        )
         .toList(growable: false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
