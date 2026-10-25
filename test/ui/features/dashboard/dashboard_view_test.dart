@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
-import 'package:nest/ui/core/month_key.dart';
+import 'package:nest/data/repositories/events_repository.dart';
+import 'package:nest/data/repositories/expenses_repository.dart';
+import 'package:nest/data/repositories/goals_repository.dart';
+import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/core/theme/theme.dart';
+import 'package:nest/ui/core/widgets/widgets.dart';
+import 'package:nest/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:nest/ui/features/dashboard/views/dashboard_view.dart';
 import 'package:nest/ui/features/finances/views/month_transfers_view.dart';
 
 import '../../../support/test_helpers.dart';
+
+const String _month = '2026-10';
 
 Map<String, dynamic> _yearSummary(
   int year,
@@ -57,7 +64,7 @@ Map<String, dynamic> _goalYear(int year, {String? closedMonth}) => {
   'funding': {'year': year, 'annualTotal': 0, 'months': <Object>[]},
 };
 
-Map<String, dynamic> _month(String month, {bool closed = false}) => {
+Map<String, dynamic> _monthPlan(String month, {bool closed = false}) => {
   'id': 'm1',
   'month': month,
   'templateId': 't1',
@@ -76,16 +83,15 @@ Map<String, dynamic> _month(String month, {bool closed = false}) => {
   },
 };
 
-MockClient _client(
-  String month, {
+MockClient _client({
   bool failEvents = false,
   List<Object>? events,
   bool closed = false,
 }) {
-  final year = int.parse(month.substring(0, 4));
+  final year = int.parse(_month.substring(0, 4));
   return MockClient((request) async {
-    if (request.url.path == '/api/months/$month') {
-      return jsonResponse(_month(month, closed: closed));
+    if (request.url.path == '/api/months/$_month') {
+      return jsonResponse(_monthPlan(_month, closed: closed));
     }
     if (failEvents && request.url.path == '/api/events') {
       return jsonResponse(const {
@@ -94,12 +100,12 @@ MockClient _client(
     }
     switch (request.url.path) {
       case '/api/months/summary':
-        return jsonResponse(_yearSummary(year, month, closed: closed));
+        return jsonResponse(_yearSummary(year, _month, closed: closed));
       case '/api/events':
         return jsonResponse(events ?? const <Object>[]);
       case '/api/goal-plan':
         return jsonResponse(
-          _goalYear(year, closedMonth: closed ? month : null),
+          _goalYear(year, closedMonth: closed ? _month : null),
         );
       case '/api/goals':
         return jsonResponse(const <Object>[]);
@@ -111,23 +117,61 @@ MockClient _client(
   });
 }
 
+/// Builds the repositories against [client] and loads the dashboard once.
+Future<DashboardViewModel> _loadedViewModel(
+  MockClient client, {
+  DateTime? now,
+}) async {
+  final api = NestApiClient(
+    httpClient: client,
+    baseUrl: 'http://test.local',
+    apiKey: '',
+  );
+  final viewModel = DashboardViewModel(
+    expensesRepository: ExpensesRepository(client: api),
+    goalsRepository: GoalsRepository(client: api),
+    eventsRepository: EventsRepository(client: api),
+    now: now ?? DateTime(2026, 10, 2, 12),
+  );
+  await viewModel.load();
+  return viewModel;
+}
+
+/// Pumps the dashboard with an already loaded [vm].
+Future<void> _pump(
+  WidgetTester tester,
+  DashboardViewModel vm, {
+  VoidCallback? onOpenMonthTab,
+  ValueChanged<String>? onOpenMonth,
+}) async {
+  final dependencies = testDependencies(
+    MockClient((_) async => jsonResponse(const <Object>[])),
+  );
+  await tester.pumpWidget(
+    wrapWithDependencies(
+      dependencies,
+      DashboardView(
+        viewModel: vm,
+        onOpenMonthTab: onOpenMonthTab,
+        onOpenMonth: onOpenMonth,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
-  final month = MonthKey.current();
-  final previous = MonthKey.shift(month, -1);
+  const previous = '2026-09';
 
   testWidgets('opens with the month hero and its plan state', (tester) async {
     setPhoneSize(tester);
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(_client(month)),
-        const DashboardView(),
-      ),
-    );
-    await tester.pumpAndSettle();
+    final viewModel = await _loadedViewModel(_client());
+    await _pump(tester, viewModel);
 
+    expect(find.text('Hoje'), findsOneWidget);
     expect(find.text('Balanço do mês'), findsOneWidget);
     expect(
-      find.text('${AppFormatters.monthName(month)} por fechar'),
+      find.text('${AppFormatters.monthName(_month)} por fechar'),
       findsOneWidget,
     );
     expect(find.text('Despesas'), findsOneWidget);
@@ -135,23 +179,19 @@ void main() {
     expect(find.text('—'), findsOneWidget);
     expect(find.text('Continuar'), findsOneWidget);
     final hero = tester.widget<Hero>(find.byType(Hero));
-    expect(hero.tag, 'dashboard-month-$month');
+    expect(hero.tag, 'dashboard-month-$_month');
     expect(find.textContaining(AppFormatters.currency(500)), findsOneWidget);
     expect(find.text(AppFormatters.percentage(50)), findsOneWidget);
     expect(find.text('-50%'), findsOneWidget);
     expect(find.text('Sem plano'), findsNothing);
+    expect(find.text('Objetivos do ano'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('steps the hero to a month without a plan', (tester) async {
     setPhoneSize(tester);
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(_client(month)),
-        const DashboardView(),
-      ),
-    );
-    await tester.pumpAndSettle();
+    final viewModel = await _loadedViewModel(_client());
+    await _pump(tester, viewModel);
 
     await tester.tap(find.byTooltip('Mês anterior'));
     await tester.pumpAndSettle();
@@ -164,20 +204,15 @@ void main() {
   testWidgets('opens the close wizard from the action chip', (tester) async {
     setPhoneSize(tester);
     String? opened;
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(_client(month)),
-        DashboardView(onOpenMonth: (value) => opened = value),
-      ),
-    );
-    await tester.pumpAndSettle();
+    final viewModel = await _loadedViewModel(_client());
+    await _pump(tester, viewModel, onOpenMonth: (value) => opened = value);
 
     await tester.tap(find.text('Continuar'));
     await tester.pumpAndSettle();
 
     expect(opened, isNull);
     expect(
-      find.text('Fechar ${AppFormatters.monthName(month)}'),
+      find.text('Fechar ${AppFormatters.monthName(_month)}'),
       findsOneWidget,
     );
     expect(find.text('Despesas'), findsWidgets);
@@ -189,13 +224,8 @@ void main() {
   ) async {
     setPhoneSize(tester);
     String? opened;
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(_client(month)),
-        DashboardView(onOpenMonth: (value) => opened = value),
-      ),
-    );
-    await tester.pumpAndSettle();
+    final viewModel = await _loadedViewModel(_client());
+    await _pump(tester, viewModel, onOpenMonth: (value) => opened = value);
 
     await tester.tap(find.text('Balanço do mês'));
     expect(opened, isNull);
@@ -203,13 +233,8 @@ void main() {
 
   testWidgets('opens the final summary from a closed month', (tester) async {
     setPhoneSize(tester);
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(_client(month, closed: true)),
-        const DashboardView(),
-      ),
-    );
-    await tester.pumpAndSettle();
+    final viewModel = await _loadedViewModel(_client(closed: true));
+    await _pump(tester, viewModel);
 
     expect(find.text('Ver resumo'), findsOneWidget);
 
@@ -221,13 +246,8 @@ void main() {
 
   testWidgets('keeps the hero when the events section fails', (tester) async {
     setPhoneSize(tester);
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(_client(month, failEvents: true)),
-        const DashboardView(),
-      ),
-    );
-    await tester.pumpAndSettle();
+    final viewModel = await _loadedViewModel(_client(failEvents: true));
+    await _pump(tester, viewModel);
 
     expect(find.text('Balanço do mês'), findsOneWidget);
     expect(find.textContaining(AppFormatters.currency(500)), findsOneWidget);
@@ -237,8 +257,7 @@ void main() {
 
   testWidgets('groups the upcoming events by day', (tester) async {
     setPhoneSize(tester);
-    final today = DateTime.now();
-    final midday = DateTime(today.year, today.month, today.day, 12);
+    final midday = DateTime(2026, 10, 2, 12);
     final tomorrow = midday.add(const Duration(days: 1));
     final events = [
       {
@@ -254,31 +273,81 @@ void main() {
         'active': true,
       },
     ];
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(_client(month, events: events)),
-        const DashboardView(),
-      ),
-    );
-    await tester.pumpAndSettle();
+    final viewModel = await _loadedViewModel(_client(events: events));
+    await _pump(tester, viewModel);
 
-    expect(find.text('Hoje'), findsOneWidget);
+    final eventsCard = find.ancestor(
+      of: find.text('Hoje e próximos'),
+      matching: find.byType(AppCard),
+    );
+    expect(
+      find.descendant(of: eventsCard, matching: find.text('Hoje')),
+      findsOneWidget,
+    );
     expect(find.text('Amanhã'), findsOneWidget);
     expect(find.text('Almoço'), findsOneWidget);
     expect(find.text('Jantar'), findsOneWidget);
+  });
+
+  testWidgets('shows the full hero on day 2 of an open month', (tester) async {
+    setPhoneSize(tester);
+    final viewModel = await _loadedViewModel(_client());
+    await _pump(tester, viewModel);
+
+    expect(find.text('Balanço do mês'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Hero && widget.tag == 'dashboard-month-$_month',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('collapses to one line on day 15 of a closed month', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    var opens = 0;
+    final viewModel = await _loadedViewModel(
+      _client(closed: true),
+      now: DateTime(2026, 10, 15, 12),
+    );
+    await _pump(tester, viewModel, onOpenMonthTab: () => opens++);
+
+    expect(find.byType(Hero), findsNothing);
+    expect(
+      find.text('Outubro · Despesas fechadas · Objetivos fechados'),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.text('Outubro · Despesas fechadas · Objetivos fechados'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(opens, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('orders events, tasks and the month card', (tester) async {
+    setPhoneSize(tester);
+    final viewModel = await _loadedViewModel(_client());
+    await _pump(tester, viewModel);
+
+    final events = tester.getTopLeft(find.text('Hoje e próximos')).dy;
+    final tasks = tester.getTopLeft(find.text('Tarefas pendentes (0)')).dy;
+    final monthCard = tester.getTopLeft(find.byType(Hero)).dy;
+
+    expect(events, lessThan(tasks));
+    expect(tasks, lessThan(monthCard));
   });
 
   testWidgets('survives a larger system text scale', (tester) async {
     setPhoneSize(tester);
     tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await tester.pumpWidget(
-      wrapWithDependencies(
-        testDependencies(_client(month)),
-        const DashboardView(),
-      ),
-    );
-    await tester.pumpAndSettle();
+    final viewModel = await _loadedViewModel(_client());
+    await _pump(tester, viewModel);
 
     expect(tester.takeException(), isNull);
   });

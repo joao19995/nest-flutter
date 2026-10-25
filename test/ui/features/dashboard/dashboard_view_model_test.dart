@@ -165,6 +165,50 @@ MockClient _client({
   }
 });
 
+Map<String, dynamic> _monthStatus(ExpenseMonthStatus status) => {
+  'id': 'm1',
+  'month': '2026-10',
+  'templateId': 't1',
+  'closed': status == ExpenseMonthStatus.closed,
+  'entries': <Object>[],
+  'settlement': null,
+  'summary': {
+    'month': '2026-10',
+    'status': status.name,
+    'planned': 1000,
+    'actual': status == ExpenseMonthStatus.closed ? 1000 : 500,
+    'progressPct': status == ExpenseMonthStatus.closed ? 100 : 50,
+    'over': false,
+    'filledEntries': status == ExpenseMonthStatus.closed ? 10 : 5,
+    'totalEntries': 10,
+  },
+};
+
+/// A client whose month summary and month agree on [status].
+MockClient _clientWithStatus(ExpenseMonthStatus status) => MockClient((
+  request,
+) async {
+  switch (request.url.path) {
+    case '/api/months/summary':
+      return jsonResponse(_summaryWith(2026, [_monthEntry('2026-10', status)]));
+    case '/api/months/2026-10':
+      if (status == ExpenseMonthStatus.missing) {
+        return jsonResponse(const <Object>[], status: 404);
+      }
+      return jsonResponse(_monthStatus(status));
+    case '/api/events':
+      return jsonResponse(const <Object>[]);
+    case '/api/goal-plan':
+      return jsonResponse(_goalYear());
+    case '/api/goals':
+      return jsonResponse(_goals());
+    case '/api/goal-templates/applicable':
+      return jsonResponse({'template': _template()});
+    default:
+      return jsonResponse(const <Object>[], status: 404);
+  }
+});
+
 Map<String, dynamic> _yearSummaryFor(int year) => {
   'year': year,
   'planned': 0,
@@ -568,5 +612,59 @@ void main() {
     await viewModel.load();
 
     expect(viewModel.alerts, isEmpty);
+  });
+
+  test('highlights the month on day 2 while it is open', () async {
+    final viewModel = _viewModel(_client(), now: DateTime(2026, 10, 2, 12));
+
+    await viewModel.load();
+
+    expect(viewModel.highlightMonth, isTrue);
+  });
+
+  test('does not highlight the month on day 5 while it is open', () async {
+    final viewModel = _viewModel(_client(), now: DateTime(2026, 10, 5, 12));
+
+    await viewModel.load();
+
+    expect(viewModel.highlightMonth, isFalse);
+  });
+
+  test('does not highlight the month on day 7 while it is open', () async {
+    final viewModel = _viewModel(_client(), now: DateTime(2026, 10, 7, 12));
+
+    await viewModel.load();
+
+    expect(viewModel.highlightMonth, isFalse);
+  });
+
+  test('highlights the open month after the closing reminder day', () async {
+    final viewModel = _viewModel(_client(), now: DateTime(2026, 10, 8, 12));
+
+    await viewModel.load();
+
+    expect(viewModel.highlightMonth, isTrue);
+  });
+
+  test('does not highlight a closed month on day 15', () async {
+    final viewModel = _viewModel(
+      _clientWithStatus(ExpenseMonthStatus.closed),
+      now: DateTime(2026, 10, 15, 12),
+    );
+
+    await viewModel.load();
+
+    expect(viewModel.highlightMonth, isFalse);
+  });
+
+  test('highlights a missing month on day 15', () async {
+    final viewModel = _viewModel(
+      _clientWithStatus(ExpenseMonthStatus.missing),
+      now: DateTime(2026, 10, 15, 12),
+    );
+
+    await viewModel.load();
+
+    expect(viewModel.highlightMonth, isTrue);
   });
 }

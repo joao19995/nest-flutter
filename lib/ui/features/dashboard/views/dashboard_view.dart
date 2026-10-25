@@ -6,12 +6,10 @@ import 'package:nest/domain/models/calendar_event.dart';
 import 'package:nest/domain/models/expense_year_summary.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
-import 'package:nest/ui/core/view_model_state.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:nest/ui/features/finances/views/close_month_wizard_view.dart';
 import 'package:nest/ui/features/finances/views/month_transfers_view.dart';
-import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 
 /// A to-do list's completion on the dashboard.
 class DashboardTaskList {
@@ -31,10 +29,10 @@ class DashboardTaskList {
   final int total;
 }
 
-/// The dashboard (Início): the household's at-a-glance landing screen.
+/// The dashboard (Hoje): the household's at-a-glance landing screen.
 ///
-/// Recent events, pending tasks, the year's goals and this month's spending.
-/// Sections open their destination when tapped.
+/// Recent events, pending tasks and this month's spending. Sections open their
+/// destination when tapped.
 class DashboardView extends StatefulWidget {
   const DashboardView({
     super.key,
@@ -44,8 +42,13 @@ class DashboardView extends StatefulWidget {
     this.onOpenCalendar,
     this.onOpenGoals,
     this.onOpenMonth,
+    this.onOpenMonthTab,
     this.refreshSignal,
+    this.viewModel,
   });
+
+  /// An externally owned view model. When null the view creates and owns one.
+  final DashboardViewModel? viewModel;
 
   /// How many tasks are pending, across every to-do list.
   final int pendingTaskCount;
@@ -53,17 +56,20 @@ class DashboardView extends StatefulWidget {
   /// The to-do lists with pending tasks.
   final List<DashboardTaskList> pendingTaskLists;
 
-  /// Opens the Tarefas destination.
+  /// Opens Agenda on Tarefas.
   final VoidCallback? onOpenTodos;
 
-  /// Opens the Calendário destination.
+  /// Opens Agenda on Calendário.
   final VoidCallback? onOpenCalendar;
 
-  /// Opens the Objetivos section of Finanças.
+  /// Opens Mês on Objetivos.
   final VoidCallback? onOpenGoals;
 
-  /// Opens the given month's expenses in Finanças.
+  /// Opens Mês on Despesas and the given month's detail.
   final ValueChanged<String>? onOpenMonth;
+
+  /// Opens Mês on the Balanço section.
+  final VoidCallback? onOpenMonthTab;
 
   /// Notifies the dashboard to reload when it becomes visible again.
   final Listenable? refreshSignal;
@@ -72,27 +78,41 @@ class DashboardView extends StatefulWidget {
   State<DashboardView> createState() => _DashboardViewState();
 }
 
-class _DashboardViewState extends State<DashboardView>
-    with ViewModelState<DashboardView, DashboardViewModel> {
+class _DashboardViewState extends State<DashboardView> {
+  DashboardViewModel? _viewModel;
+  bool _ownsViewModel = false;
+
   @override
-  DashboardViewModel createViewModel() {
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_viewModel != null) {
+      return;
+    }
+    final injected = widget.viewModel;
+    if (injected != null) {
+      _viewModel = injected;
+      widget.refreshSignal?.addListener(_onRefreshRequested);
+      return;
+    }
     final dependencies = DependenciesScope.of(context);
-    return DashboardViewModel(
+    final viewModel = DashboardViewModel(
       expensesRepository: dependencies.expensesRepository,
       goalsRepository: dependencies.goalsRepository,
       eventsRepository: dependencies.eventsRepository,
     );
-  }
-
-  @override
-  void onViewModelCreated(DashboardViewModel viewModel) {
+    _viewModel = viewModel;
+    _ownsViewModel = true;
     widget.refreshSignal?.addListener(_onRefreshRequested);
     viewModel.load();
   }
 
-  void _onRefreshRequested() => viewModel.refresh();
+  void _onRefreshRequested() => _viewModel?.refresh();
 
   Future<void> _openCloseWizard(String month) async {
+    final viewModel = _viewModel;
+    if (viewModel == null) {
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => CloseMonthWizardView(month: month),
@@ -104,6 +124,9 @@ class _DashboardViewState extends State<DashboardView>
   }
 
   void _openSummary(String month) {
+    if (_viewModel == null) {
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => MonthTransfersView(month: month)),
     );
@@ -121,13 +144,20 @@ class _DashboardViewState extends State<DashboardView>
   @override
   void dispose() {
     widget.refreshSignal?.removeListener(_onRefreshRequested);
+    if (_ownsViewModel) {
+      _viewModel?.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = _viewModel;
+    if (viewModel == null) {
+      return const SizedBox.shrink();
+    }
     return Scaffold(
-      appBar: AppBar(title: const Text('Início')),
+      appBar: AppBar(title: const Text('Hoje')),
       body: ListenableBuilder(
         listenable: viewModel,
         builder: (context, _) => Padding(
@@ -149,8 +179,8 @@ class _DashboardViewState extends State<DashboardView>
                     pendingTaskLists: widget.pendingTaskLists,
                     onOpenTodos: widget.onOpenTodos,
                     onOpenCalendar: widget.onOpenCalendar,
-                    onOpenGoals: widget.onOpenGoals,
                     onOpenMonth: widget.onOpenMonth,
+                    onOpenMonthTab: widget.onOpenMonthTab,
                     onCloseMonth: _openCloseWizard,
                     onOpenSummary: _openSummary,
                   ),
@@ -171,8 +201,8 @@ class _DashboardContent extends StatelessWidget {
     required this.pendingTaskLists,
     required this.onOpenTodos,
     required this.onOpenCalendar,
-    required this.onOpenGoals,
     required this.onOpenMonth,
+    required this.onOpenMonthTab,
     required this.onCloseMonth,
     required this.onOpenSummary,
   });
@@ -182,8 +212,8 @@ class _DashboardContent extends StatelessWidget {
   final List<DashboardTaskList> pendingTaskLists;
   final VoidCallback? onOpenTodos;
   final VoidCallback? onOpenCalendar;
-  final VoidCallback? onOpenGoals;
   final ValueChanged<String>? onOpenMonth;
+  final VoidCallback? onOpenMonthTab;
   final ValueChanged<String> onCloseMonth;
   final ValueChanged<String> onOpenSummary;
 
@@ -200,9 +230,8 @@ class _DashboardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final alertsError = viewModel.alertsSection.errorMessage;
-    final ritual = viewModel.ritual;
-    // The hero owns the displayed month; the attention card only carries the
-    // other months (e.g. the next one still to create) plus reminders that
+    // The month card owns the displayed month; the attention card only carries
+    // the other months (e.g. the next one still to create) plus reminders that
     // deliberately stay visible for the month already on screen.
     final alerts = viewModel.alerts
         .where(
@@ -214,29 +243,6 @@ class _DashboardContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _GreetingHeader(greeting: viewModel.greeting, date: viewModel.today),
-        const SizedBox(height: AppSpacing.lg),
-        PeriodSwipeDetector(
-          onPrevious: viewModel.canGoToPreviousMonth
-              ? _showPreviousMonth
-              : null,
-          onNext: viewModel.canGoToNextMonth ? _showNextMonth : null,
-          child: AnimatedPeriodSwitcher(
-            period: viewModel.month,
-            child: _DashboardMonthHero(
-              month: viewModel.month,
-              summary: viewModel.monthSummary,
-              ritual: ritual,
-              state: viewModel.monthSection,
-              canGoToPrevious: viewModel.canGoToPreviousMonth,
-              canGoToNext: viewModel.canGoToNextMonth,
-              onPrevious: _showPreviousMonth,
-              onNext: _showNextMonth,
-              onRetry: viewModel.retryMonth,
-              onOpenSummary: onOpenSummary,
-              onCloseMonth: onCloseMonth,
-            ),
-          ),
-        ),
         const SizedBox(height: AppSpacing.lg),
         if (alertsError != null) ...[
           _InlineError(message: alertsError, onRetry: viewModel.retryAlerts),
@@ -269,42 +275,142 @@ class _DashboardContent extends StatelessWidget {
           child: _TaskLists(lists: pendingTaskLists),
         ),
         const SizedBox(height: AppSpacing.lg),
-        PeriodSwipeDetector(
-          onPrevious: viewModel.canGoToPreviousGoalsYear
-              ? viewModel.showPreviousGoalsYear
-              : null,
-          onNext: viewModel.canGoToNextGoalsYear
-              ? viewModel.showNextGoalsYear
-              : null,
-          child: AnimatedPeriodSwitcher(
-            period: '${viewModel.goalsYear}',
-            child: _DashboardSection(
-              title: 'Objetivos do ano',
-              onTap: onOpenGoals,
-              trailing: AppPeriodStepper(
-                variant: AppPeriodStepperVariant.inline,
-                label: '${viewModel.goalsYear}',
-                onPrevious: viewModel.canGoToPreviousGoalsYear
-                    ? viewModel.showPreviousGoalsYear
-                    : null,
-                onNext: viewModel.canGoToNextGoalsYear
-                    ? viewModel.showNextGoalsYear
-                    : null,
-                previousTooltip: 'Ano anterior',
-                nextTooltip: 'Ano seguinte',
-              ),
-              child: _SectionBody(
-                state: viewModel.goalsSection,
-                onRetry: viewModel.retryGoals,
-                skeleton: const _ListSkeleton(),
-                child: _GoalsList(goals: viewModel.goals),
-              ),
-            ),
-          ),
+        _MonthCard(
+          viewModel: viewModel,
+          onPrevious: _showPreviousMonth,
+          onNext: _showNextMonth,
+          onOpenSummary: onOpenSummary,
+          onCloseMonth: onCloseMonth,
+          onOpenMonthTab: onOpenMonthTab,
         ),
         const SizedBox(height: AppSpacing.xl),
       ],
     );
+  }
+}
+
+/// The month card: the full hero while the month needs attention, a compact
+/// one-line summary once it is settled and nothing is due.
+class _MonthCard extends StatelessWidget {
+  const _MonthCard({
+    required this.viewModel,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onOpenSummary,
+    required this.onCloseMonth,
+    required this.onOpenMonthTab,
+  });
+
+  final DashboardViewModel viewModel;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final ValueChanged<String> onOpenSummary;
+  final ValueChanged<String> onCloseMonth;
+  final VoidCallback? onOpenMonthTab;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!viewModel.highlightMonth) {
+      final error = viewModel.monthSection.errorMessage;
+      if (error != null) {
+        return _InlineError(message: error, onRetry: viewModel.retryMonth);
+      }
+      final ritual = viewModel.ritual;
+      if (ritual == null) {
+        return const SizedBox.shrink();
+      }
+      return _MonthCompactCard(
+        month: viewModel.month,
+        ritual: ritual,
+        onTap: onOpenMonthTab,
+      );
+    }
+    return PeriodSwipeDetector(
+      onPrevious: viewModel.canGoToPreviousMonth ? onPrevious : null,
+      onNext: viewModel.canGoToNextMonth ? onNext : null,
+      child: AnimatedPeriodSwitcher(
+        period: viewModel.month,
+        child: _DashboardMonthHero(
+          month: viewModel.month,
+          summary: viewModel.monthSummary,
+          ritual: viewModel.ritual,
+          state: viewModel.monthSection,
+          canGoToPrevious: viewModel.canGoToPreviousMonth,
+          canGoToNext: viewModel.canGoToNextMonth,
+          onPrevious: onPrevious,
+          onNext: onNext,
+          onRetry: viewModel.retryMonth,
+          onOpenSummary: onOpenSummary,
+          onCloseMonth: onCloseMonth,
+        ),
+      ),
+    );
+  }
+}
+
+/// The settled month at a glance: month, expenses and goals on one line.
+class _MonthCompactCard extends StatelessWidget {
+  const _MonthCompactCard({
+    required this.month,
+    required this.ritual,
+    this.onTap,
+  });
+
+  final String month;
+  final DashboardRitual ritual;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '${AppFormatters.monthName(month)} · '
+              '${_expensesLabel(ritual)} · ${_goalsLabel(ritual)}',
+              style: AppTextStyles.body,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (onTap != null) ...[
+            const SizedBox(width: AppSpacing.sm),
+            Icon(
+              Icons.chevron_right,
+              size: AppSizes.iconSmall,
+              color: context.colors.faint,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _expensesLabel(DashboardRitual ritual) {
+    switch (ritual.expensesStatus) {
+      case ExpenseMonthStatus.missing:
+        return 'Despesas por criar';
+      case ExpenseMonthStatus.closed:
+        return 'Despesas fechadas';
+      case ExpenseMonthStatus.open:
+        if (ritual.totalEntries > 0) {
+          return 'Despesas ${ritual.filledEntries}/${ritual.totalEntries}';
+        }
+        return 'Despesas';
+    }
+  }
+
+  static String _goalsLabel(DashboardRitual ritual) {
+    final status = ritual.goalsStatus;
+    if (status == null || status == ExpenseMonthStatus.missing) {
+      return 'Objetivos por definir';
+    }
+    if (status == ExpenseMonthStatus.closed) {
+      return 'Objetivos fechados';
+    }
+    return 'Objetivos por fechar';
   }
 }
 
@@ -505,35 +611,26 @@ class _AlertRow extends StatelessWidget {
   }
 }
 
-/// A card with a section heading and an optional trailing control. When
-/// [onTap] is set the whole card navigates.
+/// A card with a section heading. When [onTap] is set the whole card navigates.
 class _DashboardSection extends StatelessWidget {
   const _DashboardSection({
     required this.title,
     required this.child,
     this.onTap,
-    this.trailing,
   });
 
   final String title;
   final Widget child;
   final VoidCallback? onTap;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final trailing = this.trailing;
     return AppCard(
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(child: Text(title, style: AppTextStyles.sectionHeading)),
-              ?trailing,
-            ],
-          ),
+          Text(title, style: AppTextStyles.sectionHeading),
           const SizedBox(height: AppSpacing.sm),
           child,
         ],
@@ -683,85 +780,6 @@ class _TaskListRow extends StatelessWidget {
         const SizedBox(width: AppSpacing.sm),
         Text(progress, style: AppTextStyles.small(context.colors)),
       ],
-    );
-  }
-}
-
-class _GoalsList extends StatelessWidget {
-  const _GoalsList({required this.goals});
-
-  final List<GoalSummary> goals;
-
-  static const int _max = 3;
-
-  @override
-  Widget build(BuildContext context) {
-    if (goals.isEmpty) {
-      return const _EmptyHint('Ainda sem objetivos poupados.');
-    }
-    final visible = goals.take(_max).toList();
-    return Column(
-      children: [
-        for (var index = 0; index < visible.length; index++) ...[
-          if (index > 0) const SizedBox(height: AppSpacing.md),
-          _GoalRow(goal: visible[index]),
-        ],
-      ],
-    );
-  }
-}
-
-class _GoalRow extends StatelessWidget {
-  const _GoalRow({required this.goal});
-
-  final GoalSummary goal;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = goal.hasTarget
-        ? '${goal.name}, ${AppFormatters.percentage((goal.progress * 100).round())} '
-              'do objetivo, faltam ${AppFormatters.currency(goal.missing)}'
-        : '${goal.name}, ${AppFormatters.currency(goal.reserved)} reservados';
-    return Semantics(
-      label: label,
-      child: ExcludeSemantics(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    goal.name,
-                    style: AppTextStyles.body,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  goal.hasTarget
-                      ? 'Falta ${AppFormatters.currency(goal.missing)}'
-                      : AppFormatters.currency(goal.reserved),
-                  style: AppTextStyles.small(context.colors),
-                ),
-              ],
-            ),
-            if (goal.hasTarget) ...[
-              const SizedBox(height: AppSpacing.xs),
-              ClipRRect(
-                borderRadius: AppRadius.fullAll,
-                child: LinearProgressIndicator(
-                  value: goal.progress,
-                  minHeight: AppSizes.progressBarHeight,
-                  backgroundColor: context.colors.lineSoft,
-                  color: context.colors.primary,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

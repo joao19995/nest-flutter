@@ -269,6 +269,22 @@ class DashboardViewModel extends ChangeNotifier {
   /// The month shown in the header hero, formatted `YYYY-MM`.
   String get month => _month;
 
+  /// True when the month card should stand out: the first days of the month
+  /// (the previous balance is due) or, after the closing reminder day, while
+  /// the current month is still open or not created.
+  bool get highlightMonth {
+    if (_now.day <= _balanceReminderLastDay) {
+      return true;
+    }
+    if (_now.day <= _closingReminderAfterDay) {
+      return false;
+    }
+    final status = (_monthSummary ?? _stripMonth)?.status;
+    return status == null ||
+        status == ExpenseMonthStatus.open ||
+        status == ExpenseMonthStatus.missing;
+  }
+
   /// The header hero's month summary, or null when the month is not created.
   ExpenseMonthSummary? get monthSummary => _monthSummary;
 

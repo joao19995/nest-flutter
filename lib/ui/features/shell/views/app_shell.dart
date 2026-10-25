@@ -149,6 +149,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     );
   }
 
+  /// Opens Mês on the closing ritual (Balanço).
+  void _openMonthTab() {
+    _monthSection.value = MonthSection.ritual;
+    _select(_NavDestination.mes);
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = _todosViewModel;
@@ -252,6 +258,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         onOpenTodos: _openTodos,
         onOpenGoals: _openGoals,
         onOpenMonth: _openMonth,
+        onOpenMonthTab: _openMonthTab,
         refreshSignal: _dashboardRefresh,
       ),
       _NavDestination.agenda => AgendaView(
