@@ -59,8 +59,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       ValueNotifier<AgendaSection>(AgendaSection.tasks);
 
   /// The section Mês shows, shared with the view so deep links can set it.
+  /// Starts on the closing ritual; deep links set Despesas or Objetivos.
   final ValueNotifier<MonthSection> _monthSection = ValueNotifier<MonthSection>(
-    MonthSection.expenses,
+    MonthSection.ritual,
   );
 
   _NavDestination _selected = _NavDestination.hoje;

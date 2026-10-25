@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/expenses/views/expenses_view.dart';
-import 'package:nest/ui/features/finances/views/close_month_wizard_view.dart';
 import 'package:nest/ui/features/goals/views/goals_view.dart';
+import 'package:nest/ui/features/month/views/month_ritual_view.dart';
 
-/// The two faces of the Mês tab.
-enum MonthSection { expenses, goals }
+/// The three faces of the Mês tab.
+enum MonthSection { ritual, expenses, goals }
 
-/// Mês merges Despesas and Objetivos — the two are the same year view with a
-/// different lens — behind a segmented selector, so both live under a single
-/// primary destination.
+/// Mês merges the month's closing ritual, Despesas and Objetivos — the same
+/// year view through different lenses — behind a segmented selector, so all
+/// three live under a single primary destination.
 class MonthView extends StatefulWidget {
   const MonthView({
     super.key,
     this.sectionSignal,
-    this.initialSection = MonthSection.expenses,
+    this.initialSection = MonthSection.ritual,
     this.refreshSignal,
   });
 
@@ -36,6 +35,11 @@ class MonthView extends StatefulWidget {
 
 class _MonthViewState extends State<MonthView> {
   static const List<AppSectionOption<MonthSection>> _options = [
+    AppSectionOption(
+      value: MonthSection.ritual,
+      label: 'Balanço',
+      icon: Icons.fact_check_outlined,
+    ),
     AppSectionOption(
       value: MonthSection.expenses,
       label: 'Despesas',
@@ -88,28 +92,10 @@ class _MonthViewState extends State<MonthView> {
     }
   }
 
-  Future<void> _openCloseWizard() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CloseMonthWizardView(month: MonthKey.current()),
-      ),
-    );
-    _onRefreshRequested();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mês'),
-        actions: [
-          AppButton.icon(
-            icon: Icons.lock_outlined,
-            tooltip: 'Fechar mês atual',
-            onPressed: _openCloseWizard,
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Mês')),
       body: ValueListenableBuilder<MonthSection>(
         valueListenable: _signal,
         builder: (context, section, _) => Padding(
@@ -139,6 +125,7 @@ class _MonthViewState extends State<MonthView> {
                       key: ValueKey(_reloadToken),
                       index: section.index,
                       children: const [
+                        MonthRitualView(),
                         ExpensesView(embedded: true),
                         GoalsView(embedded: true),
                       ],
