@@ -4,6 +4,7 @@ import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/goal.dart';
 import 'package:nest/domain/models/goal_template.dart';
 import 'package:nest/domain/models/goal_year.dart';
+import 'package:nest/domain/models/goal_year_summary.dart';
 import 'package:nest/ui/core/month_key.dart';
 
 /// One month in the yearly goals overview.
@@ -49,6 +50,7 @@ class GoalSummary {
     this.iconKey,
     this.timeline,
     this.priority,
+    this.projection,
   });
 
   final String name;
@@ -67,6 +69,9 @@ class GoalSummary {
 
   /// The priority from the applicable template, when there is one.
   final GoalPriority? priority;
+
+  /// The server's completion projection, or null when there is no basis.
+  final GoalCompletionProjection? projection;
 
   /// True when the goal has a saving target.
   bool get hasTarget => target > 0;
@@ -113,6 +118,7 @@ class GoalsViewModel extends ChangeNotifier {
   GoalYear? _goalYear;
   List<Goal> _catalogue = const [];
   GoalTemplate? _applicableTemplate;
+  Map<String, GoalCompletionProjection> _projections = const {};
 
   bool get isEmpty {
     final year = _goalYear;
@@ -199,6 +205,7 @@ class GoalsViewModel extends ChangeNotifier {
             iconKey: goal.iconKey,
             timeline: entries[goal.id]?.timeline,
             priority: entries[goal.id]?.priority,
+            projection: _projections[goal.id],
           ),
     ];
     for (final entry in reservedByGoal.entries) {
@@ -211,6 +218,7 @@ class GoalsViewModel extends ChangeNotifier {
             target: entries[entry.key]?.budget ?? 0,
             timeline: entries[entry.key]?.timeline,
             priority: entries[entry.key]?.priority,
+            projection: _projections[entry.key],
           ),
         );
       }
@@ -242,6 +250,7 @@ class GoalsViewModel extends ChangeNotifier {
   Future<void> load() async {
     _isLoading = true;
     _errorMessage = null;
+    _projections = const {};
     notifyListeners();
     final year = _selectedYear;
     try {
@@ -250,12 +259,23 @@ class GoalsViewModel extends ChangeNotifier {
       final template = await _goalsRepository.fetchApplicableGoalTemplate(
         '$year-01',
       );
+      final summary = await _fetchProjections(year);
       if (year != _selectedYear) {
         return;
+      }
+      final projections = <String, GoalCompletionProjection>{};
+      if (summary != null) {
+        for (final row in summary.rows) {
+          final projection = row.projection;
+          if (projection != null) {
+            projections[row.goalId] = projection;
+          }
+        }
       }
       _goalYear = goalYear;
       _catalogue = catalogue;
       _applicableTemplate = template;
+      _projections = projections;
     } on ApiFailure catch (failure) {
       if (year == _selectedYear) {
         _errorMessage = failure.message;
@@ -268,6 +288,16 @@ class GoalsViewModel extends ChangeNotifier {
     }
   }
 
+  /// Reads the projections from the yearly summary. A failure here only hides
+  /// the projection lines; the rest of the overview still loads.
+  Future<GoalYearSummary?> _fetchProjections(int year) async {
+    try {
+      return await _goalsRepository.fetchGoalYearSummary(year);
+    } on ApiFailure {
+      return null;
+    }
+  }
+
   /// Selects the previous year and reloads.
   void showPreviousYear() {
     if (!canGoToPreviousYear) {
@@ -275,6 +305,7 @@ class GoalsViewModel extends ChangeNotifier {
     }
     _selectedYear--;
     _goalYear = null;
+    _projections = const {};
     load();
   }
 
@@ -285,6 +316,7 @@ class GoalsViewModel extends ChangeNotifier {
     }
     _selectedYear++;
     _goalYear = null;
+    _projections = const {};
     load();
   }
 }

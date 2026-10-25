@@ -3,6 +3,7 @@ import 'package:nest/data/models/goal_model.dart';
 import 'package:nest/data/models/goal_month_model.dart';
 import 'package:nest/data/models/goal_template_model.dart';
 import 'package:nest/data/models/goal_year_model.dart';
+import 'package:nest/data/models/goal_year_summary_model.dart';
 import 'package:nest/data/models/json_mapper.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/domain/failures/api_failure.dart';
@@ -11,6 +12,7 @@ import 'package:nest/domain/models/goal_close_preview.dart';
 import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/goal_template.dart';
 import 'package:nest/domain/models/goal_year.dart';
+import 'package:nest/domain/models/goal_year_summary.dart';
 
 /// Reads the savings goals and their yearly plans.
 class GoalsRepository {
@@ -141,6 +143,16 @@ class GoalsRepository {
   Future<GoalYear> fetchGoalYear(int year) async {
     final data = await _client.get('/api/goal-plan?year=$year');
     return mapJson(data, (json) => GoalYearModel.fromJson(json).toDomain());
+  }
+
+  /// Returns the server's yearly goals panorama for [year], including each
+  /// goal's completion projection.
+  Future<GoalYearSummary> fetchGoalYearSummary(int year) async {
+    final data = await _client.get('/api/goal-plan/summary?year=$year');
+    return mapJson(
+      data,
+      (json) => GoalYearSummaryModel.fromJson(json).toDomain(),
+    );
   }
 
   /// Returns the full view of [month] (`YYYY-MM`) — plan, available amount and

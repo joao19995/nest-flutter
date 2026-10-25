@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nest/domain/models/goal_year_summary.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/goals/goal_badges.dart';
@@ -88,6 +89,7 @@ class _GoalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final complete = goal.progress >= 1;
+    final projection = goal.projection;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Row(
@@ -151,11 +153,32 @@ class _GoalRow extends StatelessWidget {
                   const _CompleteIndicator()
                 else
                   _TargetLine(goal: goal),
+                if (projection != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  _ProjectionLine(projection: projection),
+                ],
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The server's projected completion at the current pace, when available.
+class _ProjectionLine extends StatelessWidget {
+  const _ProjectionLine({required this.projection});
+
+  final GoalCompletionProjection projection;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'Ao ritmo atual, chegas a '
+      '${AppFormatters.currency(projection.projectedAmount)} em '
+      '${AppFormatters.monthKeyTitle(projection.projectedMonth)}',
+      style: AppTextStyles.small(context.colors),
     );
   }
 }

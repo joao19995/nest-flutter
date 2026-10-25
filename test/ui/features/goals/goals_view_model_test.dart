@@ -55,18 +55,21 @@ Map<String, dynamic> _applicableTemplate() => <String, dynamic>{
   ],
 };
 
-MockClient _client() => MockClient((request) async {
-  switch (request.url.path) {
-    case '/api/goal-plan':
-      return jsonResponse(_year());
-    case '/api/goals':
-      return jsonResponse(_goals());
-    case '/api/goal-templates/applicable':
-      return jsonResponse({'template': _applicableTemplate()});
-    default:
-      return jsonResponse(<Object>[], status: 404);
-  }
-});
+MockClient _client({Map<String, dynamic>? projectionSummary}) =>
+    MockClient((request) async {
+      switch (request.url.path) {
+        case '/api/goal-plan':
+          return jsonResponse(_year());
+        case '/api/goal-plan/summary':
+          return jsonResponse(projectionSummary ?? const <String, dynamic>{});
+        case '/api/goals':
+          return jsonResponse(_goals());
+        case '/api/goal-templates/applicable':
+          return jsonResponse({'template': _applicableTemplate()});
+        default:
+          return jsonResponse(<Object>[], status: 404);
+      }
+    });
 
 void main() {
   test('load computes the year totals, months and goals', () async {
@@ -108,6 +111,42 @@ void main() {
     expect(viagem.target, 800);
     expect(viagem.timeline, GoalTimeline.t1);
     expect(viagem.priority, GoalPriority.pequeno);
+  });
+
+  test('attaches each goal projection from the yearly summary', () async {
+    final viewModel = _viewModel(
+      _client(
+        projectionSummary: {
+          'year': 2026,
+          'matrix': {
+            'rows': [
+              {
+                'goalId': 'g2',
+                'projection': {
+                  'asOfMonth': '2026-06',
+                  'pacePerMonth': 100,
+                  'remainingMonths': 6,
+                  'projectedAmount': 1200,
+                  'projectedMonth': '2026-12',
+                  'reachesBudget': true,
+                  'completionMonth': '2026-10',
+                },
+              },
+              {'goalId': 'g1', 'projection': null},
+            ],
+          },
+        },
+      ),
+    );
+
+    await viewModel.load();
+
+    final carro = viewModel.goals.firstWhere((goal) => goal.name == 'Carro');
+    expect(carro.projection?.projectedAmount, 1200);
+    expect(carro.projection?.projectedMonth, '2026-12');
+
+    final viagem = viewModel.goals.firstWhere((goal) => goal.name == 'Viagem');
+    expect(viagem.projection, isNull);
   });
 
   test('reports a failure without throwing', () async {
