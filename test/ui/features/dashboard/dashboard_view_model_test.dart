@@ -267,7 +267,7 @@ Map<String, dynamic> _summaryWith(
 };
 
 void main() {
-  test('aggregates alerts, events, goals and the month hero', () async {
+  test('aggregates alerts, events and the month hero', () async {
     final viewModel = _viewModel(_client());
 
     await viewModel.load();
@@ -292,12 +292,7 @@ void main() {
     expect(viewModel.upcomingEvents, hasLength(2));
     expect(viewModel.upcomingEvents.first.title, 'Consulta');
 
-    expect(viewModel.goals, hasLength(2));
-    final carro = viewModel.goals.first;
-    expect(carro.name, 'Carro');
-    expect(carro.reserved, 925);
-    expect(carro.target, 4000);
-    expect(carro.missing, 3075);
+    expect(viewModel.goalMonth?.month, '2026-10');
 
     expect(viewModel.month, '2026-10');
     expect(viewModel.monthSummary, isNotNull);
@@ -333,20 +328,6 @@ void main() {
     expect(viewModel.monthSummary, isNull);
   });
 
-  test('steps the goals year and reloads the goals', () async {
-    final viewModel = _viewModel(_client());
-
-    await viewModel.load();
-
-    expect(viewModel.goalsYear, 2026);
-    expect(viewModel.canGoToPreviousGoalsYear, isTrue);
-
-    await viewModel.showPreviousGoalsYear();
-
-    expect(viewModel.goalsYear, 2025);
-    expect(viewModel.goals, hasLength(2));
-  });
-
   test('keeps the other sections when one request fails', () async {
     final viewModel = _viewModel(_client(failEvents: true));
 
@@ -354,11 +335,9 @@ void main() {
 
     expect(viewModel.monthSummary?.actual, 1240);
     expect(viewModel.alerts, hasLength(2));
-    expect(viewModel.goals, hasLength(2));
     expect(viewModel.eventsSection.errorMessage, 'Eventos indisponíveis');
     expect(viewModel.upcomingEvents, isEmpty);
     expect(viewModel.monthSection.errorMessage, isNull);
-    expect(viewModel.goalsSection.errorMessage, isNull);
   });
 
   test('refresh reads the clock again', () async {
@@ -374,85 +353,6 @@ void main() {
 
     expect(viewModel.greeting, 'Bom dia');
     expect(viewModel.today, DateTime(2026, 10, 19));
-  });
-
-  test('orders goals by timeline, priority and missing amount', () async {
-    final client = MockClient((request) async {
-      switch (request.url.path) {
-        case '/api/months/summary':
-          return jsonResponse(_yearSummary());
-        case '/api/events':
-          return jsonResponse(const <Object>[]);
-        case '/api/goal-plan':
-          return jsonResponse(const {
-            'plans': [
-              {
-                'id': 'p1',
-                'month': '2026-01',
-                'availableAmount': 2000,
-                'closed': true,
-                'allocations': [
-                  {
-                    'goalId': 'g1',
-                    'goalName': 'Viagem',
-                    'planned': 1000,
-                    'actual': 100,
-                  },
-                  {
-                    'goalId': 'g2',
-                    'goalName': 'Carro',
-                    'planned': 1000,
-                    'actual': 900,
-                  },
-                ],
-              },
-            ],
-            'funding': {
-              'year': 2026,
-              'annualTotal': 2000,
-              'months': <Object>[],
-            },
-          });
-        case '/api/goals':
-          return jsonResponse(_goals());
-        case '/api/goal-templates/applicable':
-          return jsonResponse(const {
-            'template': {
-              'id': 't1',
-              'validFrom': '2026-01',
-              'annualTotal': 2000,
-              'entries': [
-                {
-                  'goalId': 'g2',
-                  'percentage': 50,
-                  'budget': 1000,
-                  'timeline': 'T4',
-                  'priority': 'NICE_TO_HAVE',
-                },
-                {
-                  'goalId': 'g1',
-                  'percentage': 50,
-                  'budget': 1000,
-                  'timeline': 'T1',
-                  'priority': 'GRANDE',
-                },
-              ],
-            },
-          });
-        case '/api/months/2026-10':
-          return jsonResponse(_month());
-        default:
-          return jsonResponse(const <Object>[], status: 404);
-      }
-    });
-    final viewModel = _viewModel(client);
-
-    await viewModel.load();
-
-    expect(viewModel.goals.map((goal) => goal.name).toList(), [
-      'Viagem',
-      'Carro',
-    ]);
   });
 
   test('loads the year strip for the displayed month year', () async {
@@ -486,7 +386,6 @@ void main() {
     expect(viewModel.month, '2025-12');
     expect(viewModel.monthSummary, isNull);
     expect(viewModel.yearMonths.first.month, '2025-01');
-    expect(viewModel.stripSection.isLoading, isFalse);
     expect(requestedYears, contains('2025'));
   });
 

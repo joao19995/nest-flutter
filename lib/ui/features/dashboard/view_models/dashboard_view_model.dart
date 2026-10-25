@@ -5,7 +5,6 @@ import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/calendar_event.dart';
 import 'package:nest/domain/models/expense_year_summary.dart';
-import 'package:nest/domain/models/goal_template.dart';
 import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/app_formatters.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
@@ -152,9 +151,6 @@ class DashboardViewModel extends ChangeNotifier {
   /// The earliest month the stepper can reach.
   static const String _minMonth = '2000-01';
 
-  /// The earliest year the goals stepper can reach.
-  static const int _minYear = 2000;
-
   final ExpensesRepository _expensesRepository;
   final GoalsRepository _goalsRepository;
   final EventsRepository _eventsRepository;
@@ -166,12 +162,14 @@ class DashboardViewModel extends ChangeNotifier {
 
   GoalsViewModel _goals;
   String _month;
+
+  /// The year the loaded [_goals] belong to, used to rebuild them when the
+  /// clock crosses a year.
   int _goalsYear;
 
-  /// True once the user has stepped away from the current month/year, so a
-  /// refresh does not yank the selection back.
+  /// True once the user has stepped away from the current month, so a refresh
+  /// does not yank the selection back.
   bool _monthSelected = false;
-  bool _goalsYearSelected = false;
 
   bool _isFetching = false;
 
@@ -184,19 +182,12 @@ class DashboardViewModel extends ChangeNotifier {
   DashboardSectionState _alertsSection = const DashboardSectionState(
     isLoading: true,
   );
-  DashboardSectionState _stripSection = const DashboardSectionState(
-    isLoading: true,
-  );
   DashboardSectionState _eventsSection = const DashboardSectionState(
-    isLoading: true,
-  );
-  DashboardSectionState _goalsSection = const DashboardSectionState(
     isLoading: true,
   );
 
   List<DashboardAlert> _alerts = const [];
   List<CalendarEvent> _upcomingEvents = const [];
-  List<GoalSummary> _goalsList = const [];
   List<ExpenseMonthSummary> _yearMonths = const [];
   ExpenseMonthSummary? _monthSummary;
 
@@ -206,14 +197,8 @@ class DashboardViewModel extends ChangeNotifier {
   /// The alerts card's loading state.
   DashboardSectionState get alertsSection => _alertsSection;
 
-  /// The year strip's loading state.
-  DashboardSectionState get stripSection => _stripSection;
-
   /// The upcoming events section's loading state.
   DashboardSectionState get eventsSection => _eventsSection;
-
-  /// The goals section's loading state.
-  DashboardSectionState get goalsSection => _goalsSection;
 
   /// Warnings worth surfacing at the top of the dashboard.
   List<DashboardAlert> get alerts => _alerts;
@@ -221,18 +206,11 @@ class DashboardViewModel extends ChangeNotifier {
   /// The events happening today and over the next few days, earliest first.
   List<CalendarEvent> get upcomingEvents => _upcomingEvents;
 
-  /// The goals ordered by timeline, priority and what is still missing.
-  List<GoalSummary> get goals => _goalsList;
-
   /// The selected year's twelve months, for the year strip.
   List<ExpenseMonthSummary> get yearMonths => _yearMonths;
 
-  /// The goals month matching [month], when its year is loaded.
+  /// The goals month matching [month].
   GoalMonthSummary? get goalMonth {
-    final year = int.tryParse(_month.split('-').first);
-    if (year == null || year != _goalsYear) {
-      return null;
-    }
     for (final month in _goals.months) {
       if (month.month == _month) {
         return month;
@@ -294,15 +272,6 @@ class DashboardViewModel extends ChangeNotifier {
   /// True while the header can step forward a month.
   bool get canGoToNextMonth => _month.compareTo('${_now.year + 1}-12') < 0;
 
-  /// The year shown in the goals panel.
-  int get goalsYear => _goalsYear;
-
-  /// True while the goals panel can step back a year.
-  bool get canGoToPreviousGoalsYear => _goalsYear > _minYear;
-
-  /// True while the goals panel can step forward a year.
-  bool get canGoToNextGoalsYear => _goalsYear < _now.year + 1;
-
   /// Today, at midnight, in the current clock.
   DateTime get today => DateTime(_now.year, _now.month, _now.day);
 
@@ -336,22 +305,20 @@ class DashboardViewModel extends ChangeNotifier {
       if (!_monthSelected || _month == wasCurrent) {
         _month = MonthKey.of(_now.year, _now.month);
       }
-      if (!_goalsYearSelected && _goalsYear != _now.year) {
+      if (_goalsYear != _now.year) {
         _goalsYear = _now.year;
         _replaceGoals();
       }
 
       _monthSection = DashboardSectionState(isLoading: showSkeleton);
       _alertsSection = DashboardSectionState(isLoading: showSkeleton);
-      _stripSection = DashboardSectionState(isLoading: showSkeleton);
       _eventsSection = DashboardSectionState(isLoading: showSkeleton);
-      _goalsSection = DashboardSectionState(isLoading: showSkeleton);
       notifyListeners();
 
       await _loadMonth(showLoading: showSkeleton && _monthSummary == null);
       await _loadYear(showLoading: showSkeleton);
       await _loadEvents(showLoading: showSkeleton);
-      await _loadGoals(showLoading: showSkeleton);
+      await _loadGoals();
     } finally {
       _isFetching = false;
       notifyListeners();
@@ -364,14 +331,8 @@ class DashboardViewModel extends ChangeNotifier {
   /// Retries the alerts year summary after a failure.
   Future<void> retryAlerts() => _runSection(() => _loadYear(showLoading: true));
 
-  /// Retries the year strip after a failure.
-  Future<void> retryStrip() => _runSection(_loadStrip);
-
   /// Retries the upcoming events after a failure.
   Future<void> retryEvents() => _runSection(_loadEvents);
-
-  /// Retries the goals after a failure.
-  Future<void> retryGoals() => _runSection(_loadGoals);
 
   Future<void> _runSection(Future<void> Function() action) async {
     if (_isFetching) {
@@ -433,7 +394,6 @@ class DashboardViewModel extends ChangeNotifier {
     final displayYear = _stripYear;
     if (showLoading) {
       _alertsSection = const DashboardSectionState(isLoading: true);
-      _stripSection = const DashboardSectionState(isLoading: true);
       notifyListeners();
     }
     try {
@@ -442,32 +402,26 @@ class DashboardViewModel extends ChangeNotifier {
       _alertsSection = const DashboardSectionState();
       if (displayYear == _now.year) {
         _yearMonths = current.months;
-        _stripSection = const DashboardSectionState();
       }
     } on ApiFailure catch (failure) {
       _alertsSection = DashboardSectionState(errorMessage: failure.message);
-      if (displayYear == _now.year) {
-        _stripSection = DashboardSectionState(errorMessage: failure.message);
-      }
     }
     notifyListeners();
 
     if (displayYear != _now.year) {
-      await _loadStrip(showLoading: false);
+      await _loadStrip();
     }
   }
 
-  Future<void> _loadStrip({bool showLoading = true}) async {
-    if (showLoading) {
-      _stripSection = const DashboardSectionState(isLoading: true);
-      notifyListeners();
-    }
+  /// Loads the twelve months of the displayed month's year.
+  ///
+  /// Only [ritual] reads it as a fallback; a failure keeps the previous months.
+  Future<void> _loadStrip() async {
     try {
       final display = await _expensesRepository.fetchYearSummary(_stripYear);
       _yearMonths = display.months;
-      _stripSection = const DashboardSectionState();
-    } on ApiFailure catch (failure) {
-      _stripSection = DashboardSectionState(errorMessage: failure.message);
+    } on ApiFailure {
+      // Keep the months already loaded; nothing else depends on this read.
     }
     notifyListeners();
   }
@@ -489,40 +443,9 @@ class DashboardViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _loadGoals({bool showLoading = true}) async {
-    if (showLoading) {
-      _goalsSection = const DashboardSectionState(isLoading: true);
-      notifyListeners();
-    }
+  Future<void> _loadGoals() async {
     await _goals.load();
-    _readGoals();
-    final message = _goals.errorMessage;
-    _goalsSection = message == null
-        ? const DashboardSectionState()
-        : DashboardSectionState(errorMessage: message);
     notifyListeners();
-  }
-
-  /// Steps the goals panel back a year and reloads it.
-  Future<void> showPreviousGoalsYear() async {
-    if (!canGoToPreviousGoalsYear) {
-      return;
-    }
-    _goalsYearSelected = true;
-    _goalsYear--;
-    _replaceGoals();
-    await _loadGoals();
-  }
-
-  /// Steps the goals panel forward a year and reloads it.
-  Future<void> showNextGoalsYear() async {
-    if (!canGoToNextGoalsYear) {
-      return;
-    }
-    _goalsYearSelected = true;
-    _goalsYear++;
-    _replaceGoals();
-    await _loadGoals();
   }
 
   void _replaceGoals() {
@@ -532,44 +455,6 @@ class DashboardViewModel extends ChangeNotifier {
       year: _goalsYear,
     );
   }
-
-  void _readGoals() {
-    final goals = [..._goals.goals];
-    goals.sort(_compareGoals);
-    _goalsList = goals;
-  }
-
-  int _compareGoals(GoalSummary a, GoalSummary b) {
-    final target = (a.hasTarget ? 0 : 1) - (b.hasTarget ? 0 : 1);
-    if (target != 0) return target;
-    final timeline = _timelineRank(
-      a.timeline,
-    ).compareTo(_timelineRank(b.timeline));
-    if (timeline != 0) return timeline;
-    final priority = _priorityRank(
-      a.priority,
-    ).compareTo(_priorityRank(b.priority));
-    if (priority != 0) return priority;
-    final missing = b.missing.compareTo(a.missing);
-    if (missing != 0) return missing;
-    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-  }
-
-  int _timelineRank(GoalTimeline? timeline) => switch (timeline) {
-    GoalTimeline.t1 => 0,
-    GoalTimeline.t2 => 1,
-    GoalTimeline.t3 => 2,
-    GoalTimeline.t4 => 3,
-    GoalTimeline.annual => 4,
-    null => 5,
-  };
-
-  int _priorityRank(GoalPriority? priority) => switch (priority) {
-    GoalPriority.grande => 0,
-    GoalPriority.pequeno => 1,
-    GoalPriority.niceToHave => 2,
-    null => 3,
-  };
 
   ExpenseMonthSummary? get _stripMonth {
     for (final month in _yearMonths) {
