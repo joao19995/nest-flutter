@@ -4,23 +4,24 @@ import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/accounts/views/accounts_view.dart';
-import 'package:nest/ui/features/calendar/views/calendar_view.dart';
+import 'package:nest/ui/features/agenda/views/agenda_view.dart';
 import 'package:nest/ui/features/dashboard/views/dashboard_view.dart';
 import 'package:nest/ui/features/expenses/views/month_detail_view.dart';
-import 'package:nest/ui/features/finances/views/finances_view.dart';
+import 'package:nest/ui/features/month/views/month_view.dart';
 import 'package:nest/ui/features/more/views/more_view.dart';
 import 'package:nest/ui/features/people/views/people_view.dart';
 import 'package:nest/ui/features/settings/views/settings_view.dart';
 import 'package:nest/ui/features/todos/view_models/todos_view_model.dart';
-import 'package:nest/ui/features/todos/views/todos_view.dart';
 
 /// The application shell: hosts the primary destinations and the navigation
 /// that switches between them.
 ///
-/// Small viewports get four primary tabs plus a "Mais" hub; tablet and wider
-/// get a flat side rail that surfaces every destination directly. Pages live
-/// in an [IndexedStack] so their state survives tab changes. The shell owns the
-/// to-do view model so the pending count can badge the Tarefas destination.
+/// Small viewports get four primary tabs — Hoje, Agenda, Mês and a "Mais" hub;
+/// tablet and wider get a flat side rail that surfaces every destination
+/// directly. Pages live in an [IndexedStack] so their state survives tab
+/// changes. The shell owns the to-do view model so the pending count can badge
+/// the Agenda destination, and it owns the section notifiers so deep links can
+/// open a child on a given section without recreating it.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -30,18 +31,16 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   static const List<_NavDestination> _mobileDestinations = [
-    _NavDestination.inicio,
-    _NavDestination.tarefas,
-    _NavDestination.calendario,
-    _NavDestination.financas,
+    _NavDestination.hoje,
+    _NavDestination.agenda,
+    _NavDestination.mes,
     _NavDestination.mais,
   ];
 
   static const List<_NavDestination> _tabletDestinations = [
-    _NavDestination.inicio,
-    _NavDestination.tarefas,
-    _NavDestination.calendario,
-    _NavDestination.financas,
+    _NavDestination.hoje,
+    _NavDestination.agenda,
+    _NavDestination.mes,
     _NavDestination.contas,
     _NavDestination.pessoas,
     _NavDestination.definicoes,
@@ -49,17 +48,22 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   TodosViewModel? _todosViewModel;
 
-  /// Bumped when Início becomes visible again, so its view model can refresh.
+  /// Bumped when Hoje becomes visible again, so its view model can refresh.
   final ValueNotifier<int> _dashboardRefresh = ValueNotifier<int>(0);
 
-  /// Bumped when Finanças becomes visible again, so its month views reload.
-  final ValueNotifier<int> _financesRefresh = ValueNotifier<int>(0);
+  /// Bumped when Mês becomes visible again, so its month views reload.
+  final ValueNotifier<int> _monthRefresh = ValueNotifier<int>(0);
 
-  _NavDestination _selected = _NavDestination.inicio;
+  /// The section Agenda shows, shared with the view so deep links can set it.
+  final ValueNotifier<AgendaSection> _agendaSection =
+      ValueNotifier<AgendaSection>(AgendaSection.tasks);
 
-  /// The section Finanças opens on, so the dashboard's goals card can deep-link
-  /// straight to Objetivos.
-  FinancesSection _financesSection = FinancesSection.expenses;
+  /// The section Mês shows, shared with the view so deep links can set it.
+  final ValueNotifier<MonthSection> _monthSection = ValueNotifier<MonthSection>(
+    MonthSection.expenses,
+  );
+
+  _NavDestination _selected = _NavDestination.hoje;
 
   @override
   void initState() {
@@ -88,7 +92,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (todos != null && !todos.isLoading) {
       todos.refresh();
     }
-    if (_selected == _NavDestination.inicio) {
+    if (_selected == _NavDestination.hoje) {
       _dashboardRefresh.value++;
     }
   }
@@ -97,35 +101,45 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _dashboardRefresh.dispose();
-    _financesRefresh.dispose();
+    _monthRefresh.dispose();
+    _agendaSection.dispose();
+    _monthSection.dispose();
     _todosViewModel?.dispose();
     super.dispose();
   }
 
   void _select(_NavDestination destination) {
-    if (destination == _NavDestination.inicio) {
+    if (destination == _NavDestination.hoje) {
       _dashboardRefresh.value++;
     }
-    if (destination == _NavDestination.financas) {
-      _financesRefresh.value++;
+    if (destination == _NavDestination.mes) {
+      _monthRefresh.value++;
     }
     setState(() => _selected = destination);
   }
 
-  /// Opens Finanças on the Objetivos section.
-  void _openGoals() {
-    setState(() {
-      _financesSection = FinancesSection.goals;
-      _selected = _NavDestination.financas;
-    });
+  /// Opens Agenda on Tarefas.
+  void _openTodos() {
+    _agendaSection.value = AgendaSection.tasks;
+    _select(_NavDestination.agenda);
   }
 
-  /// Opens Finanças on Despesas and the given month's detail.
+  /// Opens Agenda on Calendário.
+  void _openCalendar() {
+    _agendaSection.value = AgendaSection.calendar;
+    _select(_NavDestination.agenda);
+  }
+
+  /// Opens Mês on Objetivos.
+  void _openGoals() {
+    _monthSection.value = MonthSection.goals;
+    _select(_NavDestination.mes);
+  }
+
+  /// Opens Mês on Despesas and the given month's detail.
   void _openMonth(String month) {
-    setState(() {
-      _financesSection = FinancesSection.expenses;
-      _selected = _NavDestination.financas;
-    });
+    _monthSection.value = MonthSection.expenses;
+    _select(_NavDestination.mes);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) =>
@@ -222,7 +236,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   Widget _pageFor(_NavDestination destination) {
     return switch (destination) {
-      _NavDestination.inicio => DashboardView(
+      _NavDestination.hoje => DashboardView(
         pendingTaskCount: _todosViewModel?.pendingCount ?? 0,
         pendingTaskLists: [
           for (final list in _todosViewModel?.lists ?? const <TodoList>[])
@@ -233,18 +247,19 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 total: list.total,
               ),
         ],
-        onOpenCalendar: () => _select(_NavDestination.calendario),
-        onOpenTodos: () => _select(_NavDestination.tarefas),
+        onOpenCalendar: _openCalendar,
+        onOpenTodos: _openTodos,
         onOpenGoals: _openGoals,
         onOpenMonth: _openMonth,
         refreshSignal: _dashboardRefresh,
       ),
-      _NavDestination.tarefas => TodosView(viewModel: _todosViewModel),
-      _NavDestination.calendario => const CalendarView(),
-      _NavDestination.financas => FinancesView(
-        key: ValueKey(_financesSection),
-        initialSection: _financesSection,
-        refreshSignal: _financesRefresh,
+      _NavDestination.agenda => AgendaView(
+        todosViewModel: _todosViewModel,
+        sectionSignal: _agendaSection,
+      ),
+      _NavDestination.mes => MonthView(
+        sectionSignal: _monthSection,
+        refreshSignal: _monthRefresh,
       ),
       _NavDestination.contas => const AccountsView(),
       _NavDestination.pessoas => const PeopleView(),
@@ -253,14 +268,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     };
   }
 
-  /// The destination icon, badged with the pending task count on Tarefas.
+  /// The destination icon, badged with the pending task count on Agenda.
   Widget _destinationIcon(
     _NavDestination destination, {
     required bool selected,
     required int pending,
   }) {
     final icon = Icon(selected ? destination.selectedIcon : destination.icon);
-    if (destination != _NavDestination.tarefas || pending <= 0) {
+    if (destination != _NavDestination.agenda || pending <= 0) {
       return icon;
     }
     return Badge(
@@ -274,22 +289,17 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
 /// The primary destinations.
 ///
-/// Mobile shows the first four plus [mais]; tablet and wider also surface
-/// [pessoas] and [definicoes] directly and drop the [mais] hub.
+/// Mobile shows the first three plus [mais]; tablet and wider also surface
+/// [contas], [pessoas] and [definicoes] directly and drop the [mais] hub.
 enum _NavDestination {
-  inicio(label: 'Início', icon: Icons.home_outlined, selectedIcon: Icons.home),
-  tarefas(
-    label: 'Tarefas',
-    icon: Icons.checklist_outlined,
-    selectedIcon: Icons.checklist,
+  hoje(label: 'Hoje', icon: Icons.today_outlined, selectedIcon: Icons.today),
+  agenda(
+    label: 'Agenda',
+    icon: Icons.event_note_outlined,
+    selectedIcon: Icons.event_note,
   ),
-  calendario(
-    label: 'Calendário',
-    icon: Icons.calendar_month_outlined,
-    selectedIcon: Icons.calendar_month,
-  ),
-  financas(
-    label: 'Finanças',
+  mes(
+    label: 'Mês',
     icon: Icons.account_balance_wallet_outlined,
     selectedIcon: Icons.account_balance_wallet,
   ),

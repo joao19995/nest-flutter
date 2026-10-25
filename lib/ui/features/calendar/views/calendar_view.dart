@@ -8,10 +8,14 @@ import 'package:nest/ui/features/calendar/view_models/calendar_view_model.dart';
 
 /// The event calendar: a month grid with a day agenda beside (or below) it.
 class CalendarView extends StatefulWidget {
-  const CalendarView({super.key, this.viewModel});
+  const CalendarView({super.key, this.viewModel, this.titleOverride});
 
   /// An externally owned view model. When null the view creates and owns one.
   final CalendarViewModel? viewModel;
+
+  /// Replaces the AppBar title when a parent — e.g. the Agenda — supplies its
+  /// own section selector.
+  final Widget? titleOverride;
 
   @override
   State<CalendarView> createState() => _CalendarViewState();
@@ -95,7 +99,7 @@ class _CalendarViewState extends State<CalendarView> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Calendário'),
+        title: widget.titleOverride ?? const Text('Calendário'),
         actions: [
           AppButton(
             label: 'Hoje',

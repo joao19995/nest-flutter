@@ -49,7 +49,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Início'), findsWidgets);
+    expect(find.text('Hoje'), findsWidgets);
     expect(requested, isNot(contains('/api/people')));
     expect(requested, isNot(contains('/api/category-templates')));
 
@@ -64,7 +64,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('refreshes the dashboard when Início is selected again', (
+  testWidgets('refreshes the dashboard when Hoje is selected again', (
     tester,
   ) async {
     setPhoneSize(tester);
@@ -96,9 +96,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(summaryRequests, 1);
 
-    await tester.tap(find.text('Tarefas'));
+    await tester.tap(find.text('Agenda'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Início'));
+    await tester.tap(find.text('Hoje'));
     await tester.pumpAndSettle();
 
     expect(summaryRequests, 2);

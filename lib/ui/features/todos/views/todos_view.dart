@@ -11,10 +11,14 @@ import 'package:nest/ui/features/todos/view_models/todos_view_model.dart';
 /// The shared to-do lists: one expandable card per list, with checkable tasks
 /// that can be struck through, edited, reordered and swiped away.
 class TodosView extends StatefulWidget {
-  const TodosView({super.key, this.viewModel});
+  const TodosView({super.key, this.viewModel, this.titleOverride});
 
   /// An externally owned view model. When null the view creates and owns one.
   final TodosViewModel? viewModel;
+
+  /// Replaces the AppBar title when a parent — e.g. the Agenda — supplies its
+  /// own section selector.
+  final Widget? titleOverride;
 
   @override
   State<TodosView> createState() => _TodosViewState();
@@ -89,7 +93,7 @@ class _TodosViewState extends State<TodosView> {
       listenable: viewModel,
       builder: (context, _) => Scaffold(
         appBar: AppBar(
-          title: const Text('Tarefas'),
+          title: widget.titleOverride ?? const Text('Tarefas'),
           actions: [
             PopupMenuButton<_TodosMenu>(
               tooltip: 'Mais opções',

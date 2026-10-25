@@ -80,4 +80,41 @@ void main() {
     );
     expect(find.text('Consulta'), findsOneWidget);
   });
+
+  testWidgets('uses the parent title override', (tester) async {
+    _setPhone(tester);
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/events') {
+        return jsonResponse(const <Object>[]);
+      }
+      return jsonResponse(const <Object>[]);
+    });
+    final apiClient = NestApiClient(
+      httpClient: client,
+      baseUrl: 'http://test.local',
+      apiKey: '',
+    );
+    final viewModel = CalendarViewModel(
+      eventsRepository: EventsRepository(client: apiClient),
+      today: DateTime(2026, 10, 20),
+    );
+    await viewModel.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: CalendarView(
+          viewModel: viewModel,
+          titleOverride: const Text('Agenda'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Agenda'), findsOneWidget);
+    expect(find.text('Calendário'), findsNothing);
+    expect(find.text('EVENTOS DO MÊS'), findsOneWidget);
+    expect(find.text('Outubro 2026'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

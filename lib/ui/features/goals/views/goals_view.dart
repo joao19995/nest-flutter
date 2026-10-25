@@ -15,7 +15,7 @@ class GoalsView extends StatefulWidget {
   const GoalsView({super.key, this.embedded = false});
 
   /// When true the view renders only its content — no [Scaffold] or [AppBar] —
-  /// so a parent (e.g. Finanças) can host it under a shared app bar.
+  /// so a parent (e.g. Mês) can host it under a shared app bar.
   final bool embedded;
 
   @override

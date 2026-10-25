@@ -541,4 +541,27 @@ void main() {
     expect(find.text('Não há listas arquivadas.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('uses the parent title override', (tester) async {
+    setPhoneSize(tester);
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/todo-lists') {
+        return jsonResponse(_lists());
+      }
+      return jsonResponse(<Object>[], status: 404);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        const TodosView(titleOverride: Text('Agenda')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Agenda'), findsOneWidget);
+    expect(find.text('Tarefas'), findsNothing);
+    expect(find.text('Casa'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

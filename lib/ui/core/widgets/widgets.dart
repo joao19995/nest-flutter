@@ -19,6 +19,7 @@ export 'app_period_stepper.dart';
 export 'app_progress_ring.dart';
 export 'app_saved_tick.dart';
 export 'app_section_header.dart';
+export 'app_section_switcher.dart';
 export 'app_skeleton.dart';
 export 'app_snack_bars.dart';
 export 'app_stagger.dart';

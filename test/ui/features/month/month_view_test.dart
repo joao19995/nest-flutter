@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/app_formatters.dart';
-import 'package:nest/ui/features/finances/views/finances_view.dart';
+import 'package:nest/ui/features/month/views/month_view.dart';
 
 import '../../../support/test_helpers.dart';
 
@@ -45,10 +45,11 @@ void main() {
     });
 
     await tester.pumpWidget(
-      wrapWithDependencies(testDependencies(client), const FinancesView()),
+      wrapWithDependencies(testDependencies(client), const MonthView()),
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Mês'), findsOneWidget);
     expect(find.text('Despesas'), findsWidgets);
     expect(find.text('Objetivos'), findsOneWidget);
     expect(goalsLoaded, isFalse);
@@ -73,7 +74,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      wrapWithDependencies(testDependencies(client), const FinancesView()),
+      wrapWithDependencies(testDependencies(client), const MonthView()),
     );
     await tester.pumpAndSettle();
 
