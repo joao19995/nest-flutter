@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/events_repository.dart';
-import 'package:nest/data/repositories/expenses_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/features/calendar/view_models/calendar_view_model.dart';
@@ -17,26 +16,7 @@ void _setPhone(WidgetTester tester) {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
-Map<String, dynamic> _openMonth() => <String, dynamic>{
-  'id': 'm1',
-  'month': '2026-10',
-  'closed': false,
-  'entries': const <Object>[],
-  'summary': {
-    'month': '2026-10',
-    'status': 'open',
-    'planned': 1000,
-    'actual': 800,
-    'progressPct': 80,
-    'over': false,
-  },
-  'settlement': null,
-};
-
-Future<CalendarViewModel> _pumpCalendar(
-  WidgetTester tester, {
-  Map<String, dynamic>? monthPlan,
-}) async {
+Future<CalendarViewModel> _pumpCalendar(WidgetTester tester) async {
   final client = MockClient((request) async {
     if (request.url.path == '/api/events') {
       return jsonResponse(const [
@@ -48,13 +28,6 @@ Future<CalendarViewModel> _pumpCalendar(
         },
       ]);
     }
-    if (request.url.path.startsWith('/api/months/')) {
-      final plan = monthPlan;
-      if (plan != null) {
-        return jsonResponse(plan);
-      }
-      return jsonResponse(const {'error': 'Mês não encontrado.'}, status: 404);
-    }
     return jsonResponse(const <Object>[]);
   });
   final apiClient = NestApiClient(
@@ -64,7 +37,6 @@ Future<CalendarViewModel> _pumpCalendar(
   );
   final viewModel = CalendarViewModel(
     eventsRepository: EventsRepository(client: apiClient),
-    expensesRepository: ExpensesRepository(client: apiClient),
     today: DateTime(2026, 10, 20),
   );
   await viewModel.load();
@@ -90,17 +62,6 @@ void main() {
     expect(find.text('Outubro 2026'), findsOneWidget);
     expect(find.text('Sem eventos'), findsOneWidget);
     expect(find.text('Nada agendado para este dia.'), findsOneWidget);
-    expect(find.text('Balanço do mês'), findsOneWidget);
-    expect(find.text('Sem plano · criar o mês'), findsOneWidget);
-  });
-
-  testWidgets('shows the open month balance in the marker', (tester) async {
-    _setPhone(tester);
-    await _pumpCalendar(tester, monthPlan: _openMonth());
-
-    expect(find.text('Balanço do mês'), findsOneWidget);
-    expect(find.textContaining('Por fechar'), findsOneWidget);
-    expect(find.textContaining(AppFormatters.currency(800)), findsOneWidget);
   });
 
   testWidgets('selecting a day with an event shows it in the agenda', (

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/data/repositories/events_repository.dart';
-import 'package:nest/data/repositories/expenses_repository.dart';
 import 'package:nest/data/services/nest_api_client.dart';
 import 'package:nest/ui/features/calendar/view_models/calendar_view_model.dart';
 
@@ -17,7 +16,6 @@ CalendarViewModel _viewModel(MockClient client) {
   );
   return CalendarViewModel(
     eventsRepository: EventsRepository(client: apiClient),
-    expensesRepository: ExpensesRepository(client: apiClient),
     today: DateTime(2026, 10, 20),
   );
 }
@@ -111,11 +109,6 @@ void main() {
     final client = MockClient((request) async {
       if (request.url.path == '/api/events' && request.method == 'GET') {
         return jsonResponse(const [_octoberEvent]);
-      }
-      if (request.url.path.startsWith('/api/months/')) {
-        return jsonResponse(const {
-          'error': 'Mês não encontrado.',
-        }, status: 404);
       }
       paths.add('${request.method} ${request.url.path}');
       return jsonResponse(const {'id': 'e1'});

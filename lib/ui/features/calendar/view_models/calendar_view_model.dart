@@ -1,39 +1,31 @@
 import 'package:flutter/foundation.dart';
 import 'package:nest/data/repositories/events_repository.dart';
-import 'package:nest/data/repositories/expenses_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/calendar_event.dart';
-import 'package:nest/domain/models/monthly_plan.dart';
-import 'package:nest/ui/core/month_key.dart';
 
 /// Presentation state for the event calendar: the visible month, the selected
 /// day and the events loaded for the surrounding weeks.
 class CalendarViewModel extends ChangeNotifier {
   factory CalendarViewModel({
     required EventsRepository eventsRepository,
-    required ExpensesRepository expensesRepository,
     DateTime? today,
   }) {
     final resolvedToday = _dateOnly(today ?? DateTime.now());
     return CalendarViewModel._(
       eventsRepository: eventsRepository,
-      expensesRepository: expensesRepository,
       today: resolvedToday,
     );
   }
 
   CalendarViewModel._({
     required EventsRepository eventsRepository,
-    required ExpensesRepository expensesRepository,
     required DateTime today,
   }) : _eventsRepository = eventsRepository,
-       _expensesRepository = expensesRepository,
        _today = today,
        _visibleMonth = DateTime(today.year, today.month),
        _selectedDay = today;
 
   final EventsRepository _eventsRepository;
-  final ExpensesRepository _expensesRepository;
 
   /// Midnight of the reference "today", fixed at construction so the highlight
   /// does not drift during a long session.
@@ -48,12 +40,6 @@ class CalendarViewModel extends ChangeNotifier {
   bool _isBusy = false;
   String? _actionError;
 
-  /// The visible month's expenses plan, when it exists, so the balance marker
-  /// can show its state without inventing data.
-  MonthlyPlan? _monthPlan;
-  bool _isBalanceLoading = true;
-  String? _balanceError;
-
   /// Guards against a stale response overwriting a newer month's events.
   int _loadToken = 0;
 
@@ -64,19 +50,6 @@ class CalendarViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isBusy => _isBusy;
   String? get actionError => _actionError;
-
-  /// The visible month key (`YYYY-MM`) used by the balance marker.
-  String get visibleMonthKey =>
-      MonthKey.of(_visibleMonth.year, _visibleMonth.month);
-
-  /// The visible month's plan, or null when it has not been created.
-  MonthlyPlan? get monthPlan => _monthPlan;
-
-  /// True while the visible month's balance is being fetched.
-  bool get isBalanceLoading => _isBalanceLoading;
-
-  /// The last failure loading the visible month's balance, if any.
-  String? get balanceError => _balanceError;
 
   /// The full weeks (Monday first) covering the visible month, including the
   /// leading and trailing days that fall in the adjacent months.
@@ -123,9 +96,6 @@ class CalendarViewModel extends ChangeNotifier {
     final token = ++_loadToken;
     _isLoading = true;
     _errorMessage = null;
-    _isBalanceLoading = true;
-    _balanceError = null;
-    _monthPlan = null;
     notifyListeners();
 
     final days = gridDays;
@@ -149,27 +119,6 @@ class CalendarViewModel extends ChangeNotifier {
     } finally {
       if (token == _loadToken) {
         _isLoading = false;
-        notifyListeners();
-      }
-    }
-
-    // The month balance is a separate, non-persisted marker. A missing month
-    // is a valid state (the marker offers to create it), not an error.
-    final monthKey = MonthKey.of(_visibleMonth.year, _visibleMonth.month);
-    try {
-      final plan = await _expensesRepository.fetchMonth(monthKey);
-      if (token != _loadToken) {
-        return;
-      }
-      _monthPlan = plan;
-    } on ApiFailure catch (failure) {
-      if (token != _loadToken) {
-        return;
-      }
-      _balanceError = failure.message;
-    } finally {
-      if (token == _loadToken) {
-        _isBalanceLoading = false;
         notifyListeners();
       }
     }

@@ -5,7 +5,6 @@ import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/calendar/view_models/calendar_view_model.dart';
-import 'package:nest/ui/features/finances/views/close_month_wizard_view.dart';
 
 /// The event calendar: a month grid with a day agenda beside (or below) it.
 class CalendarView extends StatefulWidget {
@@ -36,7 +35,6 @@ class _CalendarViewState extends State<CalendarView> {
     final dependencies = DependenciesScope.of(context);
     _viewModel = CalendarViewModel(
       eventsRepository: dependencies.eventsRepository,
-      expensesRepository: dependencies.expensesRepository,
     )..load();
     _ownsViewModel = true;
   }
@@ -71,19 +69,6 @@ class _CalendarViewState extends State<CalendarView> {
         onDelete: event == null ? null : () => _deleteWithUndo(event),
       ),
     );
-  }
-
-  /// Opens the visible month's balance in the existing close wizard and
-  /// refreshes the marker afterwards.
-  Future<void> _openBalance(String month) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CloseMonthWizardView(month: month),
-      ),
-    );
-    if (mounted) {
-      await _viewModel?.load();
-    }
   }
 
   Future<void> _deleteWithUndo(CalendarEvent event) async {
@@ -142,7 +127,6 @@ class _CalendarViewState extends State<CalendarView> {
                 onCreate: () => _openForm(null),
                 onEdit: _openForm,
                 onDelete: _deleteWithUndo,
-                onOpenBalance: _openBalance,
               ),
             ),
           ),
@@ -160,14 +144,12 @@ class _CalendarContent extends StatelessWidget {
     required this.onCreate,
     required this.onEdit,
     required this.onDelete,
-    required this.onOpenBalance,
   });
 
   final CalendarViewModel viewModel;
   final VoidCallback onCreate;
   final ValueChanged<CalendarEvent> onEdit;
   final ValueChanged<CalendarEvent> onDelete;
-  final ValueChanged<String> onOpenBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +160,7 @@ class _CalendarContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _CalendarHero(viewModel: viewModel, onOpenBalance: onOpenBalance),
+              _CalendarHero(viewModel: viewModel),
               const SizedBox(height: AppSpacing.lg),
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -217,204 +199,52 @@ class _CalendarContent extends StatelessWidget {
   }
 }
 
-/// The month headline: event count, the month selector and the balance marker.
+/// The month headline: the event count and the month selector.
 class _CalendarHero extends StatelessWidget {
-  const _CalendarHero({required this.viewModel, required this.onOpenBalance});
+  const _CalendarHero({required this.viewModel});
 
   final CalendarViewModel viewModel;
-  final ValueChanged<String> onOpenBalance;
 
   @override
   Widget build(BuildContext context) {
     final count = viewModel.monthEventCount;
     return HeroPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'EVENTOS DO MÊS',
-                      style: AppTextStyles.navSection(
-                        context.colors,
-                      ).copyWith(color: AppColors.onHeroMuted),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      viewModel.isLoading ? '—' : '$count',
-                      style: AppTextStyles.statDisplay.copyWith(
-                        color: AppColors.onHero,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      count == 1 ? 'evento neste mês' : 'eventos neste mês',
-                      style: AppTextStyles.small(
-                        context.colors,
-                      ).copyWith(color: AppColors.onHeroMuted),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              AppPeriodStepper(
-                label: AppFormatters.monthTitle(viewModel.visibleMonth),
-                onPrevious: viewModel.showPreviousMonth,
-                onNext: viewModel.showNextMonth,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          _MonthBalanceMarker(
-            viewModel: viewModel,
-            onOpen: () => onOpenBalance(viewModel.visibleMonthKey),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A non-persisted marker for the visible month's expenses balance.
-///
-/// It is not a [CalendarEvent]: its state comes from the existing month plan
-/// endpoint and tapping it opens the month in the close wizard.
-class _MonthBalanceMarker extends StatelessWidget {
-  const _MonthBalanceMarker({required this.viewModel, required this.onOpen});
-
-  final CalendarViewModel viewModel;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    if (viewModel.isBalanceLoading) {
-      return const _BalanceShell(
-        leading: SizedBox(
-          width: AppSizes.iconSmall,
-          height: AppSizes.iconSmall,
-          child: CircularProgressIndicator(
-            strokeWidth: AppSizes.spinnerStroke,
-            color: AppColors.onHero,
-          ),
-        ),
-        label: 'A carregar o balanço…',
-      );
-    }
-
-    final error = viewModel.balanceError;
-    if (error != null) {
-      return _BalanceShell(
-        leading: _leadingIcon(Icons.error_outline),
-        label: 'Indisponível · tentar de novo',
-        color: AppColors.overOnDark,
-        trailingIcon: Icons.refresh,
-        onTap: viewModel.load,
-      );
-    }
-
-    final plan = viewModel.monthPlan;
-    if (plan == null) {
-      return _BalanceShell(
-        leading: _leadingIcon(Icons.add_circle_outline),
-        label: 'Sem plano · criar o mês',
-        trailingIcon: Icons.chevron_right,
-        onTap: onOpen,
-      );
-    }
-
-    final closed = plan.closed;
-    return _BalanceShell(
-      leading: _leadingIcon(
-        closed ? Icons.lock_outline : Icons.account_balance_wallet_outlined,
-      ),
-      label: closed
-          ? 'Fechado · ${AppFormatters.currency(plan.actual)}'
-          : 'Por fechar · ${AppFormatters.currency(plan.actual)} '
-                'de ${AppFormatters.currency(plan.planned)}',
-      color: plan.isOver ? AppColors.overOnDark : AppColors.onHero,
-      trailingIcon: Icons.chevron_right,
-      onTap: onOpen,
-    );
-  }
-
-  Widget _leadingIcon(IconData icon) =>
-      Icon(icon, size: AppSizes.iconMedium, color: AppColors.onHeroMuted);
-}
-
-/// The shared surface of the balance marker states.
-class _BalanceShell extends StatelessWidget {
-  const _BalanceShell({
-    required this.leading,
-    required this.label,
-    this.color = AppColors.onHero,
-    this.trailingIcon,
-    this.onTap,
-  });
-
-  final Widget leading;
-  final String label;
-  final Color color;
-  final IconData? trailingIcon;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final trailingIcon = this.trailingIcon;
-    return Semantics(
-      button: onTap != null,
-      label: 'Balanço do mês. $label',
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: AppRadius.mdAll,
-          child: Container(
-            key: const ValueKey('calendar-month-balance'),
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: const BoxDecoration(
-              color: AppColors.heroPill,
-              borderRadius: AppRadius.mdAll,
-            ),
-            child: Row(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                leading,
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Balanço do mês',
-                        style: AppTextStyles.label(
-                          context.colors,
-                        ).copyWith(color: AppColors.onHeroMuted),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        label,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.body.copyWith(color: color),
-                      ),
-                    ],
+                Text(
+                  'EVENTOS DO MÊS',
+                  style: AppTextStyles.navSection(
+                    context.colors,
+                  ).copyWith(color: AppColors.onHeroMuted),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  viewModel.isLoading ? '—' : '$count',
+                  style: AppTextStyles.statDisplay.copyWith(
+                    color: AppColors.onHero,
                   ),
                 ),
-                if (trailingIcon != null) ...[
-                  const SizedBox(width: AppSpacing.sm),
-                  Icon(
-                    trailingIcon,
-                    size: AppSizes.iconMedium,
-                    color: AppColors.onHeroMuted,
-                  ),
-                ],
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  count == 1 ? 'evento neste mês' : 'eventos neste mês',
+                  style: AppTextStyles.small(
+                    context.colors,
+                  ).copyWith(color: AppColors.onHeroMuted),
+                ),
               ],
             ),
           ),
-        ),
+          const SizedBox(width: AppSpacing.md),
+          AppPeriodStepper(
+            label: AppFormatters.monthTitle(viewModel.visibleMonth),
+            onPrevious: viewModel.showPreviousMonth,
+            onNext: viewModel.showNextMonth,
+          ),
+        ],
       ),
     );
   }

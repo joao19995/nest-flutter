@@ -125,6 +125,56 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('shows each category deviation and an adjustment suggestion', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    final summary = _yearSummary()
+      ..['byCategory'] = [
+        {
+          'name': 'Casa',
+          'planned': 1000,
+          'actual': 1150,
+          'overPlanStreak': {
+            'current': 3,
+            'longest': 3,
+            'suggestAdjustment': true,
+          },
+        },
+        {
+          'name': 'Luz',
+          'planned': 1000,
+          'actual': 900,
+          'overPlanStreak': {
+            'current': 0,
+            'longest': 1,
+            'suggestAdjustment': false,
+          },
+        },
+        {'name': 'Extra', 'planned': 0, 'actual': 50},
+      ];
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/months/summary') {
+        return jsonResponse(summary);
+      }
+      return jsonResponse(<Object>[], status: 404);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const ExpensesView()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('+15%'), findsOneWidget);
+    expect(find.text('acima do plano em média'), findsOneWidget);
+    expect(find.text('-10%'), findsOneWidget);
+    expect(find.text('abaixo do plano em média'), findsOneWidget);
+    expect(find.text('Casa ficou acima em 3 meses seguidos'), findsOneWidget);
+    expect(find.textContaining('Luz ficou acima'), findsNothing);
+    expect(find.text('Extra'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('opens the month detail through the hero transition', (
     tester,
   ) async {
