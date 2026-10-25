@@ -335,6 +335,7 @@ class _MonthCard extends StatelessWidget {
           summary: viewModel.monthSummary,
           ritual: viewModel.ritual,
           state: viewModel.monthSection,
+          balanceFocus: viewModel.isBalanceFocus,
           canGoToPrevious: viewModel.canGoToPreviousMonth,
           canGoToNext: viewModel.canGoToNextMonth,
           onPrevious: onPrevious,
@@ -791,6 +792,7 @@ class _DashboardMonthHero extends StatelessWidget {
     required this.summary,
     required this.ritual,
     required this.state,
+    required this.balanceFocus,
     required this.canGoToPrevious,
     required this.canGoToNext,
     required this.onPrevious,
@@ -804,6 +806,7 @@ class _DashboardMonthHero extends StatelessWidget {
   final ExpenseMonthSummary? summary;
   final DashboardRitual? ritual;
   final DashboardSectionState state;
+  final bool balanceFocus;
   final bool canGoToPrevious;
   final bool canGoToNext;
   final VoidCallback onPrevious;
@@ -826,7 +829,10 @@ class _DashboardMonthHero extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Balanço do mês',
+                    balanceFocus
+                        ? 'FECHAR '
+                              '${AppFormatters.monthName(month).toUpperCase()}'
+                        : 'Balanço do mês',
                     style: AppTextStyles.navSection(
                       context.colors,
                     ).copyWith(color: AppColors.onHeroMuted),
@@ -851,6 +857,7 @@ class _DashboardMonthHero extends StatelessWidget {
                 month: month,
                 summary: summary,
                 ritual: ritual,
+                balanceFocus: balanceFocus,
                 onOpenSummary: onOpenSummary,
                 onCloseMonth: onCloseMonth,
               ),
@@ -867,6 +874,7 @@ class _HeroBalanceBody extends StatelessWidget {
     required this.month,
     required this.summary,
     required this.ritual,
+    required this.balanceFocus,
     required this.onOpenSummary,
     required this.onCloseMonth,
   });
@@ -874,6 +882,7 @@ class _HeroBalanceBody extends StatelessWidget {
   final String month;
   final ExpenseMonthSummary? summary;
   final DashboardRitual? ritual;
+  final bool balanceFocus;
   final ValueChanged<String> onOpenSummary;
   final ValueChanged<String> onCloseMonth;
 
@@ -927,6 +936,15 @@ class _HeroBalanceBody extends StatelessWidget {
             ),
           ],
         ),
+        if (balanceFocus) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'O mês anterior ainda não está fechado.',
+            style: AppTextStyles.small(
+              context.colors,
+            ).copyWith(color: AppColors.onHeroMuted),
+          ),
+        ],
         const SizedBox(height: AppSpacing.md),
         _HeroLine(
           label: 'Despesas',

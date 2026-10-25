@@ -266,6 +266,50 @@ Map<String, dynamic> _summaryWith(
   'months': months,
 };
 
+Map<String, dynamic> _planFor(String month, ExpenseMonthStatus status) => {
+  'id': 'm-$month',
+  'month': month,
+  'templateId': 't1',
+  'closed': status == ExpenseMonthStatus.closed,
+  'entries': <Object>[],
+  'settlement': null,
+  'summary': {
+    'month': month,
+    'status': status.name,
+    'planned': 1000,
+    'actual': 500,
+    'progressPct': 50,
+    'over': false,
+    'filledEntries': 5,
+    'totalEntries': 10,
+  },
+};
+
+/// A client that serves [yearSummary] and the given month [plans] by path.
+MockClient _clientWithPlans({
+  required Map<String, dynamic> yearSummary,
+  required Map<String, Object> plans,
+}) => MockClient((request) async {
+  final plan = plans[request.url.path];
+  if (plan != null) {
+    return jsonResponse(plan);
+  }
+  switch (request.url.path) {
+    case '/api/months/summary':
+      return jsonResponse(yearSummary);
+    case '/api/events':
+      return jsonResponse(const <Object>[]);
+    case '/api/goal-plan':
+      return jsonResponse(_goalYear());
+    case '/api/goals':
+      return jsonResponse(_goals());
+    case '/api/goal-templates/applicable':
+      return jsonResponse({'template': _template()});
+    default:
+      return jsonResponse(const <Object>[], status: 404);
+  }
+});
+
 void main() {
   test('aggregates alerts, events and the month hero', () async {
     final viewModel = _viewModel(_client());
@@ -566,4 +610,147 @@ void main() {
 
     expect(viewModel.highlightMonth, isTrue);
   });
+
+  test('focuses the previous open month on day 2', () async {
+    final viewModel = _viewModel(
+      _clientWithPlans(
+        yearSummary: _summaryWith(2026, [
+          _monthEntry('2026-09', ExpenseMonthStatus.open),
+          _monthEntry('2026-10', ExpenseMonthStatus.open),
+        ]),
+        plans: {
+          '/api/months/2026-09': _planFor('2026-09', ExpenseMonthStatus.open),
+          '/api/months/2026-10': _planFor('2026-10', ExpenseMonthStatus.open),
+        },
+      ),
+      now: DateTime(2026, 10, 2, 12),
+    );
+
+    await viewModel.load();
+
+    expect(viewModel.month, '2026-09');
+    expect(viewModel.isBalanceFocus, isTrue);
+    expect(viewModel.ritual?.month, '2026-09');
+    expect(viewModel.ritual?.expensesStatus, ExpenseMonthStatus.open);
+  });
+
+  test(
+    'keeps the current month on day 2 when the previous is closed',
+    () async {
+      final viewModel = _viewModel(
+        _clientWithPlans(
+          yearSummary: _summaryWith(2026, [
+            _monthEntry('2026-09', ExpenseMonthStatus.closed),
+            _monthEntry('2026-10', ExpenseMonthStatus.closed),
+          ]),
+          plans: {
+            '/api/months/2026-10': _planFor(
+              '2026-10',
+              ExpenseMonthStatus.closed,
+            ),
+          },
+        ),
+        now: DateTime(2026, 10, 2, 12),
+      );
+
+      await viewModel.load();
+
+      expect(viewModel.month, '2026-10');
+      expect(viewModel.isBalanceFocus, isFalse);
+    },
+  );
+
+  test('keeps the current month on day 8 when the previous is open', () async {
+    final viewModel = _viewModel(
+      _clientWithPlans(
+        yearSummary: _summaryWith(2026, [
+          _monthEntry('2026-09', ExpenseMonthStatus.open),
+          _monthEntry('2026-10', ExpenseMonthStatus.open),
+        ]),
+        plans: {
+          '/api/months/2026-10': _planFor('2026-10', ExpenseMonthStatus.open),
+        },
+      ),
+      now: DateTime(2026, 10, 8, 12),
+    );
+
+    await viewModel.load();
+
+    expect(viewModel.month, '2026-10');
+    expect(viewModel.isBalanceFocus, isFalse);
+  });
+
+  test('focuses December of the previous year on January 2', () async {
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/months/summary') {
+        final year = int.parse(request.url.queryParameters['year'] ?? '0');
+        if (year == 2025) {
+          return jsonResponse(
+            _summaryWith(2025, [
+              _monthEntry('2025-12', ExpenseMonthStatus.open),
+            ]),
+          );
+        }
+        return jsonResponse(
+          _summaryWith(2026, [
+            _monthEntry('2026-01', ExpenseMonthStatus.missing),
+          ]),
+        );
+      }
+      if (request.url.path == '/api/months/2025-12') {
+        return jsonResponse(_planFor('2025-12', ExpenseMonthStatus.open));
+      }
+      switch (request.url.path) {
+        case '/api/events':
+          return jsonResponse(const <Object>[]);
+        case '/api/goal-plan':
+          return jsonResponse(_goalYear());
+        case '/api/goals':
+          return jsonResponse(_goals());
+        case '/api/goal-templates/applicable':
+          return jsonResponse({'template': _template()});
+        default:
+          return jsonResponse(const <Object>[], status: 404);
+      }
+    });
+    final viewModel = _viewModel(client, now: DateTime(2026, 1, 2, 12));
+
+    await viewModel.load();
+
+    expect(viewModel.month, '2025-12');
+    expect(viewModel.isBalanceFocus, isTrue);
+    expect(viewModel.yearMonths, isNotEmpty);
+    expect(
+      viewModel.yearMonths.every((month) => month.month.startsWith('2025-')),
+      isTrue,
+    );
+  });
+
+  test(
+    'stepping away from the balance focus shows the current month',
+    () async {
+      final viewModel = _viewModel(
+        _clientWithPlans(
+          yearSummary: _summaryWith(2026, [
+            _monthEntry('2026-09', ExpenseMonthStatus.open),
+            _monthEntry('2026-10', ExpenseMonthStatus.open),
+          ]),
+          plans: {
+            '/api/months/2026-09': _planFor('2026-09', ExpenseMonthStatus.open),
+            '/api/months/2026-10': _planFor('2026-10', ExpenseMonthStatus.open),
+          },
+        ),
+        now: DateTime(2026, 10, 2, 12),
+      );
+
+      await viewModel.load();
+      expect(viewModel.month, '2026-09');
+      expect(viewModel.isBalanceFocus, isTrue);
+
+      await viewModel.showNextMonth();
+
+      expect(viewModel.month, '2026-10');
+      expect(viewModel.isBalanceFocus, isFalse);
+    },
+  );
 }

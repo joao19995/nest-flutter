@@ -13,7 +13,7 @@ import '../../../support/test_helpers.dart';
 const _october = '2026-10';
 const _september = '2026-09';
 
-MonthRitualViewModel _viewModel(MockClient client) {
+MonthRitualViewModel _viewModel(MockClient client, {DateTime? now}) {
   final api = NestApiClient(
     httpClient: client,
     baseUrl: 'http://test.local',
@@ -22,11 +22,14 @@ MonthRitualViewModel _viewModel(MockClient client) {
   return MonthRitualViewModel(
     expensesRepository: ExpensesRepository(client: api),
     goalsRepository: GoalsRepository(client: api),
-    now: DateTime(2026, 10, 15),
+    now: now ?? DateTime(2026, 10, 15),
   );
 }
 
-Map<String, dynamic> _yearSummary(int year) => <String, dynamic>{
+Map<String, dynamic> _yearSummary(
+  int year, {
+  Map<String, String> statuses = const {},
+}) => <String, dynamic>{
   'year': year,
   'planned': 0,
   'actual': 0,
@@ -40,7 +43,8 @@ Map<String, dynamic> _yearSummary(int year) => <String, dynamic>{
     for (var number = 1; number <= 12; number++)
       {
         'month': '$year-${number.toString().padLeft(2, '0')}',
-        'status': 'missing',
+        'status':
+            statuses['$year-${number.toString().padLeft(2, '0')}'] ?? 'missing',
         'planned': 0,
         'actual': 0,
         'progressPct': 0,
@@ -93,6 +97,30 @@ MockClient _yearClient() => MockClient((request) async {
   }
   return jsonResponse(const {'error': 'not found'}, status: 404);
 });
+
+/// Serves September with [previousStatus] and October as a closed fallback.
+MockClient _focusClient({required String previousStatus}) =>
+    MockClient((request) async {
+      final path = request.url.path;
+      if (path == '/api/months/summary') {
+        return jsonResponse(
+          _yearSummary(2026, statuses: {_september: previousStatus}),
+        );
+      }
+      if (path == '/api/months/$_september') {
+        return jsonResponse(_expenseMonth(_september, filled: 2, total: 5));
+      }
+      if (path == '/api/goal-plan/$_september') {
+        return jsonResponse(_goalMonth(_september));
+      }
+      if (path == '/api/months/$_october') {
+        return jsonResponse(_expenseMonth(_october, closed: true));
+      }
+      if (path == '/api/goal-plan/$_october') {
+        return jsonResponse(_goalMonth(_october, closed: true));
+      }
+      return jsonResponse(const {'error': 'not found'}, status: 404);
+    });
 
 void main() {
   test('a month with no plans starts the ritual from scratch', () async {
@@ -221,4 +249,35 @@ void main() {
     expect(viewModel.errorMessage, isNull);
     expect(octoberGoalRequested, isFalse);
   });
+
+  test('focuses the previous open month on day 2', () async {
+    final viewModel = _viewModel(
+      _focusClient(previousStatus: 'open'),
+      now: DateTime(2026, 10, 2, 12),
+    );
+
+    await viewModel.load();
+
+    expect(viewModel.month, _september);
+    expect(viewModel.ritual.month, _september);
+    expect(viewModel.isBalanceFocus, isTrue);
+    expect(viewModel.errorMessage, isNull);
+  });
+
+  test(
+    'stays on the current month on day 2 when the previous is closed',
+    () async {
+      final viewModel = _viewModel(
+        _focusClient(previousStatus: 'closed'),
+        now: DateTime(2026, 10, 2, 12),
+      );
+
+      await viewModel.load();
+
+      expect(viewModel.month, _october);
+      expect(viewModel.ritual.month, _october);
+      expect(viewModel.isBalanceFocus, isFalse);
+      expect(viewModel.errorMessage, isNull);
+    },
+  );
 }

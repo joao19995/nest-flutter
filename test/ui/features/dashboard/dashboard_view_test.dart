@@ -303,6 +303,85 @@ void main() {
     );
   });
 
+  testWidgets('focuses the previous open month on day 2', (tester) async {
+    setPhoneSize(tester);
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/months/2026-09') {
+        return jsonResponse(_monthPlan('2026-09'));
+      }
+      if (request.url.path == '/api/months/2026-10') {
+        return jsonResponse(_monthPlan('2026-10'));
+      }
+      switch (request.url.path) {
+        case '/api/months/summary':
+          return jsonResponse({
+            'year': 2026,
+            'planned': 2000,
+            'actual': 1000,
+            'diff': -1000,
+            'diffPct': -50,
+            'over': false,
+            'hasData': true,
+            'remainingMonths': 2,
+            'perRemainingMonth': 0,
+            'months': [
+              {
+                'month': '2026-09',
+                'status': 'open',
+                'planned': 1000,
+                'actual': 500,
+                'progressPct': 50,
+                'over': false,
+                'filledEntries': 5,
+                'totalEntries': 10,
+              },
+              {
+                'month': '2026-10',
+                'status': 'open',
+                'planned': 1000,
+                'actual': 500,
+                'progressPct': 50,
+                'over': false,
+                'filledEntries': 5,
+                'totalEntries': 10,
+              },
+            ],
+          });
+        case '/api/events':
+          return jsonResponse(const <Object>[]);
+        case '/api/goal-plan':
+          return jsonResponse(_goalYear(2026));
+        case '/api/goals':
+          return jsonResponse(const <Object>[]);
+        case '/api/goal-templates/applicable':
+          return jsonResponse(const {'template': null});
+        default:
+          return jsonResponse(const {'error': 'not found'}, status: 404);
+      }
+    });
+    final viewModel = await _loadedViewModel(client);
+    await _pump(tester, viewModel);
+
+    expect(find.text('FECHAR SETEMBRO'), findsOneWidget);
+    expect(find.text('Setembro por fechar'), findsOneWidget);
+    expect(find.text('O mês anterior ainda não está fechado.'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Hero && widget.tag == 'dashboard-month-2026-09',
+      ),
+      findsOneWidget,
+    );
+
+    // The focused month's balance reminder is not repeated as an alert row.
+    expect(find.text('É altura de fazer o balanço de Setembro'), findsNothing);
+
+    await tester.tap(find.text('Continuar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fechar Setembro'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('collapses to one line on day 15 of a closed month', (
     tester,
   ) async {

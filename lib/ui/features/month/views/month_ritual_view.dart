@@ -126,6 +126,7 @@ class _RitualContent extends StatelessWidget {
         _RitualHero(
           ritual: ritual,
           month: viewModel.month,
+          balanceFocus: viewModel.isBalanceFocus,
           canGoToPrevious: viewModel.canGoToPreviousMonth,
           canGoToNext: viewModel.canGoToNextMonth,
           onPrevious: viewModel.showPreviousMonth,
@@ -152,6 +153,7 @@ class _RitualHero extends StatelessWidget {
   const _RitualHero({
     required this.ritual,
     required this.month,
+    required this.balanceFocus,
     required this.canGoToPrevious,
     required this.canGoToNext,
     required this.onPrevious,
@@ -161,6 +163,7 @@ class _RitualHero extends StatelessWidget {
 
   final MonthRitual ritual;
   final String month;
+  final bool balanceFocus;
   final bool canGoToPrevious;
   final bool canGoToNext;
   final VoidCallback onPrevious;
@@ -217,6 +220,15 @@ class _RitualHero extends StatelessWidget {
               ),
             ],
           ),
+          if (balanceFocus) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'O mês anterior ainda não está fechado.',
+              style: AppTextStyles.small(
+                colors,
+              ).copyWith(color: AppColors.onHeroMuted),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           AppButton(
             label: ritual.actionLabel,

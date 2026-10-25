@@ -5,6 +5,7 @@ import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/expense_year_summary.dart';
 import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/monthly_plan.dart';
+import 'package:nest/ui/core/month_focus.dart';
 import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/features/month/month_ritual.dart';
 
@@ -67,6 +68,19 @@ class MonthRitualViewModel extends ChangeNotifier {
   /// The displayed month, formatted `YYYY-MM`.
   String get month => _month;
 
+  /// True when the ritual is showing the previous month because its balance
+  /// is still due.
+  bool get isBalanceFocus {
+    if (!MonthFocus.isBalanceWindow(_now)) {
+      return false;
+    }
+    if (_month != MonthFocus.previousMonth(_now)) {
+      return false;
+    }
+    final status = _expenseMonth?.summary.status ?? _statusOfMonths(_month);
+    return status != null && status != ExpenseMonthStatus.closed;
+  }
+
   /// The year of the displayed month.
   int get year => int.tryParse(_month.split('-').first) ?? _now.year;
 
@@ -114,22 +128,21 @@ class MonthRitualViewModel extends ChangeNotifier {
     if (!_monthSelected) {
       _month = MonthKey.of(_now.year, _now.month);
     }
-    final month = _month;
+    var month = _month;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
     try {
+      final (focusedMonth, summary) = await _resolveFocusedMonth();
+      month = focusedMonth;
+      if (month != _month) {
+        return;
+      }
       final expense = await _expensesRepository.fetchMonth(month);
       if (month != _month) {
         return;
       }
       final goals = await _goalsRepository.fetchGoalMonth(month);
-      if (month != _month) {
-        return;
-      }
-      final summary = await _expensesRepository.fetchYearSummary(
-        int.tryParse(month.split('-').first) ?? _now.year,
-      );
       if (month != _month) {
         return;
       }
@@ -148,6 +161,68 @@ class MonthRitualViewModel extends ChangeNotifier {
       }
     }
   }
+
+  /// The month to load plus the year summary that backs its strip.
+  ///
+  /// While the previous month's balance is due, it moves the ritual to that
+  /// month; once the user steps away, their choice wins.
+  Future<(String, ExpenseYearSummary)> _resolveFocusedMonth() async {
+    final current = MonthKey.of(_now.year, _now.month);
+    final month = _monthSelected ? _month : current;
+    var summary = await _expensesRepository.fetchYearSummary(_yearOf(month));
+    if (month != _month) {
+      // The user stepped while the summary was loading; let the newer load own
+      // the state.
+      return (month, summary);
+    }
+    if (_monthSelected ||
+        !MonthFocus.isBalanceWindow(_now) ||
+        month != current) {
+      return (month, summary);
+    }
+    final previous = MonthFocus.previousMonth(_now);
+    var status = _statusOf(summary, previous);
+    if (status == null && _now.month == DateTime.january) {
+      // January: the balance due is December of the previous year.
+      final previousYear = int.tryParse(previous.substring(0, 4));
+      if (previousYear != null) {
+        final previousSummary = await _expensesRepository.fetchYearSummary(
+          previousYear,
+        );
+        summary = previousSummary;
+        status = _statusOf(summary, previous);
+        if (month != _month) {
+          return (month, summary);
+        }
+      }
+    }
+    if (MonthFocus.resolve(now: _now, previousStatus: status) == current) {
+      return (current, summary);
+    }
+    _month = previous;
+    return (previous, summary);
+  }
+
+  ExpenseMonthStatus? _statusOf(ExpenseYearSummary summary, String month) {
+    for (final candidate in summary.months) {
+      if (candidate.month == month) {
+        return candidate.status;
+      }
+    }
+    return null;
+  }
+
+  ExpenseMonthStatus? _statusOfMonths(String month) {
+    for (final candidate in _yearMonths) {
+      if (candidate.month == month) {
+        return candidate.status;
+      }
+    }
+    return null;
+  }
+
+  int _yearOf(String month) =>
+      int.tryParse(month.split('-').first) ?? _now.year;
 
   /// Steps back a month and reloads the ritual.
   Future<void> showPreviousMonth() async {

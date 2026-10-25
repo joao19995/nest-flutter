@@ -5,6 +5,7 @@ import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/calendar_event.dart';
 import 'package:nest/domain/models/expense_year_summary.dart';
+import 'package:nest/ui/core/month_focus.dart';
 import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/app_formatters.dart';
 import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
@@ -141,10 +142,6 @@ class DashboardViewModel extends ChangeNotifier {
   /// How many days ahead the "Hoje e próximos" list looks.
   static const int _upcomingDays = 6;
 
-  /// Through this day of the month, an unsettled previous month is a prompt to
-  /// do last month's balance.
-  static const int _balanceReminderLastDay = 3;
-
   /// After this day of the month, an open current month keeps nagging.
   static const int _closingReminderAfterDay = 7;
 
@@ -247,11 +244,24 @@ class DashboardViewModel extends ChangeNotifier {
   /// The month shown in the header hero, formatted `YYYY-MM`.
   String get month => _month;
 
+  /// True when the card is showing the previous month because its balance is
+  /// still due.
+  bool get isBalanceFocus {
+    if (!MonthFocus.isBalanceWindow(_now)) {
+      return false;
+    }
+    if (_month != MonthFocus.previousMonth(_now)) {
+      return false;
+    }
+    final status = (_monthSummary ?? _stripMonth)?.status;
+    return status != null && status != ExpenseMonthStatus.closed;
+  }
+
   /// True when the month card should stand out: the first days of the month
   /// (the previous balance is due) or, after the closing reminder day, while
   /// the current month is still open or not created.
   bool get highlightMonth {
-    if (_now.day <= _balanceReminderLastDay) {
+    if (MonthFocus.isBalanceWindow(_now)) {
       return true;
     }
     if (_now.day <= _closingReminderAfterDay) {
@@ -315,14 +325,65 @@ class DashboardViewModel extends ChangeNotifier {
       _eventsSection = DashboardSectionState(isLoading: showSkeleton);
       notifyListeners();
 
-      await _loadMonth(showLoading: showSkeleton && _monthSummary == null);
       await _loadYear(showLoading: showSkeleton);
+      await _focusBalanceMonthIfDue();
+      await _loadMonth(showLoading: showSkeleton && _monthSummary == null);
       await _loadEvents(showLoading: showSkeleton);
       await _loadGoals();
     } finally {
       _isFetching = false;
       notifyListeners();
     }
+  }
+
+  /// Moves the card to the previous month while its balance is due.
+  Future<void> _focusBalanceMonthIfDue() async {
+    if (_monthSelected || !MonthFocus.isBalanceWindow(_now)) {
+      return;
+    }
+    final current = MonthKey.of(_now.year, _now.month);
+    if (_month != current) {
+      return;
+    }
+    final previous = MonthFocus.previousMonth(_now);
+    var status = _summaryOf(previous)?.status;
+    ExpenseYearSummary? previousYearSummary;
+    final previousYear = int.tryParse(previous.substring(0, 4));
+    if (status == null && previousYear != null && previousYear != _now.year) {
+      // January: the balance due is December of the previous year.
+      try {
+        previousYearSummary = await _expensesRepository.fetchYearSummary(
+          previousYear,
+        );
+        status = _statusOf(previousYearSummary, previous);
+      } on ApiFailure {
+        return;
+      }
+    }
+    if (MonthFocus.resolve(now: _now, previousStatus: status) == current) {
+      return;
+    }
+    _month = previous;
+    _monthSummary = null;
+    final summary = previousYearSummary;
+    if (summary != null) {
+      _yearMonths = summary.months;
+    }
+    final focusedYear = int.tryParse(previous.substring(0, 4));
+    if (focusedYear != null && focusedYear != _goalsYear) {
+      // January: read the focused month's year so the goals line is real.
+      _goalsYear = focusedYear;
+      _replaceGoals();
+    }
+  }
+
+  ExpenseMonthSummary? _summaryOf(String month) {
+    for (final entry in _yearMonths) {
+      if (entry.month == month) {
+        return entry;
+      }
+    }
+    return null;
   }
 
   /// Retries the header hero after a failure.
@@ -512,7 +573,7 @@ class DashboardViewModel extends ChangeNotifier {
       }
     }
 
-    if (_now.day <= _balanceReminderLastDay) {
+    if (MonthFocus.isBalanceWindow(_now)) {
       final previousStatus = _statusOf(summary, previous);
       if (previousStatus == ExpenseMonthStatus.open ||
           previousStatus == ExpenseMonthStatus.missing) {
