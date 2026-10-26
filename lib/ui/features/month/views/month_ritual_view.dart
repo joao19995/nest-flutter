@@ -289,6 +289,20 @@ class _RitualStepRow extends StatelessWidget {
   final MonthRitualStep step;
   final VoidCallback? onTap;
 
+  static String _stateLabel(MonthRitualStepState state) => switch (state) {
+    MonthRitualStepState.done => 'Concluído',
+    MonthRitualStepState.current => 'Passo atual',
+    MonthRitualStepState.pending => 'Pendente',
+  };
+
+  static String _semanticsLabel(MonthRitualStep step) {
+    final detail = step.detail;
+    final state = _stateLabel(step.state);
+    return detail == null
+        ? '${step.label}. $state'
+        : '${step.label}. $state. $detail';
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -302,42 +316,52 @@ class _RitualStepRow extends StatelessWidget {
         : colors.faint;
     final detail = step.detail;
     final onTap = this.onTap;
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        borderRadius: AppRadius.smAll,
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppSizes.minTouchTarget),
-          child: Row(
-            children: [
-              Icon(icon, size: AppSizes.iconLarge, color: iconColor),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      step.label,
-                      style: AppTextStyles.body.copyWith(
-                        color: step.isDone ? colors.muted : colors.ink,
-                      ),
-                    ),
-                    if (detail != null) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(detail, style: AppTextStyles.small(colors)),
-                    ],
-                  ],
-                ),
+    return Semantics(
+      container: true,
+      button: onTap != null,
+      label: _semanticsLabel(step),
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: AppRadius.smAll,
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minHeight: AppSizes.minTouchTarget,
               ),
-              if (onTap != null)
-                Icon(
-                  Icons.chevron_right,
-                  size: AppSizes.iconSmall,
-                  color: colors.faint,
-                ),
-            ],
+              child: Row(
+                children: [
+                  Icon(icon, size: AppSizes.iconLarge, color: iconColor),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          step.label,
+                          style: AppTextStyles.body.copyWith(
+                            color: step.isDone ? colors.muted : colors.ink,
+                          ),
+                        ),
+                        if (detail != null) ...[
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(detail, style: AppTextStyles.small(colors)),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (onTap != null)
+                    Icon(
+                      Icons.chevron_right,
+                      size: AppSizes.iconSmall,
+                      color: colors.faint,
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

@@ -172,14 +172,18 @@ class MonthRitual {
       'Ver transferências',
     ];
     final goalsMonthExists = goalsStatus != ExpenseMonthStatus.missing;
+    final expensesExists = expensesStatus != ExpenseMonthStatus.missing;
+    final expensesClosed = expensesStatus == ExpenseMonthStatus.closed;
     final completed = [
-      expensesStatus != ExpenseMonthStatus.missing,
-      totalEntries > 0 && filledEntries >= totalEntries,
-      expensesStatus == ExpenseMonthStatus.closed,
+      expensesExists,
+      expensesExists &&
+          (expensesClosed ||
+              totalEntries == 0 ||
+              filledEntries >= totalEntries),
+      expensesClosed,
       goalsMonthExists,
       goalsStatus == ExpenseMonthStatus.closed,
-      expensesStatus == ExpenseMonthStatus.closed &&
-          goalsStatus == ExpenseMonthStatus.closed,
+      expensesClosed && goalsStatus == ExpenseMonthStatus.closed,
     ];
     final details = <String?>[
       null,

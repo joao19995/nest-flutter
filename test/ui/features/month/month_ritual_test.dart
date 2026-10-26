@@ -63,6 +63,25 @@ void main() {
     expect(ritual.currentStep?.label, 'Fechar despesas');
   });
 
+  test('an empty template does not block the real amounts step', () {
+    final ritual = _ritual(expensesStatus: ExpenseMonthStatus.open);
+
+    expect(ritual.steps[1].isDone, isTrue);
+    expect(ritual.currentStep?.label, 'Fechar despesas');
+  });
+
+  test('a closed month with unfilled lines does not go back to filling', () {
+    final ritual = _ritual(
+      expensesStatus: ExpenseMonthStatus.closed,
+      filledEntries: 2,
+      totalEntries: 5,
+    );
+
+    expect(ritual.steps[1].isDone, isTrue);
+    expect(ritual.steps[2].isDone, isTrue);
+    expect(ritual.currentStep?.label, 'Definir objetivos');
+  });
+
   test('closed expenses move the ritual on to the goals', () {
     final ritual = _ritual(
       expensesStatus: ExpenseMonthStatus.closed,
