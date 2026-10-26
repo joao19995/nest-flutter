@@ -75,9 +75,6 @@ class _MonthRitualViewState extends State<MonthRitualView>
     await _push(destination);
   }
 
-  Future<void> _onOpenMonth(String month) =>
-      _push(MonthDetailView(month: month));
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -95,7 +92,6 @@ class _MonthRitualViewState extends State<MonthRitualView>
               viewModel: viewModel,
               onPrimary: _onPrimary,
               onOpenStep: _onOpenStep,
-              onOpenMonth: _onOpenMonth,
             ),
           ),
         ),
@@ -109,13 +105,11 @@ class _RitualContent extends StatelessWidget {
     required this.viewModel,
     required this.onPrimary,
     required this.onOpenStep,
-    required this.onOpenMonth,
   });
 
   final MonthRitualViewModel viewModel;
   final VoidCallback onPrimary;
   final ValueChanged<int> onOpenStep;
-  final ValueChanged<String> onOpenMonth;
 
   @override
   Widget build(BuildContext context) {
@@ -135,14 +129,6 @@ class _RitualContent extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
         _RitualChecklist(steps: ritual.steps, onOpenStep: onOpenStep),
-        const SizedBox(height: AppSpacing.xl),
-        const AppSectionHeader(title: 'Anteriores'),
-        const SizedBox(height: AppSpacing.md),
-        AppYearStrip(
-          months: viewModel.yearMonths,
-          currentMonth: viewModel.month,
-          onTap: onOpenMonth,
-        ),
         const SizedBox(height: AppSpacing.xl),
       ],
     );
