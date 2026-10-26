@@ -73,9 +73,7 @@ class MonthTransfersSummary extends StatelessWidget {
           _PeopleCard(people: transfers.people),
         ],
         const SizedBox(height: AppSpacing.lg),
-        _ExpensesCard(settlement: transfers.expenses),
-        const SizedBox(height: AppSpacing.lg),
-        _GoalsCard(transfers: transfers, iconKeyByGoal: iconKeyByGoal),
+        _TransfersCard(transfers: transfers, iconKeyByGoal: iconKeyByGoal),
         const SizedBox(height: AppSpacing.lg),
         AppButton(
           label: 'Copiar resumo',
@@ -210,15 +208,20 @@ class _PersonRow extends StatelessWidget {
   }
 }
 
-class _ExpensesCard extends StatelessWidget {
-  const _ExpensesCard({required this.settlement});
+class _TransfersCard extends StatelessWidget {
+  const _TransfersCard({required this.transfers, required this.iconKeyByGoal});
 
-  final MonthSettlement? settlement;
+  final MonthTransfers transfers;
+  final Map<String, String?> iconKeyByGoal;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final settlement = this.settlement;
+    final subsectionStyle = AppTextStyles.label(
+      colors,
+    ).copyWith(color: colors.ink);
+    final settlement = transfers.expenses;
+    final goals = transfers.goals;
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -228,6 +231,8 @@ class _ExpensesCard extends StatelessWidget {
             style: AppTextStyles.sectionHeading,
           ),
           const SizedBox(height: AppSpacing.md),
+          Text('Despesas', style: subsectionStyle),
+          const SizedBox(height: AppSpacing.sm),
           if (settlement == null)
             Text(
               'Sem liquidação de despesas registada.',
@@ -243,9 +248,35 @@ class _ExpensesCard extends StatelessWidget {
               if (index > 0) const SizedBox(height: AppSpacing.sm),
               _SettlementRow(person: settlement.people[index]),
             ],
+          const SizedBox(height: AppSpacing.md),
+          Text('Objetivos', style: subsectionStyle),
+          const SizedBox(height: AppSpacing.sm),
+          if (goals.isEmpty)
+            Text(
+              _emptyMessage(transfers),
+              style: AppTextStyles.bodyMuted(colors),
+            )
+          else
+            for (var index = 0; index < goals.length; index++) ...[
+              if (index > 0) const SizedBox(height: AppSpacing.md),
+              _GoalTransferRow(
+                transfer: goals[index],
+                iconKeyByGoal: iconKeyByGoal,
+              ),
+            ],
         ],
       ),
     );
+  }
+
+  static String _emptyMessage(MonthTransfers transfers) {
+    if (transfers.goalsReserved <= 0.005) {
+      return 'Sem valores reservados neste mês: nada a transferir.';
+    }
+    if (!transfers.goalsHasIncome) {
+      return 'Sem rendimento configurado neste mês: não há quotas a transferir.';
+    }
+    return 'Sem transferências neste mês.';
   }
 }
 
@@ -270,54 +301,6 @@ class _SettlementRow extends StatelessWidget {
           ? AppTransferDirection.toPerson
           : AppTransferDirection.toJoint,
     );
-  }
-}
-
-class _GoalsCard extends StatelessWidget {
-  const _GoalsCard({required this.transfers, required this.iconKeyByGoal});
-
-  final MonthTransfers transfers;
-  final Map<String, String?> iconKeyByGoal;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final transfersList = transfers.goals;
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Transferências registadas',
-            style: AppTextStyles.sectionHeading,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (transfersList.isEmpty)
-            Text(
-              _emptyMessage(transfers),
-              style: AppTextStyles.bodyMuted(colors),
-            )
-          else
-            for (var index = 0; index < transfersList.length; index++) ...[
-              if (index > 0) const SizedBox(height: AppSpacing.md),
-              _GoalTransferRow(
-                transfer: transfersList[index],
-                iconKeyByGoal: iconKeyByGoal,
-              ),
-            ],
-        ],
-      ),
-    );
-  }
-
-  static String _emptyMessage(MonthTransfers transfers) {
-    if (transfers.goalsReserved <= 0.005) {
-      return 'Sem valores reservados neste mês: nada a transferir.';
-    }
-    if (!transfers.goalsHasIncome) {
-      return 'Sem rendimento configurado neste mês: não há quotas a transferir.';
-    }
-    return 'Sem transferências neste mês.';
   }
 }
 
