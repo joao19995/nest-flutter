@@ -200,6 +200,25 @@ MockClient _clientWithStatus(ExpenseMonthStatus status) => MockClient((
       return jsonResponse(const <Object>[]);
     case '/api/goal-plan':
       return jsonResponse(_goalYear());
+    case '/api/goal-plan/2026-10':
+      if (status != ExpenseMonthStatus.closed) {
+        return jsonResponse(const <Object>[], status: 404);
+      }
+      return jsonResponse(const {
+        'month': '2026-10',
+        'planId': 'p1',
+        'closed': true,
+        'availableAmount': 1000,
+        'allocations': [
+          {
+            'goalId': 'g1',
+            'goalName': 'Viagem',
+            'planned': 1000,
+            'actual': 1000,
+          },
+        ],
+        'quotas': <Object>[],
+      });
     case '/api/goals':
       return jsonResponse(_goals());
     case '/api/goal-templates/applicable':

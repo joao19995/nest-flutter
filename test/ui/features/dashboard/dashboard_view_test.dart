@@ -61,6 +61,17 @@ Map<String, dynamic> _goalMonth(String month, {bool closed = false}) => {
   'quotas': <Object>[],
 };
 
+Map<String, dynamic> _openGoalMonth(String month) => {
+  'month': month,
+  'planId': 'p1',
+  'closed': false,
+  'availableAmount': 1000,
+  'allocations': [
+    {'goalId': 'g1', 'goalName': 'Viagem', 'planned': 1000, 'actual': 0},
+  ],
+  'quotas': <Object>[],
+};
+
 Map<String, dynamic> _monthPlan(String month, {bool closed = false}) => {
   'id': 'm1',
   'month': month,
@@ -84,6 +95,7 @@ MockClient _client({
   bool failEvents = false,
   List<Object>? events,
   bool closed = false,
+  bool? goalsClosed,
 }) {
   final year = int.parse(_month.substring(0, 4));
   return MockClient((request) async {
@@ -97,7 +109,13 @@ MockClient _client({
     }
     if (request.url.path.startsWith('/api/goal-plan/')) {
       final month = request.url.path.split('/').last;
-      return jsonResponse(_goalMonth(month, closed: closed && month == _month));
+      if (month != _month) {
+        return jsonResponse(_goalMonth(month));
+      }
+      if (goalsClosed == false) {
+        return jsonResponse(_openGoalMonth(month));
+      }
+      return jsonResponse(_goalMonth(month, closed: goalsClosed ?? closed));
     }
     switch (request.url.path) {
       case '/api/months/summary':
@@ -396,6 +414,62 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(opens, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps the hero when stepping to a closed month', (tester) async {
+    setPhoneSize(tester);
+    final client = MockClient((request) async {
+      switch (request.url.path) {
+        case '/api/months/2026-09':
+          return jsonResponse(_monthPlan('2026-09', closed: true));
+        case '/api/months/2026-10':
+          return jsonResponse(_monthPlan('2026-10'));
+        case '/api/months/summary':
+          return jsonResponse(_yearSummary(2026, _month));
+        case '/api/goal-plan/2026-09':
+          return jsonResponse(_goalMonth('2026-09', closed: true));
+        case '/api/goal-plan/2026-10':
+          return jsonResponse(_goalMonth('2026-10'));
+        case '/api/events':
+          return jsonResponse(const <Object>[]);
+        default:
+          return jsonResponse(const {'error': 'not found'}, status: 404);
+      }
+    });
+    final viewModel = await _loadedViewModel(
+      client,
+      now: DateTime(2026, 10, 15, 12),
+    );
+    await _pump(tester, viewModel);
+
+    await tester.tap(find.byTooltip('Mês anterior'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Hero), findsOneWidget);
+    expect(
+      find.textContaining('Despesas fechadas · Objetivos fechados'),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows the hero when expenses are closed but goals are open', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    final viewModel = await _loadedViewModel(
+      _client(closed: true, goalsClosed: false),
+      now: DateTime(2026, 10, 15, 12),
+    );
+    await _pump(tester, viewModel);
+
+    expect(find.byType(Hero), findsOneWidget);
+    expect(find.text('Outubro por fechar'), findsOneWidget);
+    expect(
+      find.textContaining('Despesas fechadas · Objetivos fechados'),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
 

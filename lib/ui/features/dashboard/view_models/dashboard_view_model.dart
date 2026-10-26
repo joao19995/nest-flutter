@@ -242,19 +242,21 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   /// True when the month card should stand out: the first days of the month
-  /// (the previous balance is due) or, after the closing reminder day, while
-  /// the current month is still open or not created.
+  /// (the previous balance is due), whenever the user stepped away from the
+  /// current month (so the stepper stays available), or after the closing
+  /// reminder day while the current month is not fully closed.
   bool get highlightMonth {
+    if (_monthSelected || _month != MonthKey.of(_now.year, _now.month)) {
+      return true;
+    }
     if (MonthFocus.isBalanceWindow(_now)) {
       return true;
     }
     if (_now.day <= _closingReminderAfterDay) {
       return false;
     }
-    final status = (_monthSummary ?? _stripMonth)?.status;
-    return status == null ||
-        status == ExpenseMonthStatus.open ||
-        status == ExpenseMonthStatus.missing;
+    final current = ritual;
+    return current == null || !current.isClosed;
   }
 
   /// The header hero's month summary, or null when the month is not created.
