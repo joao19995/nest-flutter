@@ -96,6 +96,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (_selected == _NavDestination.hoje) {
       _dashboardRefresh.value++;
     }
+    if (_selected == _NavDestination.mes) {
+      _monthRefresh.value++;
+    }
   }
 
   @override
@@ -110,13 +113,15 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   void _select(_NavDestination destination) {
+    final wasSelected = _selected;
+    setState(() => _selected = destination);
     if (destination == _NavDestination.hoje) {
       _dashboardRefresh.value++;
     }
-    if (destination == _NavDestination.mes) {
+    if (destination == _NavDestination.mes &&
+        wasSelected != _NavDestination.mes) {
       _monthRefresh.value++;
     }
-    setState(() => _selected = destination);
   }
 
   /// Opens Agenda on Tarefas.

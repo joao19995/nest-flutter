@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/ui/core/month_key.dart';
@@ -76,4 +77,62 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('the refresh signal reloads the ritual only', (tester) async {
+    setPhoneSize(tester);
+    final year = DateTime.now().year;
+    final month = MonthKey.current();
+    var ritualLoads = 0;
+    var goalsLoads = 0;
+    final client = MockClient((request) async {
+      final path = request.url.path;
+      if (path == '/api/months/summary') {
+        return jsonResponse(_yearSummary(year));
+      }
+      if (path == '/api/goal-plan') {
+        goalsLoads++;
+        return jsonResponse({
+          'plans': <Object>[],
+          'funding': {'year': year, 'annualTotal': 0, 'months': <Object>[]},
+        });
+      }
+      if (path == '/api/months/$month' || path == '/api/goal-plan/$month') {
+        ritualLoads++;
+        return jsonResponse(const {'error': 'not found'}, status: 404);
+      }
+      if (path == '/api/goals') {
+        return jsonResponse(const <Object>[]);
+      }
+      if (path == '/api/goal-templates/applicable') {
+        return jsonResponse(const {'template': null});
+      }
+      return jsonResponse(const <Object>[]);
+    });
+
+    final refresh = ValueNotifier<int>(0);
+    addTearDown(refresh.dispose);
+
+    await tester.pumpWidget(
+      wrapWithDependencies(
+        testDependencies(client),
+        MonthView(refreshSignal: refresh),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Objetivos'));
+    await tester.pumpAndSettle();
+
+    final ritualBefore = ritualLoads;
+    final goalsBefore = goalsLoads;
+    expect(goalsBefore, greaterThan(0));
+
+    refresh.value++;
+    await tester.pumpAndSettle();
+
+    expect(ritualLoads, greaterThan(ritualBefore));
+    expect(goalsLoads, goalsBefore);
+    expect(find.text('Objetivos do ano'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

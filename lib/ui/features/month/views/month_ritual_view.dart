@@ -16,7 +16,10 @@ import 'package:nest/ui/features/month/view_models/month_ritual_view_model.dart'
 /// Embedded under Mês, so it renders no [Scaffold] or [AppBar]. Every value
 /// comes from the API; the view only lays it out.
 class MonthRitualView extends StatefulWidget {
-  const MonthRitualView({super.key});
+  const MonthRitualView({super.key, this.refreshSignal});
+
+  /// Reloads the ritual when it changes.
+  final Listenable? refreshSignal;
 
   @override
   State<MonthRitualView> createState() => _MonthRitualViewState();
@@ -35,6 +38,33 @@ class _MonthRitualViewState extends State<MonthRitualView>
 
   @override
   void onViewModelCreated(MonthRitualViewModel viewModel) => viewModel.load();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.refreshSignal?.addListener(_onRefreshRequested);
+  }
+
+  @override
+  void didUpdateWidget(covariant MonthRitualView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshSignal != widget.refreshSignal) {
+      oldWidget.refreshSignal?.removeListener(_onRefreshRequested);
+      widget.refreshSignal?.addListener(_onRefreshRequested);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.refreshSignal?.removeListener(_onRefreshRequested);
+    super.dispose();
+  }
+
+  void _onRefreshRequested() {
+    if (mounted && hasViewModel) {
+      viewModel.load();
+    }
+  }
 
   Future<void> _push(Widget destination) async {
     await Navigator.of(

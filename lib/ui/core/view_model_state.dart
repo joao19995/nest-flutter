@@ -12,6 +12,9 @@ mixin ViewModelState<W extends StatefulWidget, VM extends ChangeNotifier>
   /// The view model, ready by the time the first build runs.
   VM get viewModel => _viewModel as VM;
 
+  /// True once the view model has been created.
+  bool get hasViewModel => _viewModel != null;
+
   /// Builds the view model. Runs once, with `context` resolvable.
   VM createViewModel();
 

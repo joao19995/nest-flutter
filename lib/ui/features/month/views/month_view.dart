@@ -26,7 +26,7 @@ class MonthView extends StatefulWidget {
   /// The section used when this view creates its own signal.
   final MonthSection initialSection;
 
-  /// Bumps the reload token when the caller wants fresh month data.
+  /// Reloads the ritual when it changes; the other sections keep their state.
   final Listenable? refreshSignal;
 
   @override
@@ -56,8 +56,6 @@ class _MonthViewState extends State<MonthView> {
   /// disposed here.
   ValueNotifier<MonthSection>? _ownedSignal;
 
-  int _reloadToken = 0;
-
   /// The single source of truth for the selected section: the shell's notifier
   /// when injected, otherwise the one owned here.
   ValueNotifier<MonthSection> get _signal =>
@@ -65,31 +63,9 @@ class _MonthViewState extends State<MonthView> {
       (_ownedSignal ??= ValueNotifier<MonthSection>(widget.initialSection));
 
   @override
-  void initState() {
-    super.initState();
-    widget.refreshSignal?.addListener(_onRefreshRequested);
-  }
-
-  @override
-  void didUpdateWidget(covariant MonthView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.refreshSignal != widget.refreshSignal) {
-      oldWidget.refreshSignal?.removeListener(_onRefreshRequested);
-      widget.refreshSignal?.addListener(_onRefreshRequested);
-    }
-  }
-
-  @override
   void dispose() {
-    widget.refreshSignal?.removeListener(_onRefreshRequested);
     _ownedSignal?.dispose();
     super.dispose();
-  }
-
-  void _onRefreshRequested() {
-    if (mounted) {
-      setState(() => _reloadToken++);
-    }
   }
 
   @override
@@ -121,13 +97,15 @@ class _MonthViewState extends State<MonthView> {
                     ),
                   ),
                   Expanded(
+                    // The children's order MUST match [MonthSection] (ritual,
+                    // expenses, goals) because the stack is indexed by
+                    // `section.index`.
                     child: LazyIndexedStack(
-                      key: ValueKey(_reloadToken),
                       index: section.index,
-                      children: const [
-                        MonthRitualView(),
-                        ExpensesView(embedded: true),
-                        GoalsView(embedded: true),
+                      children: [
+                        MonthRitualView(refreshSignal: widget.refreshSignal),
+                        const ExpensesView(embedded: true),
+                        const GoalsView(embedded: true),
                       ],
                     ),
                   ),
