@@ -176,8 +176,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       children: [for (final destination in destinations) _pageFor(destination)],
     );
 
+    final Widget scaffold;
     if (isTablet) {
-      return Scaffold(
+      scaffold = Scaffold(
         body: Row(
           children: [
             NavigationRail(
@@ -206,30 +207,42 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           ],
         ),
       );
+    } else {
+      scaffold = Scaffold(
+        body: body,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: selectedIndex,
+          onDestinationSelected: (index) => _select(destinations[index]),
+          destinations: [
+            for (final destination in destinations)
+              NavigationDestination(
+                icon: _destinationIcon(
+                  destination,
+                  selected: false,
+                  pending: pending,
+                ),
+                selectedIcon: _destinationIcon(
+                  destination,
+                  selected: true,
+                  pending: pending,
+                ),
+                label: destination.label,
+              ),
+          ],
+        ),
+      );
     }
 
-    return Scaffold(
-      body: body,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) => _select(destinations[index]),
-        destinations: [
-          for (final destination in destinations)
-            NavigationDestination(
-              icon: _destinationIcon(
-                destination,
-                selected: false,
-                pending: pending,
-              ),
-              selectedIcon: _destinationIcon(
-                destination,
-                selected: true,
-                pending: pending,
-              ),
-              label: destination.label,
-            ),
-        ],
-      ),
+    // A system back from any other destination returns to Hoje; on Hoje the
+    // pop is left to the platform so the app exits normally.
+    return PopScope<Object?>(
+      canPop: _selected == _NavDestination.hoje,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _select(_NavDestination.hoje);
+        }
+      },
+      child: scaffold,
     );
   }
 

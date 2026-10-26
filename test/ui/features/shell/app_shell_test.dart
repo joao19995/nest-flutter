@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/ui/core/month_key.dart';
+import 'package:nest/ui/features/agenda/views/agenda_view.dart';
+import 'package:nest/ui/features/dashboard/views/dashboard_view.dart';
 import 'package:nest/ui/features/shell/views/app_shell.dart';
 
 import '../../../support/test_helpers.dart';
@@ -104,6 +106,49 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(summaryRequests, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('system back returns to Hoje from another destination', (
+    tester,
+  ) async {
+    setPhoneSize(tester);
+    final year = DateTime.now().year;
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/months/summary') {
+        return jsonResponse(_yearSummary(year));
+      }
+      if (request.url.path == '/api/goal-plan') {
+        return jsonResponse({
+          'plans': <Object>[],
+          'funding': {'year': year, 'annualTotal': 0, 'months': <Object>[]},
+        });
+      }
+      if (request.url.path == '/api/goal-templates/applicable') {
+        return jsonResponse(const {'template': null});
+      }
+      if (request.url.path.startsWith('/api/months/')) {
+        return jsonResponse(const {'error': 'not found'}, status: 404);
+      }
+      return jsonResponse(const <Object>[]);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const AppShell()),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(DashboardView), findsOneWidget);
+
+    await tester.tap(find.text('Agenda'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AgendaView), findsOneWidget);
+    expect(find.byType(DashboardView), findsNothing);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DashboardView), findsOneWidget);
+    expect(find.byType(AgendaView), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
