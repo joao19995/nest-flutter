@@ -158,4 +158,39 @@ void main() {
     expect(find.text('Casa'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('switches sections on a 320px surface at 1.5 text scale', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/todo-lists') {
+        return jsonResponse(_lists());
+      }
+      return jsonResponse(const <Object>[]);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const AgendaView()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+
+    await _tapSegment(tester, 'Calendário', inCalendar: false);
+
+    expect(find.text('Hoje'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await _tapSegment(tester, 'Tarefas', inCalendar: true);
+
+    expect(find.text('Casa'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

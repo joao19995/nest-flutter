@@ -212,43 +212,57 @@ class _CalendarHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = viewModel.monthEventCount;
+    final headline = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'EVENTOS DO MÊS',
+          style: AppTextStyles.navSection(
+            context.colors,
+          ).copyWith(color: AppColors.onHeroMuted),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          viewModel.isLoading ? '—' : '$count',
+          style: AppTextStyles.statDisplay.copyWith(color: AppColors.onHero),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          count == 1 ? 'evento neste mês' : 'eventos neste mês',
+          style: AppTextStyles.small(
+            context.colors,
+          ).copyWith(color: AppColors.onHeroMuted),
+        ),
+      ],
+    );
+    final stepper = AppPeriodStepper(
+      label: AppFormatters.monthTitle(viewModel.visibleMonth),
+      onPrevious: viewModel.showPreviousMonth,
+      onNext: viewModel.showNextMonth,
+    );
     return HeroPanel(
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // A long month label no longer fits beside the headline on narrow
+          // viewports or large text scales; stack instead of overflowing.
+          if (constraints.maxWidth < AppBreakpoints.sm) {
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'EVENTOS DO MÊS',
-                  style: AppTextStyles.navSection(
-                    context.colors,
-                  ).copyWith(color: AppColors.onHeroMuted),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  viewModel.isLoading ? '—' : '$count',
-                  style: AppTextStyles.statDisplay.copyWith(
-                    color: AppColors.onHero,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  count == 1 ? 'evento neste mês' : 'eventos neste mês',
-                  style: AppTextStyles.small(
-                    context.colors,
-                  ).copyWith(color: AppColors.onHeroMuted),
-                ),
+                headline,
+                const SizedBox(height: AppSpacing.md),
+                stepper,
               ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          AppPeriodStepper(
-            label: AppFormatters.monthTitle(viewModel.visibleMonth),
-            onPrevious: viewModel.showPreviousMonth,
-            onNext: viewModel.showNextMonth,
-          ),
-        ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: headline),
+              const SizedBox(width: AppSpacing.md),
+              stepper,
+            ],
+          );
+        },
       ),
     );
   }

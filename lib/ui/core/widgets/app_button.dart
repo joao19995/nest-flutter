@@ -77,15 +77,25 @@ class AppButton extends StatelessWidget {
       return Icon(icon, size: AppSizes.iconMedium);
     }
     if (icon == null) {
-      return Text(label);
+      return Text(label, textAlign: TextAlign.center);
     }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: AppSizes.iconMedium),
-        const SizedBox(width: AppSpacing.sm),
-        Text(label),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final content = Text(label, textAlign: TextAlign.center);
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: AppSizes.iconMedium),
+            const SizedBox(width: AppSpacing.sm),
+            // Let the label wrap when the button is squeezed by a narrow
+            // viewport or a large text scale instead of overflowing the row.
+            if (constraints.maxWidth.isFinite)
+              Flexible(child: content)
+            else
+              content,
+          ],
+        );
+      },
     );
   }
 

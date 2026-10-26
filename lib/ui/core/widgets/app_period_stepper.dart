@@ -46,30 +46,41 @@ class AppPeriodStepper extends StatelessWidget {
         ? AppColors.primaryDark
         : context.colors.primary;
     final disabledColor = _isHero ? AppColors.faint : context.colors.faint;
-    final content = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _StepperArrow(
-          icon: Icons.chevron_left,
-          onTap: onPrevious,
-          tooltip: previousTooltip,
-          enabledColor: enabledColor,
-          disabledColor: disabledColor,
-        ),
-        Text(
+    final content = LayoutBuilder(
+      builder: (context, constraints) {
+        final labelText = Text(
           label,
+          textAlign: TextAlign.center,
           style: AppTextStyles.label(
             context.colors,
           ).copyWith(color: _isHero ? AppColors.primaryDark : enabledColor),
-        ),
-        _StepperArrow(
-          icon: Icons.chevron_right,
-          onTap: onNext,
-          tooltip: nextTooltip,
-          enabledColor: enabledColor,
-          disabledColor: disabledColor,
-        ),
-      ],
+        );
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _StepperArrow(
+              icon: Icons.chevron_left,
+              onTap: onPrevious,
+              tooltip: previousTooltip,
+              enabledColor: enabledColor,
+              disabledColor: disabledColor,
+            ),
+            // When the stepper is squeezed (narrow viewport or large text
+            // scale), let the label wrap instead of overflowing the pill.
+            if (constraints.maxWidth.isFinite)
+              Flexible(child: labelText)
+            else
+              labelText,
+            _StepperArrow(
+              icon: Icons.chevron_right,
+              onTap: onNext,
+              tooltip: nextTooltip,
+              enabledColor: enabledColor,
+              disabledColor: disabledColor,
+            ),
+          ],
+        );
+      },
     );
     if (!_isHero) {
       return content;

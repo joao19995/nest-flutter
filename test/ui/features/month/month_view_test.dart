@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/ui/core/month_key.dart';
@@ -133,6 +133,59 @@ void main() {
     expect(ritualLoads, greaterThan(ritualBefore));
     expect(goalsLoads, goalsBefore);
     expect(find.text('Objetivos do ano'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('renders on a 320px surface at 1.5 text scale without overflow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final year = DateTime.now().year;
+    final month = MonthKey.current();
+    final client = MockClient((request) async {
+      final path = request.url.path;
+      if (path == '/api/months/summary') {
+        return jsonResponse(_yearSummary(year));
+      }
+      if (path == '/api/goal-plan') {
+        return jsonResponse({
+          'plans': <Object>[],
+          'funding': {'year': year, 'annualTotal': 0, 'months': <Object>[]},
+        });
+      }
+      if (path == '/api/months/$month' || path == '/api/goal-plan/$month') {
+        return jsonResponse(const {'error': 'not found'}, status: 404);
+      }
+      if (path == '/api/goals') {
+        return jsonResponse(const <Object>[]);
+      }
+      if (path == '/api/goal-templates/applicable') {
+        return jsonResponse(const {'template': null});
+      }
+      return jsonResponse(const <Object>[]);
+    });
+
+    await tester.pumpWidget(
+      wrapWithDependencies(testDependencies(client), const MonthView()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Despesas'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Objetivos'));
+    await tester.pumpAndSettle();
+
     expect(tester.takeException(), isNull);
   });
 }
