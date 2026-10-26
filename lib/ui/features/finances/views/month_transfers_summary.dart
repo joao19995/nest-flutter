@@ -1,10 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/domain/models/month_settlement.dart';
 import 'package:nest/domain/models/month_transfers.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/goals/goal_icons.dart';
+
+/// Builds the plain-text summary shared over messaging apps.
+///
+/// This only formats values already present in [transfers]; it derives no new
+/// financial value.
+String _summaryText(MonthTransfers transfers) {
+  final lines = <String>[
+    'Transferências de ${AppFormatters.monthName(transfers.month)}',
+  ];
+  for (final person in transfers.people) {
+    if (person.toJoint > 0.005) {
+      lines.add(
+        '${person.personName} → Conjunta: '
+        '${AppFormatters.currency(person.toJoint)}',
+      );
+    }
+    if (person.fromJoint > 0.005) {
+      lines.add(
+        'Conjunta → ${person.personName}: '
+        '${AppFormatters.currency(person.fromJoint)}',
+      );
+    }
+    if (person.toGoals > 0.005) {
+      if (person.goals.isEmpty) {
+        lines.add(
+          '${person.personName} → Objetivos: '
+          '${AppFormatters.currency(person.toGoals)}',
+        );
+      } else {
+        for (final part in person.goals) {
+          lines.add(
+            '${person.personName} → ${part.name}: '
+            '${AppFormatters.currency(part.amount)}',
+          );
+        }
+      }
+    }
+  }
+  if (lines.length == 1) {
+    lines.add('Sem transferências neste mês.');
+  }
+  return lines.join('\n');
+}
 
 /// The read-only, definitive transfers of a closed month: combined totals, a
 /// per-person summary and the detailed expenses/goals sections.
@@ -32,6 +76,24 @@ class MonthTransfersSummary extends StatelessWidget {
         _ExpensesCard(settlement: transfers.expenses),
         const SizedBox(height: AppSpacing.lg),
         _GoalsCard(transfers: transfers, iconKeyByGoal: iconKeyByGoal),
+        const SizedBox(height: AppSpacing.lg),
+        AppButton(
+          label: 'Copiar resumo',
+          icon: Icons.copy_outlined,
+          variant: AppButtonVariant.secondary,
+          isFullWidth: true,
+          onPressed: () async {
+            await Clipboard.setData(
+              ClipboardData(text: _summaryText(transfers)),
+            );
+            if (!context.mounted) {
+              return;
+            }
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Resumo copiado.')));
+          },
+        ),
       ],
     );
   }
