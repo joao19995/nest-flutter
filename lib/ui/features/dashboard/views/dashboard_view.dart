@@ -40,7 +40,6 @@ class DashboardView extends StatefulWidget {
     this.pendingTaskLists = const [],
     this.onOpenTodos,
     this.onOpenCalendar,
-    this.onOpenGoals,
     this.onOpenMonth,
     this.onOpenMonthTab,
     this.refreshSignal,
@@ -61,9 +60,6 @@ class DashboardView extends StatefulWidget {
 
   /// Opens Agenda on Calendário.
   final VoidCallback? onOpenCalendar;
-
-  /// Opens Mês on Objetivos.
-  final VoidCallback? onOpenGoals;
 
   /// Opens Mês on Despesas and the given month's detail.
   final ValueChanged<String>? onOpenMonth;

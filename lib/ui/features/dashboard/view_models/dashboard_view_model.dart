@@ -5,10 +5,10 @@ import 'package:nest/data/repositories/goals_repository.dart';
 import 'package:nest/domain/failures/api_failure.dart';
 import 'package:nest/domain/models/calendar_event.dart';
 import 'package:nest/domain/models/expense_year_summary.dart';
+import 'package:nest/domain/models/goal_month_view.dart';
 import 'package:nest/ui/core/month_focus.dart';
 import 'package:nest/ui/core/month_key.dart';
 import 'package:nest/ui/core/theme/app_formatters.dart';
-import 'package:nest/ui/features/goals/view_models/goals_view_model.dart';
 
 /// The action a dashboard alert invites.
 enum DashboardAlertKind {
@@ -78,7 +78,7 @@ class DashboardRitual {
   /// Lines the month has (server rule).
   final int totalEntries;
 
-  /// The goals month status; null while its plan data is not loaded.
+  /// The goals month status.
   final ExpenseMonthStatus? goalsStatus;
 
   /// The amount reserved for goals in the month, in euros.
@@ -132,12 +132,7 @@ class DashboardViewModel extends ChangeNotifier {
        _eventsRepository = eventsRepository,
        _now = now,
        _clock = clock,
-       _month = MonthKey.of(now.year, now.month),
-       _goalsYear = now.year,
-       _goals = GoalsViewModel(
-         goalsRepository: goalsRepository,
-         year: now.year,
-       );
+       _month = MonthKey.of(now.year, now.month);
 
   /// How many days ahead the "Hoje e próximos" list looks.
   static const int _upcomingDays = 6;
@@ -157,12 +152,12 @@ class DashboardViewModel extends ChangeNotifier {
 
   DateTime _now;
 
-  GoalsViewModel _goals;
   String _month;
 
-  /// The year the loaded [_goals] belong to, used to rebuild them when the
-  /// clock crosses a year.
-  int _goalsYear;
+  /// The displayed month's goal plan, read from
+  /// `GET /api/goal-plan/{month}`; null when the month has none or the read
+  /// failed.
+  GoalMonthView? _goalMonth;
 
   /// True once the user has stepped away from the current month, so a refresh
   /// does not yank the selection back.
@@ -206,16 +201,6 @@ class DashboardViewModel extends ChangeNotifier {
   /// The selected year's twelve months, for the year strip.
   List<ExpenseMonthSummary> get yearMonths => _yearMonths;
 
-  /// The goals month matching [month].
-  GoalMonthSummary? get goalMonth {
-    for (final month in _goals.months) {
-      if (month.month == _month) {
-        return month;
-      }
-    }
-    return null;
-  }
-
   /// The month's closing state: expenses, goals and their totals. Null while
   /// the month data is loading.
   DashboardRitual? get ritual {
@@ -223,21 +208,20 @@ class DashboardViewModel extends ChangeNotifier {
     if (expense == null && _monthSection.isLoading) {
       return null;
     }
-    final goal = goalMonth;
+    final goalView = _goalMonth;
+    final goalPlan = goalView?.plan;
     return DashboardRitual(
       month: _month,
       expensesStatus: expense?.status ?? ExpenseMonthStatus.missing,
       filledEntries: expense?.filledEntries ?? 0,
       totalEntries: expense?.totalEntries ?? 0,
-      goalsStatus: goal == null
-          ? null
-          : !goal.hasPlan
+      goalsStatus: goalPlan == null
           ? ExpenseMonthStatus.missing
-          : goal.closed
+          : goalPlan.closed
           ? ExpenseMonthStatus.closed
           : ExpenseMonthStatus.open,
-      goalsReserved: goal?.reserved ?? 0,
-      goalsPlanned: goal?.planned ?? 0,
+      goalsReserved: goalView?.totals.reserved ?? 0,
+      goalsPlanned: goalView?.totals.planned ?? 0,
     );
   }
 
@@ -315,10 +299,6 @@ class DashboardViewModel extends ChangeNotifier {
       if (!_monthSelected || _month == wasCurrent) {
         _month = MonthKey.of(_now.year, _now.month);
       }
-      if (_goalsYear != _now.year) {
-        _goalsYear = _now.year;
-        _replaceGoals();
-      }
 
       _monthSection = DashboardSectionState(isLoading: showSkeleton);
       _alertsSection = DashboardSectionState(isLoading: showSkeleton);
@@ -328,8 +308,8 @@ class DashboardViewModel extends ChangeNotifier {
       await _loadYear(showLoading: showSkeleton);
       await _focusBalanceMonthIfDue();
       await _loadMonth(showLoading: showSkeleton && _monthSummary == null);
+      await _loadGoalMonth();
       await _loadEvents(showLoading: showSkeleton);
-      await _loadGoals();
     } finally {
       _isFetching = false;
       notifyListeners();
@@ -369,12 +349,6 @@ class DashboardViewModel extends ChangeNotifier {
     if (summary != null) {
       _yearMonths = summary.months;
     }
-    final focusedYear = int.tryParse(previous.substring(0, 4));
-    if (focusedYear != null && focusedYear != _goalsYear) {
-      // January: read the focused month's year so the goals line is real.
-      _goalsYear = focusedYear;
-      _replaceGoals();
-    }
   }
 
   ExpenseMonthSummary? _summaryOf(String month) {
@@ -387,7 +361,10 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   /// Retries the header hero after a failure.
-  Future<void> retryMonth() => _runSection(_loadMonth);
+  Future<void> retryMonth() => _runSection(() async {
+    await _loadMonth();
+    await _loadGoalMonth();
+  });
 
   /// Retries the alerts year summary after a failure.
   Future<void> retryAlerts() => _runSection(() => _loadYear(showLoading: true));
@@ -417,6 +394,7 @@ class DashboardViewModel extends ChangeNotifier {
     final previousYear = _stripYear;
     _month = MonthKey.shift(_month, -1);
     await _loadMonth(showLoading: false);
+    await _loadGoalMonth();
     if (_stripYear != previousYear) {
       await _loadStrip();
     }
@@ -431,6 +409,7 @@ class DashboardViewModel extends ChangeNotifier {
     final previousYear = _stripYear;
     _month = MonthKey.shift(_month, 1);
     await _loadMonth(showLoading: false);
+    await _loadGoalMonth();
     if (_stripYear != previousYear) {
       await _loadStrip();
     }
@@ -504,17 +483,18 @@ class DashboardViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _loadGoals() async {
-    await _goals.load();
+  /// Loads the displayed month's goal plan from
+  /// `GET /api/goal-plan/{month}`.
+  ///
+  /// A failure leaves the goals line missing; the rest of the dashboard keeps
+  /// working.
+  Future<void> _loadGoalMonth() async {
+    try {
+      _goalMonth = await _goalsRepository.fetchGoalMonth(_month);
+    } on ApiFailure {
+      _goalMonth = null;
+    }
     notifyListeners();
-  }
-
-  void _replaceGoals() {
-    _goals.dispose();
-    _goals = GoalsViewModel(
-      goalsRepository: _goalsRepository,
-      year: _goalsYear,
-    );
   }
 
   ExpenseMonthSummary? get _stripMonth {
@@ -599,11 +579,5 @@ class DashboardViewModel extends ChangeNotifier {
       }
     }
     return null;
-  }
-
-  @override
-  void dispose() {
-    _goals.dispose();
-    super.dispose();
   }
 }

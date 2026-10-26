@@ -336,8 +336,6 @@ void main() {
     expect(viewModel.upcomingEvents, hasLength(2));
     expect(viewModel.upcomingEvents.first.title, 'Consulta');
 
-    expect(viewModel.goalMonth?.month, '2026-10');
-
     expect(viewModel.month, '2026-10');
     expect(viewModel.monthSummary, isNotNull);
     expect(viewModel.monthSummary?.actual, 1240);

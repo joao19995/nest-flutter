@@ -43,25 +43,22 @@ Map<String, dynamic> _yearSummary(
   ],
 };
 
-Map<String, dynamic> _goalYear(int year, {String? closedMonth}) => {
-  'plans': [
-    if (closedMonth != null)
-      {
-        'id': 'p1',
-        'month': closedMonth,
-        'availableAmount': 1000,
-        'closed': true,
-        'allocations': [
+Map<String, dynamic> _goalMonth(String month, {bool closed = false}) => {
+  'month': month,
+  'planId': closed ? 'p1' : null,
+  'closed': closed,
+  'availableAmount': closed ? 1000 : 0,
+  'allocations': closed
+      ? [
           {
             'goalId': 'g1',
             'goalName': 'Viagem',
             'planned': 1000,
             'actual': 1000,
           },
-        ],
-      },
-  ],
-  'funding': {'year': year, 'annualTotal': 0, 'months': <Object>[]},
+        ]
+      : <Object>[],
+  'quotas': <Object>[],
 };
 
 Map<String, dynamic> _monthPlan(String month, {bool closed = false}) => {
@@ -98,19 +95,15 @@ MockClient _client({
         'error': 'Eventos indisponíveis',
       }, status: 500);
     }
+    if (request.url.path.startsWith('/api/goal-plan/')) {
+      final month = request.url.path.split('/').last;
+      return jsonResponse(_goalMonth(month, closed: closed && month == _month));
+    }
     switch (request.url.path) {
       case '/api/months/summary':
         return jsonResponse(_yearSummary(year, _month, closed: closed));
       case '/api/events':
         return jsonResponse(events ?? const <Object>[]);
-      case '/api/goal-plan':
-        return jsonResponse(
-          _goalYear(year, closedMonth: closed ? _month : null),
-        );
-      case '/api/goals':
-        return jsonResponse(const <Object>[]);
-      case '/api/goal-templates/applicable':
-        return jsonResponse(const {'template': null});
       default:
         return jsonResponse(const {'error': 'not found'}, status: 404);
     }
@@ -349,12 +342,10 @@ void main() {
           });
         case '/api/events':
           return jsonResponse(const <Object>[]);
-        case '/api/goal-plan':
-          return jsonResponse(_goalYear(2026));
-        case '/api/goals':
-          return jsonResponse(const <Object>[]);
-        case '/api/goal-templates/applicable':
-          return jsonResponse(const {'template': null});
+        case '/api/goal-plan/2026-09':
+          return jsonResponse(_goalMonth('2026-09'));
+        case '/api/goal-plan/2026-10':
+          return jsonResponse(_goalMonth('2026-10'));
         default:
           return jsonResponse(const {'error': 'not found'}, status: 404);
       }

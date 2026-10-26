@@ -131,12 +131,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _select(_NavDestination.agenda);
   }
 
-  /// Opens Mês on Objetivos.
-  void _openGoals() {
-    _monthSection.value = MonthSection.goals;
-    _select(_NavDestination.mes);
-  }
-
   /// Opens Mês on Despesas and the given month's detail.
   void _openMonth(String month) {
     _monthSection.value = MonthSection.expenses;
@@ -256,7 +250,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         ],
         onOpenCalendar: _openCalendar,
         onOpenTodos: _openTodos,
-        onOpenGoals: _openGoals,
         onOpenMonth: _openMonth,
         onOpenMonthTab: _openMonthTab,
         refreshSignal: _dashboardRefresh,
