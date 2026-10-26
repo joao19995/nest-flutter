@@ -122,14 +122,24 @@ class MonthRitualViewModel extends ChangeNotifier {
     );
   }
 
-  /// Loads the displayed month, its goals month and its year strip.
-  Future<void> load() async {
+  /// Loads the displayed month, its goals month and its year strip, showing the
+  /// loading skeleton.
+  Future<void> load() => _load(showSkeleton: true);
+
+  /// Reloads without showing the loading skeleton (pull-to-refresh, returning
+  /// from the close wizard and the shell's refresh signal). Keeps the current
+  /// data on screen until the new payload lands.
+  Future<void> refresh() => _load(showSkeleton: false);
+
+  Future<void> _load({required bool showSkeleton}) async {
     _now = _clock();
     if (!_monthSelected) {
       _month = MonthKey.of(_now.year, _now.month);
     }
     var month = _month;
-    _isLoading = true;
+    if (showSkeleton) {
+      _isLoading = true;
+    }
     _errorMessage = null;
     notifyListeners();
     try {

@@ -62,7 +62,7 @@ class _MonthRitualViewState extends State<MonthRitualView>
 
   void _onRefreshRequested() {
     if (mounted && hasViewModel) {
-      viewModel.load();
+      viewModel.refresh();
     }
   }
 
@@ -71,7 +71,7 @@ class _MonthRitualViewState extends State<MonthRitualView>
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => destination));
     if (mounted) {
-      await viewModel.load();
+      await viewModel.refresh();
     }
   }
 
@@ -110,7 +110,7 @@ class _MonthRitualViewState extends State<MonthRitualView>
     return ListenableBuilder(
       listenable: viewModel,
       builder: (context, _) => RefreshIndicator(
-        onRefresh: viewModel.load,
+        onRefresh: viewModel.refresh,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: AsyncView(
