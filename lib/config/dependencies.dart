@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:nest/config/settings_controller.dart';
 import 'package:nest/data/repositories/accounts_repository.dart';
 import 'package:nest/data/repositories/categories_repository.dart';
@@ -28,10 +29,14 @@ class AppDependencies {
     expensesRepository = ExpensesRepository(client: this.apiClient);
     goalsRepository = GoalsRepository(client: this.apiClient);
     todoListsRepository = TodoListsRepository(client: this.apiClient);
+    this.apiClient.onUnauthorized = () => unauthorized.value = true;
   }
 
   final NestApiClient apiClient;
   final SettingsController settingsController;
+
+  /// Flips to `true` when the API rejects the configured key.
+  final ValueNotifier<bool> unauthorized = ValueNotifier(false);
   late final PeopleRepository peopleRepository;
   late final AccountsRepository accountsRepository;
   late final CategoriesRepository categoriesRepository;
@@ -43,6 +48,7 @@ class AppDependencies {
 
   /// Releases the underlying HTTP client and controllers.
   void dispose() {
+    unauthorized.dispose();
     settingsController.dispose();
     apiClient.dispose();
   }

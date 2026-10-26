@@ -9,6 +9,11 @@ class ApiFailure implements Exception {
   factory ApiFailure.network() =>
       const ApiFailure('Sem ligação ao servidor. Verifica a rede.');
 
+  /// The request reached the server but took too long.
+  factory ApiFailure.timeout() => const ApiFailure(
+    'O servidor demorou demasiado a responder. Tenta de novo.',
+  );
+
   /// A human-readable, user-facing message (in Portuguese).
   final String message;
 

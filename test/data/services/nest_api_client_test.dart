@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -113,5 +114,47 @@ void main() {
     );
 
     await expectLater(client.get('/api/health'), throwsA(isA<ApiFailure>()));
+  });
+
+  test('invokes onUnauthorized when the API answers 401', () async {
+    var calls = 0;
+    final client = _client(
+      MockClient((request) async => http.Response('', 401)),
+    )..onUnauthorized = () => calls++;
+
+    await expectLater(client.get('/api/goals'), throwsA(isA<ApiFailure>()));
+
+    expect(calls, 1);
+  });
+
+  test('does not invoke onUnauthorized for other failures', () async {
+    var calls = 0;
+    final client = _client(
+      MockClient((request) async => http.Response('', 500)),
+    )..onUnauthorized = () => calls++;
+
+    await expectLater(client.get('/api/goals'), throwsA(isA<ApiFailure>()));
+
+    expect(calls, 0);
+  });
+
+  testWidgets('maps a slow response to ApiFailure.timeout', (tester) async {
+    final client = _client(
+      MockClient((request) => Completer<http.Response>().future),
+    );
+    final request = client.get('/api/health');
+    final expectation = expectLater(
+      request,
+      throwsA(
+        isA<ApiFailure>().having(
+          (failure) => failure.message,
+          'message',
+          'O servidor demorou demasiado a responder. Tenta de novo.',
+        ),
+      ),
+    );
+
+    await tester.pump(const Duration(seconds: 16));
+    await expectation;
   });
 }

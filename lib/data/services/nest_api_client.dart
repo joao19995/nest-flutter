@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -18,6 +19,9 @@ class NestApiClient {
   final http.Client _httpClient;
   final String _baseUrl;
   final String _apiKey;
+
+  /// Invoked whenever the API answers with `401 Unauthorized`.
+  void Function()? onUnauthorized;
 
   static const Duration _timeout = Duration(seconds: 15);
   static const Map<String, String> _baseHeaders = {
@@ -73,6 +77,8 @@ class NestApiClient {
       return _decode(response);
     } on ApiFailure {
       rethrow;
+    } on TimeoutException {
+      throw ApiFailure.timeout();
     } catch (_) {
       throw ApiFailure.network();
     }
@@ -90,6 +96,9 @@ class NestApiClient {
     final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
     if (isSuccess) {
       return payload;
+    }
+    if (response.statusCode == 401) {
+      onUnauthorized?.call();
     }
     throw ApiFailure(
       _errorMessage(payload, response.statusCode),

@@ -19,16 +19,49 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
+  final GlobalKey<ScaffoldMessengerState> _messengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
   @override
   void initState() {
     super.initState();
+    widget.dependencies.unauthorized.addListener(_onUnauthorized);
     unawaited(widget.dependencies.settingsController.load());
   }
 
   @override
   void dispose() {
+    widget.dependencies.unauthorized.removeListener(_onUnauthorized);
     widget.dependencies.dispose();
     super.dispose();
+  }
+
+  void _onUnauthorized() {
+    if (!mounted || !widget.dependencies.unauthorized.value) {
+      return;
+    }
+    final messenger = _messengerKey.currentState;
+    if (messenger == null) {
+      return;
+    }
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Chave da API inválida ou expirada. Verifica a configuração.',
+        ),
+        action: SnackBarAction(
+          label: 'OK',
+          onPressed: () => widget.dependencies.unauthorized.value = false,
+        ),
+      ),
+    );
+    unawaited(
+      controller.closed.then((_) {
+        if (mounted) {
+          widget.dependencies.unauthorized.value = false;
+        }
+      }),
+    );
   }
 
   @override
@@ -41,6 +74,7 @@ class _AppState extends State<App> {
         builder: (context, _) => MaterialApp(
           title: AppConstants.appName,
           debugShowCheckedModeBanner: false,
+          scaffoldMessengerKey: _messengerKey,
           locale: const Locale('pt', 'PT'),
           supportedLocales: const [Locale('pt', 'PT')],
           localizationsDelegates: const [
