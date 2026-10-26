@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:nest/ui/core/month_key.dart';
+import 'package:nest/ui/core/widgets/widgets.dart';
 import 'package:nest/ui/features/month/views/month_view.dart';
 
 import '../../../support/test_helpers.dart';
+
+/// The section switcher's label, which the ritual hero can also repeat.
+Finder _sectionTab(String label) => find.descendant(
+  of: find.byType(AppSectionSwitcher<MonthSection>),
+  matching: find.text(label),
+);
 
 Map<String, dynamic> _yearSummary(int year) => {
   'year': year,
@@ -61,7 +68,7 @@ void main() {
       expect(find.text('Mês'), findsOneWidget);
       expect(find.text('Balanço'), findsOneWidget);
       expect(find.text('Despesas'), findsWidgets);
-      expect(find.text('Objetivos'), findsOneWidget);
+      expect(_sectionTab('Objetivos'), findsOneWidget);
       expect(find.text('Por criar'), findsOneWidget);
       expect(goalsLoaded, isFalse);
       expect(
@@ -69,7 +76,7 @@ void main() {
         containsAll(['/api/months/$month', '/api/goal-plan/$month']),
       );
 
-      await tester.tap(find.text('Objetivos'));
+      await tester.tap(_sectionTab('Objetivos'));
       await tester.pumpAndSettle();
 
       expect(goalsLoaded, isTrue);
@@ -120,7 +127,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Objetivos'));
+    await tester.tap(_sectionTab('Objetivos'));
     await tester.pumpAndSettle();
 
     final ritualBefore = ritualLoads;
@@ -178,12 +185,12 @@ void main() {
 
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Despesas'));
+    await tester.tap(_sectionTab('Despesas'));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Objetivos'));
+    await tester.tap(_sectionTab('Objetivos'));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);

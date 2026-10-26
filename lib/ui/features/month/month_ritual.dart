@@ -57,6 +57,8 @@ class MonthRitual {
     required this.expensesStatus,
     required this.filledEntries,
     required this.totalEntries,
+    this.expensesPlanned = 0,
+    this.expensesActual = 0,
     required this.goalsStatus,
     required this.goalsReserved,
     required this.goalsPlanned,
@@ -80,6 +82,14 @@ class MonthRitual {
 
   /// How many expense lines the month has.
   final int totalEntries;
+
+  /// The month's planned expense total, in euros, as returned by the API
+  /// summary.
+  final double expensesPlanned;
+
+  /// The month's actual expense total, in euros, as returned by the API
+  /// summary.
+  final double expensesActual;
 
   /// The goals month's lifecycle status.
   final ExpenseMonthStatus goalsStatus;

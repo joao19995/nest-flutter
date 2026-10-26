@@ -112,6 +112,8 @@ class MonthRitualViewModel extends ChangeNotifier {
       expensesStatus: expense?.status ?? ExpenseMonthStatus.missing,
       filledEntries: expense?.filledEntries ?? 0,
       totalEntries: expense?.totalEntries ?? 0,
+      expensesPlanned: expense?.planned ?? 0,
+      expensesActual: expense?.actual ?? 0,
       goalsStatus: goalPlan == null
           ? ExpenseMonthStatus.missing
           : goalPlan.closed

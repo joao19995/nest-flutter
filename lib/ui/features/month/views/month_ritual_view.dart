@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nest/domain/models/expense_year_summary.dart';
 import 'package:nest/ui/core/dependencies_scope.dart';
 import 'package:nest/ui/core/theme/theme.dart';
 import 'package:nest/ui/core/view_model_state.dart';
@@ -245,6 +246,22 @@ class _RitualHero extends StatelessWidget {
               ).copyWith(color: AppColors.onHeroMuted),
             ),
           ],
+          const SizedBox(height: AppSpacing.sm),
+          _HeroAmountLine(
+            label: 'Despesas',
+            value: ritual.expensesStatus == ExpenseMonthStatus.missing
+                ? '—'
+                : '${AppFormatters.currency(ritual.expensesActual)} de '
+                      '${AppFormatters.currency(ritual.expensesPlanned)}',
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _HeroAmountLine(
+            label: 'Objetivos',
+            value: ritual.goalsStatus == ExpenseMonthStatus.missing
+                ? '—'
+                : '${AppFormatters.currency(ritual.goalsReserved)} de '
+                      '${AppFormatters.currency(ritual.goalsPlanned)}',
+          ),
           const SizedBox(height: AppSpacing.md),
           AppButton(
             label: ritual.actionLabel,
@@ -257,6 +274,45 @@ class _RitualHero extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HeroAmountLine extends StatelessWidget {
+  const _HeroAmountLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: AppTextStyles.navSection(
+              colors,
+            ).copyWith(color: AppColors.onHeroMuted),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          flex: 3,
+          child: Text(
+            value,
+            style: AppTextStyles.body.copyWith(color: AppColors.onHero),
+            textAlign: TextAlign.right,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }
